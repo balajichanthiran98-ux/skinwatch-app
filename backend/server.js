@@ -50,8 +50,35 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
   }
 }
 
+// WMO Weather code to human readable description
+function wmoToDescription(code) {
+  const map = {
+    0: 'Clear Sky',
+    1: 'Mainly Clear',
+    2: 'Partly Cloudy',
+    3: 'Overcast',
+    45: 'Foggy',
+    48: 'Depositing Rime Fog',
+    51: 'Light Drizzle',
+    53: 'Moderate Drizzle',
+    55: 'Dense Drizzle',
+    61: 'Slight Rain',
+    63: 'Moderate Rain',
+    65: 'Heavy Rain',
+    71: 'Slight Snow',
+    73: 'Moderate Snow',
+    75: 'Heavy Snow',
+    80: 'Rain Showers',
+    81: 'Moderate Rain Showers',
+    82: 'Violent Rain Showers',
+    95: 'Thunderstorm',
+    96: 'Thunderstorm with Hail'
+  };
+  return map[code] || 'Partly Cloudy';
+}
+
 // ---- GET /api/weather?lat=&lon= ----
-// Current conditions: temperature, humidity, UV, wind, condition, sunrise/sunset.
+// Live real-time current conditions: temperature, humidity, UV index, wind, condition.
 app.get('/api/weather', async (req, res) => {
   const { lat, lon } = req.query;
   if (!lat || !lon) return res.status(400).json({ error: 'lat and lon are required' });
@@ -61,27 +88,33 @@ app.get('/api/weather', async (req, res) => {
   if (cached) return res.json({ ...cached, _cache: 'hit' });
 
   try {
-    if (API_KEY) {
-      const url = `https://weather.googleapis.com/v1/currentConditions:lookup?key=${API_KEY}&location.latitude=${lat}&location.longitude=${lon}`;
-      const r = await fetchWithTimeout(url);
-      if (r.ok) {
-        const raw = await r.json();
-        const normalized = {
-          temperature: raw.temperature?.degrees ?? 31,
-          humidity: raw.relativeHumidity ?? 68,
-          uv: raw.uvIndex ?? 8,
-          wind: raw.wind?.speed?.value ?? 14,
-          condition: raw.weatherCondition?.description?.text ?? 'Warm & Sunny'
-        };
-        setCached(key, normalized);
-        return res.json({ ...normalized, _cache: 'miss' });
-      }
+    // 1. Fetch live conditions and hourly UV curve from Open-Meteo
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=uv_index&timezone=auto`;
+    const r = await fetchWithTimeout(url, {}, 3500);
+    if (r.ok) {
+      const data = await r.json();
+      const curr = data.current || {};
+      
+      // Calculate current hour UV or max daylight UV
+      const hourIndex = new Date().getHours();
+      const currentUv = data.hourly?.uv_index?.[hourIndex] ?? data.hourly?.uv_index?.[12] ?? 7.5;
+
+      const normalized = {
+        temperature: Math.round(curr.temperature_2m ?? 30),
+        humidity: Math.round(curr.relative_humidity_2m ?? 65),
+        uv: Math.round(currentUv * 10) / 10,
+        wind: Math.round(curr.wind_speed_10m ?? 12),
+        condition: wmoToDescription(curr.weather_code)
+      };
+
+      setCached(key, normalized);
+      return res.json({ ...normalized, _cache: 'live' });
     }
   } catch (err) {
-    console.warn('Google Weather live fetch failed or timed out, using fallback:', err.message);
+    console.warn('Open-Meteo live weather fetch failed, using fallback:', err.message);
   }
 
-  // Fast Resilient Fallback
+  // Resilient Fallback
   const fallback = {
     temperature: 31,
     humidity: 68,
@@ -103,47 +136,49 @@ app.get('/api/forecast', async (req, res) => {
   if (cached) return res.json({ ...cached, _cache: 'hit' });
 
   try {
-    if (API_KEY) {
-      const url = `https://weather.googleapis.com/v1/forecast/days:lookup?key=${API_KEY}&location.latitude=${lat}&location.longitude=${lon}&days=${days}`;
-      const r = await fetchWithTimeout(url);
-      if (r.ok) {
-        const raw = await r.json();
-        const forecastDays = (raw.forecastDays || raw.days || []).map((d, index) => {
-          const high = d.maxTemperature?.degrees ?? (32 + (index % 3));
-          const low = d.minTemperature?.degrees ?? (25 + (index % 2));
-          const uvVal = d.daytimeForecast?.uvIndex ?? (index === 0 ? 8 : (index % 2 === 0 ? 9 : 7));
-          const humVal = d.daytimeForecast?.relativeHumidity ?? (65 + (index * 3) % 20);
-          const condVal = d.daytimeForecast?.weatherCondition?.description?.text ?? 'Sunny';
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,relative_humidity_2m_mean&timezone=auto`;
+    const r = await fetchWithTimeout(url, {}, 3500);
+    if (r.ok) {
+      const data = await r.json();
+      const daily = data.daily || {};
+      const times = daily.time || [];
 
-          return {
-            date: d.interval?.startTime || d.date || new Date(Date.now() + index * 86400000).toISOString(),
-            tempHigh: Math.round(high),
-            tempLow: Math.round(low),
-            uv: typeof uvVal === 'number' ? uvVal : 7,
-            humidity: Math.round(humVal),
-            condition: condVal
-          };
-        });
-        const result = { days: forecastDays };
-        setCached(key, result);
-        return res.json({ ...result, _cache: 'miss' });
-      }
+      const forecastDays = times.slice(0, Number(days)).map((dateStr, i) => {
+        const high = daily.temperature_2m_max?.[i] ?? 32;
+        const low = daily.temperature_2m_min?.[i] ?? 24;
+        const uvMax = daily.uv_index_max?.[i] ?? 8;
+        const hum = daily.relative_humidity_2m_mean?.[i] ?? 65;
+        const wCode = daily.weather_code?.[i] ?? 2;
+
+        return {
+          date: dateStr,
+          tempHigh: Math.round(high),
+          tempLow: Math.round(low),
+          uv: Math.round(uvMax * 10) / 10,
+          humidity: Math.round(hum),
+          condition: wmoToDescription(wCode)
+        };
+      });
+
+      const result = { days: forecastDays };
+      setCached(key, result);
+      return res.json({ ...result, _cache: 'live' });
     }
   } catch (err) {
-    console.warn('Google forecast live fetch failed or timed out, using fallback:', err.message);
+    console.warn('Open-Meteo forecast live fetch failed, using fallback:', err.message);
   }
 
-  // Fast Resilient Fallback Forecast
+  // Fallback Forecast
   const fallbackDays = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(Date.now() + i * 86400000);
     fallbackDays.push({
-      date: d.toISOString(),
+      date: d.toISOString().slice(0, 10),
       tempHigh: 33 - (i % 2),
       tempLow: 25 + (i % 2),
       uv: i === 0 ? 8 : (i % 2 === 0 ? 9 : 7),
       humidity: 68 + (i * 2) % 15,
-      condition: i % 3 === 0 ? 'Partly Cloudy' : 'Warm & Sunny'
+      condition: i % 3 === 0 ? 'Partly Cloudy' : 'Clear Sky'
     });
   }
   const fallbackResult = { days: fallbackDays };
@@ -161,32 +196,31 @@ app.get('/api/air-quality', async (req, res) => {
   if (cached) return res.json({ ...cached, _cache: 'hit' });
 
   try {
-    if (API_KEY) {
-      const url = `https://airquality.googleapis.com/v1/currentConditions:lookup?key=${API_KEY}`;
-      const r = await fetchWithTimeout(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location: { latitude: Number(lat), longitude: Number(lon) } })
-      });
-      if (r.ok) {
-        const raw = await r.json();
-        const index = raw.indexes?.[0];
-        const normalized = {
-          aqi: index?.aqi ?? 72,
-          category: index?.category ?? 'Moderate',
-          dominantPollutant: index?.dominantPollutant ?? 'pm25'
-        };
-        setCached(key, normalized);
-        return res.json({ ...normalized, _cache: 'miss' });
-      }
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=us_aqi,pm2_5,pm10`;
+    const r = await fetchWithTimeout(url, {}, 3500);
+    if (r.ok) {
+      const data = await r.json();
+      const aqiVal = data.current?.us_aqi ?? 65;
+      let category = 'Good';
+      if (aqiVal > 150) category = 'Unhealthy';
+      else if (aqiVal > 100) category = 'Unhealthy for Sensitive Groups';
+      else if (aqiVal > 50) category = 'Moderate';
+
+      const normalized = {
+        aqi: aqiVal,
+        category,
+        dominantPollutant: 'pm25'
+      };
+      setCached(key, normalized);
+      return res.json({ ...normalized, _cache: 'live' });
     }
   } catch (err) {
-    console.warn('Google Air Quality live fetch failed or timed out, using fallback:', err.message);
+    console.warn('Open-Meteo Air Quality live fetch failed, using fallback:', err.message);
   }
 
-  // Fast Resilient Fallback AQI
+  // Fallback AQI
   const fallbackAQI = {
-    aqi: 72,
+    aqi: 65,
     category: 'Moderate',
     dominantPollutant: 'pm25'
   };
