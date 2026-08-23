@@ -773,10 +773,11 @@ function initOrUpdateMap(lat, lon) {
 function renderHourlyForecast(currentTemp) {
   const now = new Date();
   const currentHour = now.getHours();
-  const base = currentTemp != null ? Math.round(currentTemp) : 30;
+  const base = currentTemp != null ? Math.round(currentTemp) : 28;
+  const hourlyTemps = state.weather?.hourlyTemps || [];
 
   const hourNowElem = document.getElementById('hour-now');
-  if (hourNowElem) hourNowElem.textContent = `${base}°`;
+  if (hourNowElem) hourNowElem.textContent = `${hourlyTemps[0] != null ? hourlyTemps[0] : base}°`;
 
   for (let i = 1; i <= 4; i++) {
     const nextHour = (currentHour + i) % 24;
@@ -787,9 +788,8 @@ function renderHourlyForecast(currentTemp) {
     const tempElem = document.getElementById(`hour-${i}-temp`);
 
     if (timeElem) timeElem.textContent = `${displayHour}${period}`;
-    // Dynamic diurnal temperature curve estimation for upcoming hours
-    const tempDelta = (nextHour >= 11 && nextHour <= 15) ? 1 : (nextHour >= 18 || nextHour <= 6 ? -i : 0);
-    if (tempElem) tempElem.textContent = `${base + tempDelta}°`;
+    const tVal = hourlyTemps[i] != null ? hourlyTemps[i] : base;
+    if (tempElem) tempElem.textContent = `${tVal}°`;
   }
 }
 

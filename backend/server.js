@@ -23,9 +23,9 @@ if (API_KEY) {
 app.use(cors());
 app.use(express.json());
 
-// ---- simple in-memory cache, 1 hour TTL, keyed by rounded lat/lon ----
+// ---- simple in-memory cache, 2-minute TTL for fast real-time updates ----
 const cache = new Map();
-const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = 2 * 60 * 1000;
 function cacheKey(prefix, lat, lon) {
   return `${prefix}:${Math.round(lat * 100) / 100},${Math.round(lon * 100) / 100}`;
 }
@@ -39,7 +39,7 @@ function setCached(key, data) {
 }
 
 // Helper for fetch with short timeout to prevent network hangs
-async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 3500) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -52,10 +52,16 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
   }
 }
 
-// WMO Weather code to human readable description
-function wmoToDescription(code) {
+// WMO Weather code to human readable description (day/night aware)
+function wmoToDescription(code, isDay = 1) {
+  if (isDay === 0) {
+    if (code === 0) return 'Clear Night';
+    if (code === 1) return 'Mainly Clear Night';
+    if (code === 2) return 'Partly Cloudy Night';
+    if (code === 3) return 'Overcast Night';
+  }
   const map = {
-    0: 'Clear Sky',
+    0: 'Sunny / Clear Sky',
     1: 'Mainly Clear',
     2: 'Partly Cloudy',
     3: 'Overcast',
@@ -76,7 +82,7 @@ function wmoToDescription(code) {
     95: 'Thunderstorm',
     96: 'Thunderstorm with Hail'
   };
-  return map[code] || 'Partly Cloudy';
+  return map[code] || (isDay === 0 ? 'Clear Night' : 'Sunny / Fair');
 }
 
 // ---- GET /api/weather?lat=&lon= ----
@@ -91,22 +97,44 @@ app.get('/api/weather', async (req, res) => {
 
   try {
     // 1. Fetch live conditions and hourly UV curve from Open-Meteo
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=uv_index&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,uv_index&timezone=auto`;
     const r = await fetchWithTimeout(url, {}, 3500);
     if (r.ok) {
       const data = await r.json();
       const curr = data.current || {};
-      
-      // Calculate current hour UV or max daylight UV
-      const hourIndex = new Date().getHours();
-      const currentUv = data.hourly?.uv_index?.[hourIndex] ?? data.hourly?.uv_index?.[12] ?? 7.5;
+      const isDay = curr.is_day ?? 1;
+
+      // Extract current hour in timezone
+      let currentHour = 12;
+      if (curr.time) {
+        currentHour = new Date(curr.time).getHours();
+      } else {
+        currentHour = new Date().getHours();
+      }
+
+      // Exact live UV for current hour
+      const hourlyUvs = data.hourly?.uv_index || [];
+      const currentUv = hourlyUvs[currentHour] ?? (isDay === 0 ? 0 : 7.5);
+      const maxUvToday = Math.max(...hourlyUvs.slice(0, 24), 0);
+
+      // Hourly temperatures for next 5 hours
+      const hourlyTemps = [];
+      const tempArr = data.hourly?.temperature_2m || [];
+      for (let i = 0; i < 5; i++) {
+        const hIdx = (currentHour + i) % 24;
+        hourlyTemps.push(Math.round(tempArr[hIdx] ?? curr.temperature_2m ?? 30));
+      }
 
       const normalized = {
         temperature: Math.round(curr.temperature_2m ?? 30),
+        feelsLike: Math.round(curr.apparent_temperature ?? curr.temperature_2m ?? 30),
         humidity: Math.round(curr.relative_humidity_2m ?? 65),
         uv: Math.round(currentUv * 10) / 10,
+        uvMax: Math.round(maxUvToday * 10) / 10,
+        isDay,
         wind: Math.round(curr.wind_speed_10m ?? 12),
-        condition: wmoToDescription(curr.weather_code)
+        condition: wmoToDescription(curr.weather_code, isDay),
+        hourlyTemps
       };
 
       setCached(key, normalized);
@@ -118,11 +146,14 @@ app.get('/api/weather', async (req, res) => {
 
   // Resilient Fallback
   const fallback = {
-    temperature: 31,
-    humidity: 68,
-    uv: 8,
-    wind: 14,
-    condition: 'Warm & Sunny'
+    temperature: 28,
+    humidity: 75,
+    uv: 0,
+    uvMax: 8,
+    isDay: 0,
+    wind: 10,
+    condition: 'Partly Cloudy Night',
+    hourlyTemps: [28, 27, 27, 26, 26]
   };
   setCached(key, fallback);
   return res.json({ ...fallback, _cache: 'fallback' });
