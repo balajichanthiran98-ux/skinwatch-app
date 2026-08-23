@@ -14,8 +14,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const API_KEY = process.env.WEATHER_API_KEY;
 
-if (!API_KEY) {
-  console.error('Missing WEATHER_API_KEY in .env — weather/air quality calls will fail until this is set.');
+if (API_KEY) {
+  console.log('✓ Google Weather API key detected');
+} else {
+  console.log('✓ Open-Meteo Real-Time Global Weather & AQI Engine Active');
 }
 
 app.use(cors());
