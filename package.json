@@ -1,0 +1,22 @@
+{
+  "name": "skinwatch-app",
+  "version": "1.0.0",
+  "description": "Climate-Aware Skincare Intelligence Web Application",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "build": "cd backend && npm install",
+    "dev": "node backend/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["skincare", "climate", "uv", "weather", "beauty-tech"],
+  "author": "Balaji",
+  "license": "ISC"
+}

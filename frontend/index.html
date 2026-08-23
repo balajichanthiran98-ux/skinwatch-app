@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#D4AF37">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SkinWatch">
+<link rel="manifest" href="manifest.json">
+<title>SkinWatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="style.css">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+</script>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- Simulated Incoming SMS Notification Toast -->
+  <div id="sms-toast" class="sms-toast-banner" style="display:none;">
+    <div class="sms-toast-icon"><i class="ti ti-message-dots"></i></div>
+    <div class="sms-toast-content">
+      <div class="sms-toast-header"><span>MESSAGES</span> <span>just now</span></div>
+      <div class="sms-toast-body" id="sms-toast-body">SkinWatch: Your login code is <strong>1234</strong>. Tap to autofill.</div>
+    </div>
+  </div>
+
+  <!-- AUTH / PHONE NUMBER LOGIN SCREEN -->
+  <section id="screen-auth" class="screen auth-screen" style="display:none;">
+    <div class="auth-brand-wrap">
+      <div class="auth-logo-badge">
+        <i class="ti ti-droplet-half-2"></i>
+      </div>
+      <h1 class="auth-app-title">SkinWatch</h1>
+      <p class="auth-app-tagline">Climate-Aware Skincare Intelligence</p>
+    </div>
+
+    <div class="auth-card">
+      <!-- Step 1: Phone Entry -->
+      <div id="auth-step-phone" class="auth-step">
+        <div class="auth-heading">
+          <h2 class="serif-heading-dark">Sign In</h2>
+          <p class="muted-note">Enter your mobile number to sync your routine & phototype.</p>
+        </div>
+
+        <div class="auth-field-group">
+          <label class="auth-field-label">Mobile Number</label>
+          <div class="auth-phone-input-row">
+            <select id="auth-country-code" class="auth-country-select">
+              <option value="+91">🇮🇳 +91</option>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+44">🇬🇧 +44</option>
+              <option value="+971">🇦🇪 +971</option>
+              <option value="+65">🇸🇬 +65</option>
+              <option value="+61">🇦🇺 +61</option>
+            </select>
+            <input id="auth-phone-input" type="tel" class="auth-phone-field" placeholder="98765 43210" maxlength="14" autocomplete="tel">
+          </div>
+          <p id="auth-phone-error" class="auth-error-msg" style="display:none;"></p>
+        </div>
+
+        <button id="auth-send-otp-btn" class="auth-primary-btn">
+          <span>Send Verification Code</span>
+          <i class="ti ti-arrow-right"></i>
+        </button>
+
+        <div class="auth-divider"><span>OR</span></div>
+
+        <button id="auth-demo-login-btn" class="auth-demo-btn">
+          <i class="ti ti-sparkles"></i> 1-Tap Quick Demo Login
+        </button>
+      </div>
+
+      <!-- Step 2: OTP Verification -->
+      <div id="auth-step-otp" class="auth-step" style="display:none;">
+        <div class="auth-heading">
+          <h2 class="serif-heading-dark">Enter Code</h2>
+          <p class="muted-note">
+            4-digit code sent to <strong id="auth-display-phone">+91 98765 43210</strong>
+            <button id="auth-change-phone-btn" class="auth-link-btn">Change</button>
+          </p>
+        </div>
+
+        <div class="otp-boxes-row">
+          <input type="tel" maxlength="1" class="otp-box" id="otp-1" inputmode="numeric" autocomplete="one-time-code">
+          <input type="tel" maxlength="1" class="otp-box" id="otp-2" inputmode="numeric">
+          <input type="tel" maxlength="1" class="otp-box" id="otp-3" inputmode="numeric">
+          <input type="tel" maxlength="1" class="otp-box" id="otp-4" inputmode="numeric">
+        </div>
+        <p id="auth-otp-error" class="auth-error-msg" style="display:none;"></p>
+
+        <button id="auth-verify-btn" class="auth-primary-btn">
+          <span>Verify & Enter Dashboard</span>
+          <i class="ti ti-check"></i>
+        </button>
+
+        <div class="auth-resend-row">
+          <span id="auth-countdown-lbl">Resend code in <strong>0:28</strong></span>
+          <button id="auth-resend-btn" class="auth-link-btn" style="display:none;">Resend OTP</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-footer-note">
+      🔒 End-to-end encrypted · Private & on-device storage
+    </div>
+  </section>
+
+  <!-- FIRST-TIME USER ONBOARDING WIZARD -->
+  <section id="screen-onboarding" class="screen onboarding-screen" style="display:none;">
+    <div class="onboarding-top-bar">
+      <div class="onboarding-step-indicator">
+        <span id="onboard-step-lbl">Step 1 of 4</span>
+        <div class="onboard-progress-track">
+          <div class="onboard-progress-fill" id="onboard-progress-fill" style="width: 25%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: Personal Info & Location -->
+    <div id="onboard-step-1" class="onboard-step-card">
+      <div class="onboard-badge-icon"><i class="ti ti-user-circle"></i></div>
+      <h2 class="serif-heading-dark">Welcome to SkinWatch</h2>
+      <p class="muted-note">Let's personalize your climate skincare profile.</p>
+
+      <div class="auth-field-group" style="margin-top:18px;">
+        <label class="auth-field-label">Your Name</label>
+        <input id="onboard-name-input" type="text" class="auth-phone-field" placeholder="Enter your name (e.g. Balaji)" />
+      </div>
+
+      <div class="auth-field-group">
+        <label class="auth-field-label">Your Home City</label>
+        <div class="location-row">
+          <input id="onboard-city-input" type="text" placeholder="e.g. Trichy, Chennai, Mumbai" value="Trichy, Tamil Nadu" />
+          <button id="onboard-locate-btn" type="button" title="Detect Location"><i class="ti ti-current-location"></i></button>
+        </div>
+      </div>
+
+      <button id="onboard-next-1" class="auth-primary-btn" style="margin-top:16px;">
+        <span>Continue to Skin Profile</span>
+        <i class="ti ti-arrow-right"></i>
+      </button>
+    </div>
+
+    <!-- Step 2: Fitzpatrick Phototype & Skin Type -->
+    <div id="onboard-step-2" class="onboard-step-card" style="display:none;">
+      <div class="onboard-badge-icon"><i class="ti ti-dna"></i></div>
+      <h2 class="serif-heading-dark">Skin Genetics & Type</h2>
+      <p class="muted-note">Calibrates your UV sensitivity and barrier resistance.</p>
+
+      <label class="auth-field-label" style="margin-top:14px;">Fitzpatrick Phototype (Sun Sensitivity)</label>
+      <div class="onboard-pills-grid" id="onboard-phototype-pills">
+        <button type="button" class="onboard-pill-card" data-val="Type I-II">
+          <strong>Type I–II (Fair)</strong>
+          <span>Burns easily, high UV sensitivity</span>
+        </button>
+        <button type="button" class="onboard-pill-card active" data-val="Type III-IV">
+          <strong>Type III–IV (Medium)</strong>
+          <span>Tans gradually, moderate burn risk</span>
+        </button>
+        <button type="button" class="onboard-pill-card" data-val="Type V-VI">
+          <strong>Type V–VI (Deep)</strong>
+          <span>Melanin-rich, hyperpigmentation focus</span>
+        </button>
+      </div>
+
+      <label class="auth-field-label" style="margin-top:14px;">Base Skin Type</label>
+      <div class="pill-group" id="onboard-skintype-pills">
+        <button type="button" class="pill active" data-val="Normal">Normal</button>
+        <button type="button" class="pill" data-val="Oily">Oily</button>
+        <button type="button" class="pill" data-val="Dry">Dry</button>
+        <button type="button" class="pill" data-val="Combination">Combination</button>
+        <button type="button" class="pill" data-val="Sensitive">Sensitive</button>
+      </div>
+
+      <div class="row-between" style="margin-top:20px; gap:8px;">
+        <button id="onboard-back-2" class="check-sub-btn" style="flex:0.4;">Back</button>
+        <button id="onboard-next-2" class="auth-primary-btn" style="flex:1;">Next Step <i class="ti ti-arrow-right"></i></button>
+      </div>
+    </div>
+
+    <!-- Step 3: Concerns & Lifestyle Stressors -->
+    <div id="onboard-step-3" class="onboard-step-card" style="display:none;">
+      <div class="onboard-badge-icon"><i class="ti ti-target-arrow"></i></div>
+      <h2 class="serif-heading-dark">Goals & Environment</h2>
+      <p class="muted-note">Select your primary concerns and daily environmental stressors.</p>
+
+      <label class="auth-field-label" style="margin-top:14px;">Primary Concerns (Select all that apply)</label>
+      <div class="pill-group" id="onboard-concern-pills">
+        <button type="button" class="cpill active" data-val="Dryness">💧 Dryness / TEWL</button>
+        <button type="button" class="cpill" data-val="Acne">⚡ Acne & Blemishes</button>
+        <button type="button" class="cpill" data-val="Pigmentation">☀️ Pigmentation</button>
+        <button type="button" class="cpill" data-val="Sensitivity">🌿 Sensitivity / Redness</button>
+        <button type="button" class="cpill" data-val="Fine Lines">✨ Fine Lines</button>
+      </div>
+
+      <label class="auth-field-label" style="margin-top:14px;">Daily Lifestyle Factors</label>
+      <div class="pill-group" id="onboard-lifestyle-pills">
+        <button type="button" class="lpill active" data-val="AC Office">❄️ AC Office (Dry Air)</button>
+        <button type="button" class="lpill active" data-val="Blue Light">🖥️ Screen Blue Light</button>
+        <button type="button" class="lpill" data-val="Outdoor Commute">🏃 Outdoor Commute</button>
+        <button type="button" class="lpill active" data-val="Sleep 7h">😴 7+ Hrs Sleep</button>
+        <button type="button" class="lpill" data-val="Frequent Travel">✈️ Frequent Travel</button>
+      </div>
+
+      <div class="row-between" style="margin-top:20px; gap:8px;">
+        <button id="onboard-back-3" class="check-sub-btn" style="flex:0.4;">Back</button>
+        <button id="onboard-next-3" class="auth-primary-btn" style="flex:1;">Generate Routine <i class="ti ti-sparkles"></i></button>
+      </div>
+    </div>
+
+    <!-- Step 4: Calibrated Regimen Confirmation -->
+    <div id="onboard-step-4" class="onboard-step-card" style="display:none;">
+      <div class="onboard-badge-icon" style="background:#E8F5E9; color:#2E7D32;"><i class="ti ti-circle-check"></i></div>
+      <h2 class="serif-heading-dark">Your Calibrated Regimen</h2>
+      <p class="muted-note">Custom-crafted for your skin traits and local climate.</p>
+
+      <div class="onboard-summary-box">
+        <div class="onboard-summary-item">
+          <strong>☀️ Morning AM Ritual:</strong>
+          <span id="onboard-am-summary">Gentle Cleanser · Vitamin C Serum · SPF 50+ Sunscreen</span>
+        </div>
+        <div class="onboard-summary-item">
+          <strong>🌙 Evening PM Reset:</strong>
+          <span id="onboard-pm-summary">Double Cleanser · Retinol 0.2% · Barrier Night Moisturizer</span>
+        </div>
+        <div class="onboard-summary-item">
+          <strong>💧 Daily Nutrition & Hydration:</strong>
+          <span id="onboard-supp-summary">8 Drops (2.4L Water) · Omega-3 · Vitamin C & Collagen</span>
+        </div>
+      </div>
+
+      <button id="onboard-finish-btn" class="auth-primary-btn" style="margin-top:18px;">
+        <span>Complete Setup & Enter SkinWatch</span>
+        <i class="ti ti-check"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section id="screen-home" class="screen">
+    <div id="alert-banner" class="alert-banner" style="display:none;">
+      <i class="ti ti-alert-triangle"></i>
+      <p id="alert-text"></p>
+      <button id="dismiss-alert" aria-label="Dismiss"><i class="ti ti-x"></i></button>
+    </div>
+
+    <div class="hero">
+      <p class="eyebrow" id="hero-city">Trichy, Tamil Nadu</p>
+      <p class="hero-datetime" id="hero-datetime">Sun 23 Aug</p>
+      <p class="hero-temp" id="hero-temp">31°</p>
+      <p class="hero-cond" id="hero-cond">Warm & Sunny</p>
+      <div class="hero-stats">
+        <span id="stat-hum">68% humidity</span>
+        <span id="stat-uv">UV 8</span>
+        <span id="stat-aqi">AQI 72</span>
+        <span id="stat-wind">Wind 14 km/h</span>
+      </div>
+    </div>
+
+    <!-- Hourly forecast strip -->
+    <div class="hourly-forecast-strip" id="hourly-forecast-strip">
+      <div class="hour-item"><span class="hour-time">Now</span><span class="hour-temp" id="hour-now">--°</span></div>
+      <div class="hour-item"><span class="hour-time" id="hour-1-time">+1h</span><span class="hour-temp" id="hour-1-temp">--°</span></div>
+      <div class="hour-item"><span class="hour-time" id="hour-2-time">+2h</span><span class="hour-temp" id="hour-2-temp">--°</span></div>
+      <div class="hour-item"><span class="hour-time" id="hour-3-time">+3h</span><span class="hour-temp" id="hour-3-temp">--°</span></div>
+      <div class="hour-item"><span class="hour-time" id="hour-4-time">+4h</span><span class="hour-temp" id="hour-4-temp">--°</span></div>
+    </div>
+
+    <!-- Home Location & Interactive Map -->
+    <div class="section-block location-section">
+      <p class="section-label">Location</p>
+      <div class="location-row">
+        <input id="home-loc-search" type="text" placeholder="Search a city">
+        <button id="home-loc-search-btn" title="Search city" aria-label="Search city"><i class="ti ti-search"></i></button>
+        <button id="home-locate-me" title="Use current location" aria-label="Use current location"><i class="ti ti-current-location"></i></button>
+      </div>
+      <p id="home-loc-status" class="muted-note" style="margin: 4px 0 10px; min-height: 14px; font-size: 11px;"></p>
+
+      <div class="map-card-wrapper">
+        <div id="home-map" class="home-map"></div>
+      </div>
+      <p class="map-caption">Full interactive map in the live app</p>
+    </div>
+
+    <div class="section-block" style="padding-top: 0;">
+      <p class="section-label">Today's routine changes</p>
+      <div id="home-flags" class="flags-list">
+        <p class="muted-note">Add steps in the Routine tab to see today's flags here.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORECAST -->
+  <section id="screen-forecast" class="screen" style="display:none;">
+    <div class="segmented">
+      <button id="mode-upcoming" class="seg-btn active">Upcoming</button>
+      <button id="mode-past" class="seg-btn">Past</button>
+    </div>
+
+    <div id="view-upcoming">
+      <p class="section-label">7-Day Climate & UV</p>
+      <p class="serif-heading" style="margin-bottom: 12px;">Skin Climate Outlook</p>
+
+      <!-- UV Heatmap Trend Bar Card -->
+      <div class="uv-trend-card">
+        <div class="trend-card-top">
+          <span class="trend-title"><i class="ti ti-sun-high"></i> UV Risk Outlook</span>
+          <span class="trend-peak-badge" id="trend-peak-badge">Peak: UV 8 Very High</span>
+        </div>
+        <div class="uv-bars-row" id="uv-bars-row">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <p class="section-label" style="margin-top: 18px;">Daily Skincare Guidance</p>
+      <div id="day-list" class="day-cards-list"></div>
+    </div>
+
+    <div id="view-past" style="display:none;">
+      <div class="row-between" style="align-items:center; margin-bottom: 12px;">
+        <div>
+          <p class="section-label">Exposure History</p>
+          <p class="serif-heading" style="margin-bottom:0;">Past Climate</p>
+        </div>
+        <div class="segmented small">
+          <button id="range-week" class="seg-btn active">Week</button>
+          <button id="range-month" class="seg-btn">Month</button>
+        </div>
+      </div>
+
+      <!-- Past Climate Summary Hero Card -->
+      <div class="history-summary-card">
+        <div class="history-summary-top">
+          <div>
+            <span class="hist-label">Barrier Climate Rating</span>
+            <div class="hist-status" id="hist-barrier-status">Balanced & Stable</div>
+          </div>
+          <div class="hist-badge" id="hist-peak-badge">Peak UV --</div>
+        </div>
+        <div class="hist-bars-row" id="hist-bars-row"></div>
+      </div>
+
+      <!-- 4 Avg Cards -->
+      <div id="avg-cards" class="avg-cards"></div>
+
+      <!-- Recorded Daily Logs Timeline -->
+      <p class="section-label" style="margin-top: 20px;">Recorded Daily Snapshots</p>
+      <div id="past-timeline-list" class="day-cards-list"></div>
+
+      <!-- Dermatological Insight Card -->
+      <div class="past-insights-card">
+        <div class="insight-title"><i class="ti ti-shield-check"></i> <span>Dermatological Takeaway</span></div>
+        <p class="insight-desc" id="past-insight-desc">Daily climate logging tracks how sustained humidity drops and UV spikes correlate with skin barrier redness or sensitivity over time.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHECK -->
+  <section id="screen-check" class="screen" style="display:none;">
+    <div class="tinted-header row-between">
+      <div>
+        <p class="eyebrow-dark">AI Skin Diagnostics</p>
+        <p class="serif-heading-dark">Skin Check & Scan</p>
+      </div>
+      <button id="demo-scan-btn" class="pill-btn" title="Run Sample Diagnostic"><i class="ti ti-wand"></i> Demo Scan</button>
+    </div>
+
+    <div class="section-block">
+      <!-- Live Camera Viewfinder (Active Stream) -->
+      <div id="camera-container" class="camera-viewfinder-wrap" style="display:none;">
+        <video id="camera-feed" autoplay playsinline muted></video>
+        <div class="face-guide-oval">
+          <span class="face-guide-label">Align Face Here</span>
+        </div>
+        <div class="camera-controls-bar">
+          <button id="close-cam-btn" class="cam-circle-btn sm" title="Cancel Camera"><i class="ti ti-x"></i></button>
+          <button id="capture-snap-btn" class="cam-shutter-btn" title="Capture Face Photo"><div class="cam-shutter-inner"></div></button>
+          <button id="flip-cam-btn" class="cam-circle-btn sm" title="Flip Camera"><i class="ti ti-switch-camera"></i></button>
+        </div>
+      </div>
+      <canvas id="camera-canvas" style="display:none;"></canvas>
+
+      <!-- Upload / Scanner Zone (When camera is closed) -->
+      <div id="upload-zone" class="upload-zone">
+        <div id="scan-hud-beam" class="scan-hud-beam" style="display:none;"></div>
+        <div id="upload-zone-content" class="upload-zone-content">
+          <i class="ti ti-camera"></i>
+          <p>Scan Your Skin</p>
+          <div class="upload-options-row">
+            <button id="start-live-cam-btn" class="cam-opt-btn primary"><i class="ti ti-camera"></i> Open Live Camera</button>
+            <button id="open-gallery-btn" class="cam-opt-btn secondary"><i class="ti ti-photo"></i> Upload Photo</button>
+          </div>
+          <p class="muted-note" style="margin-top:4px;">Natural lighting · Clean, makeup-free face</p>
+        </div>
+      </div>
+      <input id="photo-input" type="file" accept="image/*" style="display:none;">
+
+      <!-- Retake / Rescan actions if photo present -->
+      <div id="photo-actions" class="photo-actions-row" style="display:none;">
+        <button id="retake-live-btn" class="check-sub-btn"><i class="ti ti-camera"></i> Live Camera</button>
+        <button id="rescan-btn" class="check-sub-btn"><i class="ti ti-scan"></i> Re-Scan</button>
+        <button id="change-photo-btn" class="check-sub-btn"><i class="ti ti-photo"></i> Gallery</button>
+      </div>
+
+      <!-- Live AI Diagnostic Analysis Report (shown after scan) -->
+      <div id="diagnostic-results" class="diagnostic-card" style="display:none;">
+        <div class="diagnostic-top">
+          <div>
+            <span class="diag-lbl">AI Skin Health Index</span>
+            <div class="diag-score" id="diag-score">86 <span class="diag-max">/ 100</span></div>
+          </div>
+          <span class="diag-grade-badge" id="diag-grade-badge">Healthy Barrier</span>
+        </div>
+
+        <!-- 4 Diagnostic Metric Bars -->
+        <div class="diag-metrics-grid">
+          <div class="diag-metric-item">
+            <div class="diag-metric-head">
+              <span><i class="ti ti-droplet"></i> Hydration & Barrier</span>
+              <strong id="metric-hyd">84%</strong>
+            </div>
+            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-hyd-bar" style="width:84%; background:#1976D2;"></div></div>
+          </div>
+
+          <div class="diag-metric-item">
+            <div class="diag-metric-head">
+              <span><i class="ti ti-flame"></i> Redness & Irritation</span>
+              <strong id="metric-red">18% (Low)</strong>
+            </div>
+            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-red-bar" style="width:18%; background:#2E7D32;"></div></div>
+          </div>
+
+          <div class="diag-metric-item">
+            <div class="diag-metric-head">
+              <span><i class="ti ti-sparkles"></i> Pore & Sebum Clarity</span>
+              <strong id="metric-pore">79%</strong>
+            </div>
+            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-pore-bar" style="width:79%; background:#8C6A2E;"></div></div>
+          </div>
+
+          <div class="diag-metric-item">
+            <div class="diag-metric-head">
+              <span><i class="ti ti-sun"></i> UV Photoprotection</span>
+              <strong id="metric-uv">92% (Optimal)</strong>
+            </div>
+            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-uv-bar" style="width:92%; background:#E65100;"></div></div>
+          </div>
+        </div>
+
+        <!-- Interactive Facial Zone Heatmap Selector -->
+        <div class="zone-selector-wrap">
+          <span class="diag-sub-lbl">Facial Zone Analysis</span>
+          <div class="zone-pills" id="zone-pills">
+            <button class="zone-pill active" data-zone="tzone">T-Zone (Forehead)</button>
+            <button class="zone-pill" data-zone="cheeks">Cheeks (U-Zone)</button>
+            <button class="zone-pill" data-zone="eyes">Eye Contour</button>
+            <button class="zone-pill" data-zone="chin">Jaw & Chin</button>
+          </div>
+          <div class="zone-insight-box" id="zone-insight-box">
+            <i class="ti ti-info-circle"></i>
+            <span id="zone-insight-text">T-Zone: Sebum production is balanced. Current climate humidity is well managed by your morning cleanser.</span>
+          </div>
+        </div>
+
+        <!-- AI Dermatologist Directives -->
+        <div class="diag-actions-box">
+          <div class="diag-actions-title"><i class="ti ti-shield-check"></i> <span>Today's Clinical Action Directives</span></div>
+          <ul class="diag-actions-list" id="diag-actions-list">
+            <li>Hydration level is optimal; lock moisture with squalane or lightweight lotion.</li>
+            <li>Low redness detected; safe for evening active treatment (Retinol/Exfoliant).</li>
+            <li>Maintain SPF 50+ reapplication under today's UV levels.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Quick Daily Symptom & Skin Feel Logger -->
+      <p class="section-label" style="margin-top:20px;"><i class="ti ti-mood-smile"></i> Daily Skin Feel & Symptoms</p>
+      <div class="pill-group" id="skin-feel-pills">
+        <button class="sfeel-pill active" data-val="Dewy & Calm">💧 Dewy & Calm</button>
+        <button class="sfeel-pill" data-val="Tight & Dry">🌵 Tight & Dry</button>
+        <button class="sfeel-pill" data-val="Flushed / Red">🔴 Flushed / Red</button>
+        <button class="sfeel-pill" data-val="Oily / Congested">✨ Oily T-Zone</button>
+        <button class="sfeel-pill" data-val="Sensitive">⚡ Sensitive</button>
+      </div>
+
+      <!-- 7-Day Past Week Photo Comparison Tracker (matching user requirement) -->
+      <div class="past-week-card">
+        <div class="row-between" style="align-items:center; margin-bottom: 12px;">
+          <div>
+            <p class="section-label" style="margin-bottom:0; letter-spacing:0.1em; color:var(--text-muted);">PAST WEEK</p>
+            <span class="compare-subtitle">7-Day Skin Progression & Glow</span>
+          </div>
+          <span class="compare-badge" id="compare-score-badge">+8% Barrier Health</span>
+        </div>
+
+        <!-- 7 Daily Photo Circle Dots (Mon, Tue, Wed, Thu, Fri, Sat, Today) -->
+        <div class="past-week-dots-row" id="past-week-dots-row"></div>
+
+        <!-- Interactive Before & After / Split-Screen Comparison Box -->
+        <div class="split-compare-box" id="split-compare-box">
+          <div class="split-compare-container" id="split-container">
+            <div class="split-img-before" id="split-before-img">
+              <span class="split-tag left" id="split-before-lbl">Mon (Aug 17)</span>
+            </div>
+            <div class="split-img-after" id="split-after-img">
+              <span class="split-tag right" id="split-after-lbl">Today (Aug 23)</span>
+            </div>
+            <input type="range" min="0" max="100" value="50" class="split-slider" id="split-slider" aria-label="Slide to compare before and after">
+            <div class="split-slider-line" id="split-slider-line">
+              <div class="split-slider-handle"><i class="ti ti-arrows-left-right"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skin Progression Delta Chips -->
+        <div class="progress-deltas-row">
+          <div class="delta-chip">
+            <span class="delta-lbl">Barrier Health</span>
+            <span class="delta-val" style="color:#2E7D32;">78% ➔ 86% <small>(+8%)</small></span>
+          </div>
+          <div class="delta-chip">
+            <span class="delta-lbl">Redness / Sensitivity</span>
+            <span class="delta-val" style="color:#1976D2;">32% ➔ 18% <small>(-14%)</small></span>
+          </div>
+          <div class="delta-chip">
+            <span class="delta-lbl">Hydration Level</span>
+            <span class="delta-val" style="color:#8C6A2E;">74% ➔ 84% <small>(+10%)</small></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ROUTINE -->
+  <section id="screen-routine" class="screen" style="display:none;">
+    <div class="tinted-header row-between">
+      <div>
+        <p class="eyebrow-dark">Daily practice</p>
+        <p class="serif-heading-dark">Your routine</p>
+      </div>
+      <button id="edit-toggle" class="pill-btn">Edit</button>
+    </div>
+
+    <div class="section-block" style="padding-bottom: 8px;">
+      <!-- Daily Ritual Progress Hero Banner -->
+      <div class="routine-progress-card">
+        <div class="routine-progress-top">
+          <div>
+            <span class="progress-lbl" id="routine-progress-lbl">Today's Ritual</span>
+            <div class="progress-val" id="routine-progress-val">0 of 6 Done (0%)</div>
+          </div>
+          <div class="streak-badge" id="routine-streak-badge">🔥 5-Day Streak</div>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="routine-progress-fill" style="width: 0%;"></div>
+        </div>
+
+        <!-- Dynamic Sunscreen Reapplication Alert Banner -->
+        <div id="spf-reapply-banner" class="spf-reapply-card" style="display:none;">
+          <div class="spf-reapply-left">
+            <i class="ti ti-clock-hour-4"></i>
+            <div>
+              <div class="spf-reapply-title">Sunscreen Reapplication Timer</div>
+              <div class="spf-reapply-time" id="spf-reapply-time">Reapply by 12:30 PM (UV Peak)</div>
+            </div>
+          </div>
+          <button id="spf-reapply-done" class="spf-reapply-btn" title="Log Reapplication">Reapplied ✓</button>
+        </div>
+      </div>
+
+      <!-- Daily Cellular Hydration (Water Tracker) -->
+      <div class="hydration-card">
+        <div class="hydration-top">
+          <div class="hydration-info">
+            <span class="hyd-lbl"><i class="ti ti-droplet"></i> Skin Barrier Hydration</span>
+            <span class="hyd-val" id="hyd-val-text">4 of 8 Glasses (1.2L / 2.4L)</span>
+          </div>
+          <div class="hydration-actions">
+            <button id="hyd-settings-btn" class="hyd-icon-btn" title="Edit Goal & Reminders"><i class="ti ti-adjustments"></i></button>
+            <button id="add-water-glass-btn" class="add-water-btn" title="Add a glass">+ Glass</button>
+          </div>
+        </div>
+
+        <!-- Reminder Sub-Banner -->
+        <div id="hyd-reminder-strip" class="hyd-reminder-strip">
+          <i class="ti ti-bell-ringing"></i>
+          <span id="hyd-reminder-text">Reminder: Every 2 hrs (Next due in ~1h 15m)</span>
+        </div>
+
+        <!-- Interactive Drops/Glasses Grid -->
+        <div class="water-glasses-row" id="water-glasses-row"></div>
+
+        <!-- Inline Goal & Timer Settings Drawer -->
+        <div id="hyd-settings-drawer" class="hyd-settings-drawer" style="display:none;">
+          <div class="hyd-setting-group">
+            <label class="hyd-setting-lbl">Daily Drops Target:</label>
+            <div class="hyd-goal-pills" id="hyd-goal-pills">
+              <button class="goal-pill" data-target="4">4 (1.2L)</button>
+              <button class="goal-pill" data-target="6">6 (1.8L)</button>
+              <button class="goal-pill active" data-target="8">8 (2.4L)</button>
+              <button class="goal-pill" data-target="10">10 (3.0L)</button>
+              <button class="goal-pill" data-target="12">12 (3.6L)</button>
+            </div>
+          </div>
+          <div class="hyd-setting-group" style="margin-top: 10px;">
+            <label class="hyd-setting-lbl">Reminder Frequency:</label>
+            <div class="hyd-goal-pills" id="hyd-remind-pills">
+              <button class="remind-pill" data-interval="0">Off</button>
+              <button class="remind-pill" data-interval="60">Every 1 hr</button>
+              <button class="remind-pill active" data-interval="120">Every 2 hrs</button>
+              <button class="remind-pill" data-interval="180">Every 3 hrs</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Add Step / Pill Library when in Edit Mode -->
+    <div id="quick-add-shelf" class="quick-add-shelf" style="display:none;">
+      <p class="section-label">Quick Add Common Steps & Supplements</p>
+      <div class="quick-add-pills">
+        <button class="quick-pill" data-name="Hydrating Toner" data-target="am">+ Toner</button>
+        <button class="quick-pill" data-name="Niacinamide 10%" data-target="am">+ Niacinamide</button>
+        <button class="quick-pill" data-name="Hyaluronic Acid" data-target="am">+ Hyaluronic Acid</button>
+        <button class="quick-pill" data-name="BHA / Salicylic Acid" data-target="pm">+ BHA Exfoliant</button>
+        <button class="quick-pill" data-name="Peptide Eye Cream" data-target="pm">+ Eye Cream</button>
+        <button class="quick-pill" data-name="Omega-3 Fish Oil (Lipid Barrier)" data-target="supp">+ Omega-3</button>
+        <button class="quick-pill" data-name="Collagen Peptides + Vit C" data-target="supp">+ Collagen</button>
+        <button class="quick-pill" data-name="Zinc & Vitamin D3" data-target="supp">+ Zinc</button>
+        <button class="quick-pill" data-name="Green Tea Extract (EGCG)" data-target="supp">+ Antioxidant</button>
+      </div>
+    </div>
+
+    <div class="section-block" style="padding-top: 4px;">
+      <!-- Morning Steps -->
+      <div class="routine-section-header">
+        <p class="section-label" style="margin-bottom:0;"><i class="ti ti-sun"></i> Morning Ritual</p>
+        <span class="routine-time-badge" id="am-time-badge">AM Focus</span>
+      </div>
+      <div id="am-list" class="routine-list"></div>
+      <button id="am-add" class="add-step-btn" style="display:none;">+ Add a morning step</button>
+
+      <!-- Dietary & Nutritional Supplements Track -->
+      <div class="routine-section-header" style="margin-top:22px;">
+        <p class="section-label" style="margin-bottom:0;"><i class="ti ti-pill"></i> Skin Supplements & Nutrition</p>
+        <span class="routine-time-badge" style="background:rgba(46,125,50,0.12); color:#2E7D32;">Internal Defense</span>
+      </div>
+      <div id="supp-list" class="routine-list"></div>
+      <button id="supp-add" class="add-step-btn" style="display:none;">+ Add a food supplement</button>
+
+      <!-- Evening Steps & Skin Cycling -->
+      <div class="routine-section-header" style="margin-top:22px;">
+        <p class="section-label" style="margin-bottom:0;"><i class="ti ti-moon-stars"></i> Evening Reset</p>
+        <button id="skin-cycling-badge" class="skin-cycling-pill" title="Tap to switch cycling phase">
+          🌙 Retinol Phase (2/4) ▾
+        </button>
+      </div>
+      <div id="pm-list" class="routine-list"></div>
+      <button id="pm-add" class="add-step-btn" style="display:none;">+ Add an evening step</button>
+
+      <!-- Collapsible Layering Guide Accordion -->
+      <div class="layering-guide-card">
+        <button id="toggle-layering-guide" class="guide-toggle-btn">
+          <span><i class="ti ti-info-circle"></i> Why this step order? (Dermatologist Rule)</span>
+          <i class="ti ti-chevron-down guide-chevron" id="guide-chevron"></i>
+        </button>
+        <div id="layering-guide-body" class="guide-body" style="display:none;">
+          <div class="guide-step-item"><strong>1. Cleanse:</strong> Water & surfactant base to eliminate overnight lipids.</div>
+          <div class="guide-step-item"><strong>2. Prep (Toner):</strong> Balances pH and boosts humectant penetration.</div>
+          <div class="guide-step-item"><strong>3. Treat (Serums):</strong> Thinnest water-based active molecules first.</div>
+          <div class="guide-step-item"><strong>4. Seal (Moisturizer):</strong> Lipid emollient barrier to lock moisture.</div>
+          <div class="guide-step-item"><strong>5. Protect (SPF):</strong> Non-negotiable outermost UV shield.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROFILE -->
+  <section id="screen-profile" class="screen" style="display:none;">
+    <div class="tinted-header" style="text-align:center; padding-bottom: 16px;">
+      <div class="avatar" id="avatar">
+        <i class="ti ti-user"></i>
+      </div>
+      <button id="photo-btn" class="avatar-edit-btn" aria-label="Change photo"><i class="ti ti-camera"></i></button>
+      <input id="avatar-input" type="file" accept="image/*" style="display:none;">
+      <p class="serif-heading-dark" id="profile-name" style="margin-bottom:2px;">Your name</p>
+      <p class="eyebrow-dark" id="profile-location">Location not set</p>
+      <div class="profile-phone-badge" id="profile-phone-badge">
+        <i class="ti ti-phone-check"></i>
+        <span id="profile-phone-text">+91 98765 43210</span>
+        <span class="verified-tag">Verified</span>
+      </div>
+
+      <!-- Skin Health Quotient Hero Banner -->
+      <div class="resilience-score-card">
+        <div class="resilience-top">
+          <div class="resilience-left">
+            <span class="resilience-lbl"><i class="ti ti-shield-check"></i> Climate Resilience Score</span>
+            <span class="resilience-val" id="resilience-val">88% (High Protection)</span>
+          </div>
+          <span class="resilience-persona" id="resilience-persona">Sun-Aware & Balanced</span>
+        </div>
+        <div class="resilience-track">
+          <div class="resilience-fill" id="resilience-fill" style="width: 88%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <!-- Fitzpatrick Phototype -->
+      <p class="section-label"><i class="ti ti-sun"></i> Fitzpatrick Phototype (Sun Sensitivity)</p>
+      <div class="pill-group" id="phototype-pills">
+        <button class="pill" data-value="Type I-II">Type I–II (Fair · High Burn Risk)</button>
+        <button class="pill active" data-value="Type III-IV">Type III–IV (Medium · Moderate Tan)</button>
+        <button class="pill" data-value="Type V-VI">Type V–VI (Deep · Pigmentation Risk)</button>
+      </div>
+
+      <!-- Skin Type -->
+      <p class="section-label">Skin Type</p>
+      <div class="pill-group" id="skin-type-pills">
+        <button class="pill" data-value="Normal">Normal</button>
+        <button class="pill" data-value="Oily">Oily</button>
+        <button class="pill" data-value="Dry">Dry</button>
+        <button class="pill" data-value="Sensitive">Sensitive</button>
+        <button class="pill" data-value="Combination">Combination</button>
+      </div>
+
+      <!-- Skin Concerns -->
+      <p class="section-label">Skin Concerns</p>
+      <div class="pill-group" id="skin-concern-pills">
+        <button class="cpill" data-value="Acne">Acne</button>
+        <button class="cpill" data-value="Dryness">Dryness</button>
+        <button class="cpill" data-value="Sensitivity">Sensitivity</button>
+        <button class="cpill" data-value="Pigmentation">Pigmentation</button>
+        <button class="cpill" data-value="Redness">Redness</button>
+        <button class="cpill" data-value="Fine Lines">Fine Lines</button>
+      </div>
+
+      <!-- Active Tolerance -->
+      <p class="section-label"><i class="ti ti-flask"></i> Active Ingredient Tolerance</p>
+      <div class="tolerance-section">
+        <div class="tolerance-row">
+          <span class="tolerance-lbl">Retinoids:</span>
+          <div class="pill-group-mini" id="retinoid-tolerance-pills">
+            <button class="tpill active" data-value="Beginner">Beginner (0.1%)</button>
+            <button class="tpill" data-value="Adapted">Adapted (0.5%+)</button>
+            <button class="tpill" data-value="Sensitive">Sensitive (Bakuchiol)</button>
+          </div>
+        </div>
+        <div class="tolerance-row" style="margin-top:8px;">
+          <span class="tolerance-lbl">Vitamin C:</span>
+          <div class="pill-group-mini" id="vitc-tolerance-pills">
+            <button class="tpill active" data-value="Pure C">Pure L-Ascorbic</button>
+            <button class="tpill" data-value="Gentle">Gentle Ester</button>
+            <button class="tpill" data-value="Niacinamide">Niacinamide Alt</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lifestyle Factors -->
+      <p class="section-label" style="margin-top:18px;"><i class="ti ti-activity"></i> Lifestyle & Environment</p>
+      <div class="pill-group" id="lifestyle-pills">
+        <button class="lpill active" data-value="AC Office">❄️ AC Office (Dry Air)</button>
+        <button class="lpill active" data-value="Blue Light">🖥️ Screen Blue Light</button>
+        <button class="lpill" data-value="Outdoor Commute">🏃 Outdoor Commute</button>
+        <button class="lpill active" data-value="Sleep 7h">😴 7+ Hrs Sleep</button>
+        <button class="lpill" data-value="Frequent Travel">✈️ Frequent Travel</button>
+      </div>
+
+      <!-- Milestones & Lifetime Stats -->
+      <p class="section-label" style="margin-top:18px;"><i class="ti ti-trophy"></i> Skincare Milestones & Stats</p>
+      <div class="profile-stats-grid">
+        <div class="profile-stat-card">
+          <i class="ti ti-droplet"></i>
+          <span class="stat-num" id="stat-water">18.6L</span>
+          <span class="stat-lbl">Hydration Logged</span>
+        </div>
+        <div class="profile-stat-card">
+          <i class="ti ti-sun"></i>
+          <span class="stat-num" id="stat-spf">34 Days</span>
+          <span class="stat-lbl">SPF Applied</span>
+        </div>
+        <div class="profile-stat-card">
+          <i class="ti ti-flame"></i>
+          <span class="stat-num" id="stat-streak">7 Days</span>
+          <span class="stat-lbl">Top Streak</span>
+        </div>
+        <div class="profile-stat-card">
+          <i class="ti ti-shield"></i>
+          <span class="stat-num" id="stat-barrier">92%</span>
+          <span class="stat-lbl">Barrier Health</span>
+        </div>
+      </div>
+
+      <!-- Earned Badges -->
+      <div class="badges-row">
+        <div class="badge-chip"><i class="ti ti-shield-check"></i> Barrier Guardian</div>
+        <div class="badge-chip"><i class="ti ti-sun"></i> UV Shield Pro</div>
+        <div class="badge-chip"><i class="ti ti-droplet"></i> Hydration Master</div>
+        <div class="badge-chip"><i class="ti ti-sparkles"></i> 7-Day Consistency</div>
+      </div>
+
+      <!-- Allergies / Ingredients to avoid -->
+      <p class="section-label" style="margin-top:18px;">Ingredients to avoid</p>
+      <div id="allergy-tags" class="allergy-tags"></div>
+      <input id="allergy-input" type="text" placeholder="Type an ingredient and press Enter (e.g. Fragrance, Denatured Alcohol)">
+
+      <!-- Location Search -->
+      <p class="section-label" style="margin-top:18px;">Location</p>
+      <div class="location-row">
+        <input id="loc-search" type="text" placeholder="Search a city (e.g. Trichy, Chennai)">
+        <button id="loc-search-btn" title="Search city" aria-label="Search city"><i class="ti ti-search"></i></button>
+        <button id="locate-me" title="Auto-detect location" aria-label="Use current location"><i class="ti ti-current-location"></i></button>
+      </div>
+      <p id="location-status" class="muted-note" style="margin: 6px 0 16px; min-height: 14px;"></p>
+
+      <!-- Export & Management Action Buttons -->
+      <div class="profile-actions-row" style="margin-top: 20px; display:flex; flex-direction:column; gap:8px;">
+        <button id="export-profile-btn" class="profile-action-btn primary"><i class="ti ti-download"></i> Export Skincare Summary</button>
+        <div style="display:flex; gap:8px;">
+          <button id="switch-account-btn" class="profile-action-btn secondary" style="flex:1;"><i class="ti ti-users"></i> Switch Account</button>
+          <button id="sign-out-btn" class="profile-action-btn danger" style="flex:1;"><i class="ti ti-logout"></i> Sign Out</button>
+        </div>
+        <button id="reset-profile-btn" class="auth-link-btn" style="text-align:center; margin-top:4px;">Reset All Local Data</button>
+      </div>
+
+      <!-- Account Switcher Drawer Modal -->
+      <div id="switch-account-modal" class="account-modal-overlay" style="display:none;">
+        <div class="account-modal-card">
+          <div class="row-between" style="align-items:center; margin-bottom:10px;">
+            <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Switch User Account</h3>
+            <button id="close-switch-modal" class="auth-link-btn" style="font-size:18px;"><i class="ti ti-x"></i></button>
+          </div>
+          <p class="muted-note" style="margin-bottom:12px;">Select a profile on this device or add a new phone number.</p>
+          <div id="account-profiles-list" class="account-profiles-list"></div>
+          <button id="add-new-account-btn" class="auth-primary-btn" style="margin-top:12px;">
+            <i class="ti ti-plus"></i> Sign In with New Number
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NAV -->
+  <nav class="tabbar">
+    <button class="nav-btn active" data-screen="home"><i class="ti ti-home"></i><span>Home</span></button>
+    <button class="nav-btn" data-screen="forecast"><i class="ti ti-cloud"></i><span>Forecast</span></button>
+    <button class="nav-btn" data-screen="check"><i class="ti ti-scan"></i><span>Check</span></button>
+    <button class="nav-btn" data-screen="routine"><i class="ti ti-list-check"></i><span>Routine</span></button>
+    <button class="nav-btn" data-screen="profile"><i class="ti ti-user"></i><span>Profile</span></button>
+  </nav>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
