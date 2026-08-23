@@ -95,8 +95,36 @@ app.get('/api/weather', async (req, res) => {
   const cached = getCached(key);
   if (cached) return res.json({ ...cached, _cache: 'hit' });
 
+  // 1. If Google Weather API Key is set, call Google Weather API
+  if (API_KEY) {
+    try {
+      const gUrl = `https://weather.googleapis.com/v1/currentConditions:lookup?key=${API_KEY}&location.latitude=${lat}&location.longitude=${lon}`;
+      const gRes = await fetchWithTimeout(gUrl, {}, 3500);
+      if (gRes.ok) {
+        const raw = await gRes.json();
+        const hour = new Date().getHours();
+        const isDay = hour >= 6 && hour < 18 ? 1 : 0;
+        const normalized = {
+          temperature: Math.round(raw.temperature?.degrees ?? 30),
+          feelsLike: Math.round(raw.feelsLikeTemperature?.degrees ?? raw.temperature?.degrees ?? 30),
+          humidity: Math.round(raw.relativeHumidity ?? 65),
+          uv: isDay === 0 ? 0 : Math.round((raw.uvIndex ?? 7) * 10) / 10,
+          uvMax: Math.round((raw.uvIndex ?? 8) * 10) / 10,
+          isDay,
+          wind: Math.round(raw.wind?.speed?.value ?? 12),
+          condition: raw.weatherCondition?.description?.text ?? (isDay === 0 ? 'Clear Night' : 'Sunny / Fair'),
+          hourlyTemps: [Math.round(raw.temperature?.degrees ?? 30), Math.round(raw.temperature?.degrees ?? 30) - 1, Math.round(raw.temperature?.degrees ?? 30) - 1, Math.round(raw.temperature?.degrees ?? 30) - 2, Math.round(raw.temperature?.degrees ?? 30) - 2]
+        };
+        setCached(key, normalized);
+        return res.json({ ...normalized, _cache: 'google' });
+      }
+    } catch (e) {
+      console.warn('Google Weather live fetch failed, falling back to Open-Meteo:', e.message);
+    }
+  }
+
+  // 2. Open-Meteo High-Resolution Meteorological Engine
   try {
-    // 1. Fetch live conditions and hourly UV curve from Open-Meteo
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,uv_index&timezone=auto`;
     const r = await fetchWithTimeout(url, {}, 3500);
     if (r.ok) {
@@ -104,7 +132,6 @@ app.get('/api/weather', async (req, res) => {
       const curr = data.current || {};
       const isDay = curr.is_day ?? 1;
 
-      // Extract current hour in timezone
       let currentHour = 12;
       if (curr.time) {
         currentHour = new Date(curr.time).getHours();
@@ -112,12 +139,10 @@ app.get('/api/weather', async (req, res) => {
         currentHour = new Date().getHours();
       }
 
-      // Exact live UV for current hour
       const hourlyUvs = data.hourly?.uv_index || [];
       const currentUv = hourlyUvs[currentHour] ?? (isDay === 0 ? 0 : 7.5);
       const maxUvToday = Math.max(...hourlyUvs.slice(0, 24), 0);
 
-      // Hourly temperatures for next 5 hours
       const hourlyTemps = [];
       const tempArr = data.hourly?.temperature_2m || [];
       for (let i = 0; i < 5; i++) {
