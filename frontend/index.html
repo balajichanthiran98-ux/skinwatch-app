@@ -14,11 +14,13 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3.1">
 <script>
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (const registration of registrations) {
+        registration.update();
+      }
     });
   }
 </script>
@@ -36,8 +38,8 @@
     </div>
   </div>
 
-  <!-- AUTH / PHONE NUMBER LOGIN SCREEN -->
-  <section id="screen-auth" class="screen auth-screen" style="display:none;">
+  <!-- AUTH / PHONE NUMBER & PASSWORD LOGIN SCREEN -->
+  <section id="screen-auth" class="screen auth-screen" style="display:flex;">
     <div class="auth-brand-wrap">
       <div class="auth-logo-badge">
         <i class="ti ti-droplet-half-2"></i>
@@ -46,18 +48,24 @@
       <p class="auth-app-tagline">Climate-Aware Skincare Intelligence</p>
     </div>
 
+    <!-- Auth Mode Switcher (Sign In / Sign Up) -->
+    <div class="auth-tabs-row">
+      <button id="tab-btn-signin" class="auth-tab-btn active" type="button"><i class="ti ti-lock"></i> Sign In</button>
+      <button id="tab-btn-signup" class="auth-tab-btn" type="button"><i class="ti ti-user-plus"></i> Create Account</button>
+    </div>
+
     <div class="auth-card">
-      <!-- Step 1: Phone Entry -->
-      <div id="auth-step-phone" class="auth-step">
+      <!-- Form 1: Sign In with Phone & Password -->
+      <form id="form-signin" class="auth-form" onsubmit="return false;">
         <div class="auth-heading">
-          <h2 class="serif-heading-dark">Sign In</h2>
-          <p class="muted-note">Enter your mobile number to sync your routine & phototype.</p>
+          <h2 class="serif-heading-dark">Welcome Back</h2>
+          <p class="muted-note">Enter your mobile number and password to sign in.</p>
         </div>
 
         <div class="auth-field-group">
           <label class="auth-field-label">Mobile Number</label>
           <div class="auth-phone-input-row">
-            <select id="auth-country-code" class="auth-country-select">
+            <select id="login-country-code" class="auth-country-select">
               <option value="+91">🇮🇳 +91</option>
               <option value="+1">🇺🇸 +1</option>
               <option value="+44">🇬🇧 +44</option>
@@ -65,55 +73,110 @@
               <option value="+65">🇸🇬 +65</option>
               <option value="+61">🇦🇺 +61</option>
             </select>
-            <input id="auth-phone-input" type="tel" class="auth-phone-field" placeholder="98765 43210" maxlength="14" autocomplete="tel">
+            <input id="login-phone-input" type="tel" class="auth-phone-field" placeholder="98765 43210" maxlength="14" autocomplete="tel" required>
           </div>
-          <p id="auth-phone-error" class="auth-error-msg" style="display:none;"></p>
         </div>
 
-        <button id="auth-send-otp-btn" class="auth-primary-btn">
-          <span>Send Verification Code</span>
+        <div class="auth-field-group">
+          <label class="auth-field-label">Password</label>
+          <div class="auth-pass-input-row">
+            <input id="login-pass-input" type="password" class="auth-phone-field" placeholder="Enter your password" autocomplete="current-password" required>
+            <button id="toggle-login-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility"><i class="ti ti-eye"></i></button>
+          </div>
+        </div>
+
+        <p id="auth-login-error" class="auth-error-msg" style="display:none;"></p>
+
+        <button id="auth-login-submit-btn" class="auth-primary-btn" type="button">
+          <span>Sign In to Dashboard</span>
           <i class="ti ti-arrow-right"></i>
         </button>
 
-        <div class="auth-divider"><span>OR</span></div>
+        <div class="auth-divider"><span>OR QUICK DEMO ACCOUNTS</span></div>
 
-        <button id="auth-demo-login-btn" class="auth-demo-btn">
-          <i class="ti ti-sparkles"></i> 1-Tap Quick Demo Login
-        </button>
-      </div>
+        <!-- Quick 1-Tap Demo Login Chips -->
+        <div class="demo-accounts-grid">
+          <button type="button" class="demo-acc-card" onclick="window.quickDemoFill('9876543210', 'password123')">
+            <div class="demo-acc-avatar"><i class="ti ti-user"></i></div>
+            <div class="demo-acc-info">
+              <div class="demo-acc-name">Balaji</div>
+              <div class="demo-acc-meta">+91 98765 43210 · Trichy</div>
+            </div>
+            <span class="demo-acc-badge">Demo 1</span>
+          </button>
 
-      <!-- Step 2: OTP Verification -->
-      <div id="auth-step-otp" class="auth-step" style="display:none;">
+          <button type="button" class="demo-acc-card" onclick="window.quickDemoFill('9123456789', 'password123')">
+            <div class="demo-acc-avatar"><i class="ti ti-user"></i></div>
+            <div class="demo-acc-info">
+              <div class="demo-acc-name">Priya</div>
+              <div class="demo-acc-meta">+91 91234 56789 · Paris</div>
+            </div>
+            <span class="demo-acc-badge">Demo 2</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Form 2: Register New User -->
+      <form id="form-signup" class="auth-form" style="display:none;" onsubmit="return false;">
         <div class="auth-heading">
-          <h2 class="serif-heading-dark">Enter Code</h2>
-          <p class="muted-note">
-            4-digit code sent to <strong id="auth-display-phone">+91 98765 43210</strong>
-            <button id="auth-change-phone-btn" class="auth-link-btn">Change</button>
-          </p>
+          <h2 class="serif-heading-dark">New Account</h2>
+          <p class="muted-note">Personalize your climate skincare database.</p>
         </div>
 
-        <div class="otp-boxes-row">
-          <input type="tel" maxlength="1" class="otp-box" id="otp-1" inputmode="numeric" autocomplete="one-time-code">
-          <input type="tel" maxlength="1" class="otp-box" id="otp-2" inputmode="numeric">
-          <input type="tel" maxlength="1" class="otp-box" id="otp-3" inputmode="numeric">
-          <input type="tel" maxlength="1" class="otp-box" id="otp-4" inputmode="numeric">
+        <div class="auth-field-group">
+          <label class="auth-field-label">Full Name</label>
+          <input id="signup-name-input" type="text" class="auth-phone-field" placeholder="e.g. Balaji" required>
         </div>
-        <p id="auth-otp-error" class="auth-error-msg" style="display:none;"></p>
 
-        <button id="auth-verify-btn" class="auth-primary-btn">
-          <span>Verify & Enter Dashboard</span>
+        <div class="auth-field-group">
+          <label class="auth-field-label">Mobile Number</label>
+          <div class="auth-phone-input-row">
+            <select id="signup-country-code" class="auth-country-select">
+              <option value="+91">🇮🇳 +91</option>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+44">🇬🇧 +44</option>
+              <option value="+971">🇦🇪 +971</option>
+            </select>
+            <input id="signup-phone-input" type="tel" class="auth-phone-field" placeholder="98765 43210" maxlength="14" autocomplete="tel" required>
+          </div>
+        </div>
+
+        <div class="auth-field-group">
+          <label class="auth-field-label">Create Password</label>
+          <div class="auth-pass-input-row">
+            <input id="signup-pass-input" type="password" class="auth-phone-field" placeholder="Min 4 characters" autocomplete="new-password" required>
+            <button id="toggle-signup-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility"><i class="ti ti-eye"></i></button>
+          </div>
+        </div>
+
+        <div class="auth-field-group">
+          <label class="auth-field-label">Home City</label>
+          <input id="signup-city-input" type="text" class="auth-phone-field" placeholder="e.g. Trichy, Tamil Nadu" value="Trichy, Tamil Nadu" required>
+        </div>
+
+        <div class="auth-field-group">
+          <label class="auth-field-label">Fitzpatrick Phototype</label>
+          <select id="signup-skintype-select" class="auth-phone-field" style="height:44px; padding:0 12px; background:var(--cream);">
+            <option value="I">Type I - Very Fair (Always burns, never tans)</option>
+            <option value="II">Type II - Fair (Burns easily, tans minimally)</option>
+            <option value="III" selected>Type III - Medium / Olive (Tans uniformly, mild burns)</option>
+            <option value="IV">Type IV - Olive / Brown (Burns minimally, tans well)</option>
+            <option value="V">Type V - Dark Brown (Rarely burns, deeply tans)</option>
+            <option value="VI">Type VI - Deeply Pigmented (Never burns)</option>
+          </select>
+        </div>
+
+        <p id="auth-signup-error" class="auth-error-msg" style="display:none;"></p>
+
+        <button id="auth-signup-submit-btn" class="auth-primary-btn" type="button">
+          <span>Create Account & Enter</span>
           <i class="ti ti-check"></i>
         </button>
-
-        <div class="auth-resend-row">
-          <span id="auth-countdown-lbl">Resend code in <strong>0:28</strong></span>
-          <button id="auth-resend-btn" class="auth-link-btn" style="display:none;">Resend OTP</button>
-        </div>
-      </div>
+      </form>
     </div>
 
     <div class="auth-footer-note">
-      🔒 End-to-end encrypted · Private & on-device storage
+      🔒 Secure Password Protection · Isolated User Databases
     </div>
   </section>
 
@@ -259,7 +322,13 @@
     <div class="hero">
       <p class="eyebrow" id="hero-city">Trichy, Tamil Nadu</p>
       <p class="hero-datetime" id="hero-datetime">Sun 23 Aug</p>
-      <p class="hero-temp" id="hero-temp">31°</p>
+      <div class="hero-temp-row">
+        <p class="hero-temp" id="hero-temp">31°</p>
+        <div class="hero-tewl-badge" id="hero-tewl-badge" title="Trans-Epidermal Water Loss Risk">
+          <i class="ti ti-droplet-half-2"></i>
+          <span id="hero-tewl-text">TEWL: Balanced</span>
+        </div>
+      </div>
       <p class="hero-cond" id="hero-cond">Warm & Sunny</p>
       <div class="hero-stats">
         <span id="stat-hum">68% humidity</span>
@@ -278,20 +347,95 @@
       <div class="hour-item"><span class="hour-time" id="hour-4-time">+4h</span><span class="hour-temp" id="hour-4-temp">--°</span></div>
     </div>
 
-    <!-- Home Location & Interactive Map -->
+    <!-- Location Search & Quick Travel Mode Chips -->
     <div class="section-block location-section">
-      <p class="section-label">Location</p>
+      <div class="row-between" style="align-items: center; margin-bottom: 8px;">
+        <p class="section-label" style="margin:0;">Location & Climate</p>
+        <span class="location-mode-tag" id="location-mode-tag"><i class="ti ti-brand-google"></i> Google Geo</span>
+      </div>
       <div class="location-row">
-        <input id="home-loc-search" type="text" placeholder="Search a city">
+        <input id="home-loc-search" type="text" placeholder="Search any city, neighborhood...">
         <button id="home-loc-search-btn" title="Search city" aria-label="Search city"><i class="ti ti-search"></i></button>
         <button id="home-locate-me" title="Use current location" aria-label="Use current location"><i class="ti ti-current-location"></i></button>
       </div>
+
+      <!-- Quick Travel / Destination Chips -->
+      <div class="travel-chips-scroll" id="travel-chips-scroll">
+        <button class="travel-chip active" data-city="Current" data-lat="10.7905" data-lon="78.7047"><i class="ti ti-map-pin"></i> Current</button>
+        <button class="travel-chip" data-city="Tokyo" data-lat="35.6764" data-lon="139.6500">🇯🇵 Tokyo</button>
+        <button class="travel-chip" data-city="Paris" data-lat="48.8566" data-lon="2.3522">🇫🇷 Paris</button>
+        <button class="travel-chip" data-city="London" data-lat="51.5074" data-lon="-0.1278">🇬🇧 London</button>
+        <button class="travel-chip" data-city="New York" data-lat="40.7128" data-lon="-74.0060">🇺🇸 New York</button>
+        <button class="travel-chip" data-city="Dubai" data-lat="25.2048" data-lon="55.2708">🇦🇪 Dubai</button>
+      </div>
+
       <p id="home-loc-status" class="muted-note" style="margin: 4px 0 10px; min-height: 14px; font-size: 11px;"></p>
 
+      <!-- Map with Google Air Quality Heatmap Toggle -->
       <div class="map-card-wrapper">
         <div id="home-map" class="home-map"></div>
+        <div class="map-overlay-controls">
+          <button id="map-aqi-toggle" class="map-toggle-btn" title="Toggle Air Quality Heatmap">
+            <i class="ti ti-wind"></i> <span>AQI Layer</span>
+          </button>
+          <div class="map-legend-pill" id="map-legend-pill">
+            <span class="dot dot-green"></span> 0
+            <span class="dot dot-yellow"></span> 50
+            <span class="dot dot-orange"></span> 100
+            <span class="dot dot-red"></span> 150+
+          </div>
+        </div>
       </div>
-      <p class="map-caption">Full interactive map in the live app</p>
+      <p class="map-caption">Interactive map · Powered by Google Environmental Data</p>
+    </div>
+
+    <!-- Google Air Quality & Pollutant Skin Defense Card -->
+    <div class="section-block" style="padding-top: 0;">
+      <div class="row-between" style="align-items:center; margin-bottom: 10px;">
+        <p class="section-label" style="margin:0;">Skin-Pollution Breakdown</p>
+        <span class="aqi-status-pill" id="aqi-status-pill">UAQI: Good</span>
+      </div>
+
+      <div class="pollutant-card" id="pollutant-card">
+        <div class="pollutant-row">
+          <div class="pollutant-meta">
+            <span class="pollutant-name">PM2.5</span>
+            <span class="pollutant-role">Pore Micro-Congestion</span>
+          </div>
+          <div class="pollutant-bar-wrap">
+            <div class="pollutant-bar" id="bar-pm25" style="width: 25%;"></div>
+          </div>
+          <span class="pollutant-val" id="val-pm25">12 µg/m³</span>
+        </div>
+
+        <div class="pollutant-row">
+          <div class="pollutant-meta">
+            <span class="pollutant-name">Ozone (O₃)</span>
+            <span class="pollutant-role">Lipid Peroxidation & Free Radicals</span>
+          </div>
+          <div class="pollutant-bar-wrap">
+            <div class="pollutant-bar bar-ozone" id="bar-o3" style="width: 45%;"></div>
+          </div>
+          <span class="pollutant-val" id="val-o3">36 ppb</span>
+        </div>
+
+        <div class="pollutant-row">
+          <div class="pollutant-meta">
+            <span class="pollutant-name">NO₂</span>
+            <span class="pollutant-role">Traffic Barrier Stress</span>
+          </div>
+          <div class="pollutant-bar-wrap">
+            <div class="pollutant-bar bar-no2" id="bar-no2" style="width: 20%;"></div>
+          </div>
+          <span class="pollutant-val" id="val-no2">7 ppb</span>
+        </div>
+
+        <!-- Dynamic Skincare Action Advice from Google Insights -->
+        <div class="skin-advice-box" id="skin-advice-box">
+          <i class="ti ti-shield-check"></i>
+          <p id="skin-advice-text">Clean atmospheric conditions. Standard daily antioxidant shield is sufficient.</p>
+        </div>
+      </div>
     </div>
 
     <div class="section-block" style="padding-top: 0;">
@@ -369,174 +513,548 @@
 
   <!-- CHECK -->
   <section id="screen-check" class="screen" style="display:none;">
-    <div class="tinted-header row-between">
+    <div class="tinted-header row-between" style="align-items: center;">
       <div>
-        <p class="eyebrow-dark">AI Skin Diagnostics</p>
-        <p class="serif-heading-dark">Skin Check & Scan</p>
+        <p class="eyebrow-dark">Skin Intelligence</p>
+        <p class="serif-heading-dark" style="margin-bottom:0;">Diagnostics & Triggers</p>
       </div>
-      <button id="demo-scan-btn" class="pill-btn" title="Run Sample Diagnostic"><i class="ti ti-wand"></i> Demo Scan</button>
+      <div style="display:flex; gap:6px;">
+        <button id="reset-scan-top-btn" class="pill-btn" style="color:var(--danger); border-color:rgba(179,69,58,0.3);" title="Reset Scan & Photo" onclick="window.resetCurrentScan()"><i class="ti ti-trash"></i> Reset</button>
+        <button id="demo-scan-btn" class="pill-btn" title="Run Sample Diagnostic"><i class="ti ti-wand"></i> Demo Scan</button>
+      </div>
     </div>
 
-    <div class="section-block">
-      <!-- Live Camera Viewfinder (Active Stream) -->
-      <div id="camera-container" class="camera-viewfinder-wrap" style="display:none;">
-        <video id="camera-feed" autoplay playsinline muted></video>
-        <div class="face-guide-oval">
-          <span class="face-guide-label">Align Face Here</span>
+    <!-- Diagnostics Sub-Navigation Segment Tabs -->
+    <div class="akvile-subtabs-wrap">
+      <div class="akvile-subtabs" id="akvile-subtabs-bar">
+        <button type="button" class="akvile-subtab-btn active" data-tab="scan"><i class="ti ti-scan"></i> AI Scan</button>
+        <button type="button" class="akvile-subtab-btn" data-tab="trigger"><i class="ti ti-activity-heartbeat"></i> Daily Log</button>
+        <button type="button" class="akvile-subtab-btn" data-tab="inci"><i class="ti ti-flask"></i> Pore Checker</button>
+        <button type="button" class="akvile-subtab-btn" data-tab="school"><i class="ti ti-school"></i> Skin School</button>
+      </div>
+    </div>
+
+    <!-- SUBVIEW 1: AI Biometric Facial Scan & 7-Day Comparison -->
+    <div id="akvile-view-scan" class="akvile-subview active">
+      <div class="section-block">
+        <!-- Live Camera Viewfinder (Active Stream) -->
+        <div id="camera-container" class="camera-viewfinder-wrap" style="display:none;">
+          <video id="camera-feed" autoplay playsinline muted></video>
+          <div id="camera-flash" class="camera-flash" style="display:none;"></div>
+          <div class="hud-bracket hud-top-left"></div>
+          <div class="hud-bracket hud-top-right"></div>
+          <div class="hud-bracket hud-bottom-left"></div>
+          <div class="hud-bracket hud-bottom-right"></div>
+          <div class="face-guide-oval">
+            <div class="face-guide-crosshair"></div>
+            <div class="face-guide-chin-notch"></div>
+            <span class="face-guide-label">Fit Face in Oval</span>
+          </div>
+          <div class="camera-controls-bar">
+            <button id="close-cam-btn" class="cam-circle-btn sm" title="Cancel Camera" onclick="window.stopLiveCamera()"><i class="ti ti-x"></i></button>
+            <button id="capture-snap-btn" class="cam-shutter-btn" title="Capture Face Photo" onclick="window.captureLiveSnapshot()"><div class="cam-shutter-inner"></div></button>
+            <button id="flip-cam-btn" class="cam-circle-btn sm" title="Flip Camera" onclick="window.startLiveCamera()"><i class="ti ti-switch-camera"></i></button>
+          </div>
         </div>
-        <div class="camera-controls-bar">
-          <button id="close-cam-btn" class="cam-circle-btn sm" title="Cancel Camera"><i class="ti ti-x"></i></button>
-          <button id="capture-snap-btn" class="cam-shutter-btn" title="Capture Face Photo"><div class="cam-shutter-inner"></div></button>
-          <button id="flip-cam-btn" class="cam-circle-btn sm" title="Flip Camera"><i class="ti ti-switch-camera"></i></button>
+        <canvas id="camera-canvas" style="display:none;"></canvas>
+
+        <!-- Upload / Scanner Zone (When camera is closed) -->
+        <div id="upload-zone" class="upload-zone">
+          <div class="hud-bracket hud-top-left"></div>
+          <div class="hud-bracket hud-top-right"></div>
+          <div class="hud-bracket hud-bottom-left"></div>
+          <div class="hud-bracket hud-bottom-right"></div>
+          <div id="scan-hud-beam" class="scan-hud-beam" style="display:none;"></div>
+          <div id="upload-zone-content" class="upload-zone-content">
+            <div class="scan-icon-badge">
+              <i class="ti ti-scan"></i>
+            </div>
+            <p class="scan-title">AI Biometric Facial Scan</p>
+            <div class="upload-options-row">
+              <button id="start-live-cam-btn" class="cam-opt-btn primary" type="button" onclick="window.startLiveCamera()"><i class="ti ti-camera"></i> Live Camera</button>
+              <button id="open-gallery-btn" class="cam-opt-btn secondary" type="button" onclick="window.openPhotoGallery()"><i class="ti ti-photo"></i> Upload Photo</button>
+            </div>
+            <p class="muted-note" style="margin-top:6px;">Natural lighting · Clean, makeup-free face</p>
+          </div>
+        </div>
+        <input id="photo-input" type="file" accept="image/*" style="display:none;">
+
+        <!-- Retake / Rescan actions if photo present -->
+        <div id="photo-actions" class="photo-actions-row" style="display:none;">
+          <button id="retake-live-btn" class="check-sub-btn" onclick="window.startLiveCamera()"><i class="ti ti-camera"></i> Live Camera</button>
+          <button id="rescan-btn" class="check-sub-btn"><i class="ti ti-scan"></i> Re-Scan</button>
+          <button id="change-photo-btn" class="check-sub-btn" onclick="window.openPhotoGallery()"><i class="ti ti-photo"></i> Gallery</button>
+          <button id="clear-photo-btn" class="check-sub-btn" style="color:var(--danger);" onclick="window.resetCurrentScan()"><i class="ti ti-trash"></i> Reset</button>
+        </div>
+
+        <!-- Live AI Diagnostic Analysis Report (shown after scan) -->
+        <div id="diagnostic-results" class="diagnostic-card" style="display:none;">
+          <!-- Live Scanner Telemetry Progress Overlay -->
+          <div id="scan-telemetry-badge" class="scan-telemetry-badge" style="display:none;">
+            <i class="ti ti-loader-2 ti-spin"></i>
+            <span id="scan-telemetry-text">Calibrating facial chromaticity & RGB spectrum...</span>
+          </div>
+
+          <div class="diagnostic-top">
+            <div>
+              <div class="row-between" style="gap:8px; align-items:center;">
+                <span class="diag-lbl">AI Skin Health Index</span>
+                <span class="diag-cv-tag"><i class="ti ti-eye-check"></i> Computer Vision</span>
+              </div>
+              <div class="diag-score" id="diag-score">86 <span class="diag-max">/ 100</span></div>
+            </div>
+            <span class="diag-grade-badge" id="diag-grade-badge">Healthy Barrier</span>
+          </div>
+
+          <!-- 4 Diagnostic Metric Bars with Evidence Telemetry -->
+          <div class="diag-metrics-grid">
+            <div class="diag-metric-item">
+              <div class="diag-metric-head">
+                <span><i class="ti ti-droplet"></i> Hydration & Barrier</span>
+                <strong id="metric-hyd">84%</strong>
+              </div>
+              <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-hyd-bar" style="width:84%; background:#1976D2;"></div></div>
+              <span class="diag-metric-sub" id="metric-hyd-sub">Reflectance: 0.82 · Humidity: 68%</span>
+            </div>
+
+            <div class="diag-metric-item">
+              <div class="diag-metric-head">
+                <span><i class="ti ti-flame"></i> Redness & Erythema</span>
+                <strong id="metric-red">18% (Low)</strong>
+              </div>
+              <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-red-bar" style="width:18%; background:#2E7D32;"></div></div>
+              <span class="diag-metric-sub" id="metric-red-sub">Erythema ratio: 0.41 (Calm)</span>
+            </div>
+
+            <div class="diag-metric-item">
+              <div class="diag-metric-head">
+                <span><i class="ti ti-sparkles"></i> Pore & Texture Clarity</span>
+                <strong id="metric-pore">79%</strong>
+              </div>
+              <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-pore-bar" style="width:79%; background:#8C6A2E;"></div></div>
+              <span class="diag-metric-sub" id="metric-pore-sub">Micro-variance: Low (Smooth)</span>
+            </div>
+
+            <div class="diag-metric-item">
+              <div class="diag-metric-head">
+                <span><i class="ti ti-sun"></i> UV Photoprotection</span>
+                <strong id="metric-uv">92% (Optimal)</strong>
+              </div>
+              <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-uv-bar" style="width:92%; background:#E65100;"></div></div>
+              <span class="diag-metric-sub" id="metric-uv-sub">Google UV Index: 8 (Shield Active)</span>
+            </div>
+          </div>
+
+          <!-- Interactive Facial Zone Heatmap Selector -->
+          <div class="zone-selector-wrap">
+            <span class="diag-sub-lbl">Facial Zone Analysis</span>
+            <div class="zone-pills" id="zone-pills">
+              <button class="zone-pill active" data-zone="tzone">T-Zone (Forehead)</button>
+              <button class="zone-pill" data-zone="cheeks">Cheeks (U-Zone)</button>
+              <button class="zone-pill" data-zone="eyes">Eye Contour</button>
+              <button class="zone-pill" data-zone="chin">Jaw & Chin</button>
+            </div>
+            <div class="zone-insight-box" id="zone-insight-box">
+              <i class="ti ti-info-circle"></i>
+              <span id="zone-insight-text">T-Zone: Sebum production is balanced. Current climate humidity is well managed by your morning cleanser.</span>
+            </div>
+          </div>
+
+          <!-- AI Dermatologist Directives -->
+          <div class="diag-actions-box">
+            <div class="diag-actions-title"><i class="ti ti-shield-check"></i> <span>Today's Clinical Action Directives</span></div>
+            <ul class="diag-actions-list" id="diag-actions-list">
+              <li>Hydration level is optimal; lock moisture with squalane or lightweight lotion.</li>
+              <li>Low redness detected; safe for evening active treatment (Retinol/Exfoliant).</li>
+              <li>Maintain SPF 50+ reapplication under today's UV levels.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Quick Daily Symptom & Skin Feel Logger -->
+        <p class="section-label" style="margin-top:20px;"><i class="ti ti-mood-smile"></i> Daily Skin Feel & Symptoms</p>
+        <div class="pill-group" id="skin-feel-pills">
+          <button class="sfeel-pill active" data-val="Dewy & Calm">💧 Dewy & Calm</button>
+          <button class="sfeel-pill" data-val="Tight & Dry">🌵 Tight & Dry</button>
+          <button class="sfeel-pill" data-val="Flushed / Red">🔴 Flushed / Red</button>
+          <button class="sfeel-pill" data-val="Oily / Congested">✨ Oily T-Zone</button>
+          <button class="sfeel-pill" data-val="Sensitive">⚡ Sensitive</button>
+        </div>
+
+        <!-- 7-Day Past Week Photo Comparison Tracker -->
+        <div class="past-week-card">
+          <div class="row-between" style="align-items:center; margin-bottom: 12px;">
+            <div>
+              <p class="section-label" style="margin-bottom:0; letter-spacing:0.1em; color:var(--text-muted);">PAST WEEK</p>
+              <span class="compare-subtitle">7-Day Skin Progression & Glow</span>
+            </div>
+            <span class="compare-badge" id="compare-score-badge">+8% Barrier Health</span>
+          </div>
+
+          <!-- 7 Daily Photo Circle Dots (Mon, Tue, Wed, Thu, Fri, Sat, Today) -->
+          <div class="past-week-dots-row" id="past-week-dots-row"></div>
+
+          <!-- Interactive Before & After / Split-Screen Comparison Box -->
+          <div class="split-compare-box" id="split-compare-box">
+            <div class="split-compare-container" id="split-container">
+              <div class="split-img-before" id="split-before-img">
+                <span class="split-tag left" id="split-before-lbl">Mon (Aug 17)</span>
+              </div>
+              <div class="split-img-after" id="split-after-img">
+                <span class="split-tag right" id="split-after-lbl">Today (Aug 23)</span>
+              </div>
+              <input type="range" min="0" max="100" value="50" class="split-slider" id="split-slider" aria-label="Slide to compare before and after">
+              <div class="split-slider-line" id="split-slider-line">
+                <div class="split-slider-handle"><i class="ti ti-arrows-left-right"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Skin Progression Delta Chips -->
+          <div class="progress-deltas-row">
+            <div class="delta-chip">
+              <span class="delta-lbl">Barrier Health</span>
+              <span class="delta-val" style="color:#2E7D32;">78% ➔ 86% <small>(+8%)</small></span>
+            </div>
+            <div class="delta-chip">
+              <span class="delta-lbl">Redness / Sensitivity</span>
+              <span class="delta-val" style="color:#1976D2;">32% ➔ 18% <small>(-14%)</small></span>
+            </div>
+            <div class="delta-chip">
+              <span class="delta-lbl">Hydration Level</span>
+              <span class="delta-val" style="color:#8C6A2E;">74% ➔ 84% <small>(+10%)</small></span>
+            </div>
+          </div>
         </div>
       </div>
-      <canvas id="camera-canvas" style="display:none;"></canvas>
+    </div>
 
-      <!-- Upload / Scanner Zone (When camera is closed) -->
-      <div id="upload-zone" class="upload-zone">
-        <div id="scan-hud-beam" class="scan-hud-beam" style="display:none;"></div>
-        <div id="upload-zone-content" class="upload-zone-content">
-          <i class="ti ti-camera"></i>
-          <p>Scan Your Skin</p>
-          <div class="upload-options-row">
-            <button id="start-live-cam-btn" class="cam-opt-btn primary"><i class="ti ti-camera"></i> Open Live Camera</button>
-            <button id="open-gallery-btn" class="cam-opt-btn secondary"><i class="ti ti-photo"></i> Upload Photo</button>
+    <!-- SUBVIEW 2: Daily Skin & Lifestyle Trigger Tracker -->
+    <div id="akvile-view-trigger" class="akvile-subview" style="display:none;">
+      <div class="section-block">
+        <!-- Hero Tracker Header -->
+        <div class="akvile-hero-card">
+          <div class="akvile-hero-top">
+            <div class="akvile-badge-icon"><i class="ti ti-heart-rate-monitor"></i></div>
+            <div>
+              <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Daily Acne & Trigger Log</h3>
+              <p class="muted-note" style="margin:2px 0 0;">Track breakouts, lifestyle habits, and discover your personal triggers.</p>
+            </div>
           </div>
-          <p class="muted-note" style="margin-top:4px;">Natural lighting · Clean, makeup-free face</p>
+        </div>
+
+        <!-- 1. Breakout & Acne Severity -->
+        <div class="akvile-card">
+          <div class="akvile-card-header">
+            <span class="akvile-card-title"><i class="ti ti-sparkle"></i> Breakout & Acne State</span>
+            <span class="akvile-status-badge" id="akvile-acne-badge">Clear (0/3)</span>
+          </div>
+          <div class="akvile-pills-row" id="akvile-acne-pills">
+            <button type="button" class="akvile-chip active" data-val="0">✨ Clear (0)</button>
+            <button type="button" class="akvile-chip" data-val="1">🌱 Mild (1-2)</button>
+            <button type="button" class="akvile-chip" data-val="2">⚡ Moderate</button>
+            <button type="button" class="akvile-chip" data-val="3">🔴 Cysts / Flare</button>
+          </div>
+        </div>
+
+        <!-- 2. Skin Barrier Feeling -->
+        <div class="akvile-card" style="margin-top:12px;">
+          <div class="akvile-card-header">
+            <span class="akvile-card-title"><i class="ti ti-shield"></i> Barrier Sensation</span>
+            <span class="akvile-status-badge" id="akvile-barrier-badge">Calm</span>
+          </div>
+          <div class="akvile-multi-chips" id="akvile-barrier-chips">
+            <button type="button" class="akvile-chip active" data-val="Calm">💧 Calm & Plump</button>
+            <button type="button" class="akvile-chip" data-val="Tight">🌵 Tight / Dry</button>
+            <button type="button" class="akvile-chip" data-val="Redness">🔴 Red / Flushed</button>
+            <button type="button" class="akvile-chip" data-val="Itching">⚡ Itchy / Stinging</button>
+            <button type="button" class="akvile-chip" data-val="Oily">✨ Excess Sebum</button>
+          </div>
+        </div>
+
+        <!-- 3. Lifestyle Stressors & Triggers -->
+        <div class="akvile-card" style="margin-top:12px;">
+          <div class="akvile-card-header">
+            <span class="akvile-card-title"><i class="ti ti-flame"></i> Lifestyle Triggers</span>
+          </div>
+
+          <!-- Stress Level -->
+          <div class="akvile-sub-group">
+            <label class="akvile-sub-lbl">Stress Level</label>
+            <div class="akvile-pills-row" id="akvile-stress-pills">
+              <button type="button" class="akvile-chip active" data-val="Low">😌 Low</button>
+              <button type="button" class="akvile-chip" data-val="Moderate">😐 Moderate</button>
+              <button type="button" class="akvile-chip" data-val="High">😫 High</button>
+            </div>
+          </div>
+
+          <!-- Sleep Quality -->
+          <div class="akvile-sub-group" style="margin-top:10px;">
+            <label class="akvile-sub-lbl">Sleep Duration</label>
+            <div class="akvile-pills-row" id="akvile-sleep-pills">
+              <button type="button" class="akvile-chip" data-val="<6h">🌙 &lt; 6 hrs</button>
+              <button type="button" class="akvile-chip active" data-val="7-8h">😴 7–8 hrs</button>
+              <button type="button" class="akvile-chip" data-val="8h+">✨ 8+ hrs</button>
+            </div>
+          </div>
+
+          <!-- Diet Factors -->
+          <div class="akvile-sub-group" style="margin-top:10px;">
+            <label class="akvile-sub-lbl">Diet & Nutrition</label>
+            <div class="akvile-multi-chips" id="akvile-diet-chips">
+              <button type="button" class="akvile-chip active" data-val="Clean">🥗 Whole Foods</button>
+              <button type="button" class="akvile-chip" data-val="Dairy">🥛 Dairy / Milk</button>
+              <button type="button" class="akvile-chip" data-val="Sugar">🍫 High Sugar / GI</button>
+              <button type="button" class="akvile-chip" data-val="Spicy">🌶️ Spicy / Greasy</button>
+            </div>
+          </div>
+
+          <!-- Hormonal / Menstrual Cycle Phase -->
+          <div class="akvile-sub-group" style="margin-top:10px;">
+            <label class="akvile-sub-lbl">Cycle Phase (Optional)</label>
+            <div class="akvile-pills-row" id="akvile-cycle-pills">
+              <button type="button" class="akvile-chip" data-val="Follicular">🌸 Follicular</button>
+              <button type="button" class="akvile-chip" data-val="Luteal">⚡ Luteal (Pre-Period)</button>
+              <button type="button" class="akvile-chip" data-val="Menstrual">🩸 Menstrual</button>
+              <button type="button" class="akvile-chip active" data-val="NA">⚪ Not Tracking</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="save-akvile-log-btn" class="auth-primary-btn" style="margin-top:14px;">
+          <i class="ti ti-check"></i> Save Today's Skin Log
+        </button>
+
+        <!-- Trigger & Flare-up Correlation Analytics Engine -->
+        <div class="akvile-analytics-card" style="margin-top:18px;">
+          <div class="row-between" style="align-items:center; margin-bottom:8px;">
+            <span class="akvile-analytics-head"><i class="ti ti-brain"></i> Trigger & Flare-up Insights</span>
+            <span class="akvile-intel-tag">AI Correlation</span>
+          </div>
+          <p class="akvile-analytics-desc" id="akvile-insight-text">
+            Log your skin feel and habits for 3+ days to compute automatic trigger correlations.
+          </p>
+
+          <div class="akvile-correlation-bars" id="akvile-correlation-bars">
+            <div class="akvile-corr-item">
+              <div class="akvile-corr-row">
+                <span><i class="ti ti-flame"></i> High Stress + Poor Sleep</span>
+                <strong style="color:var(--danger);">75% Correlation</strong>
+              </div>
+              <div class="akvile-corr-track"><div class="akvile-corr-fill" style="width:75%; background:var(--danger);"></div></div>
+            </div>
+            <div class="akvile-corr-item">
+              <div class="akvile-corr-row">
+                <span><i class="ti ti-milk"></i> Dairy / High Glycemic Diet</span>
+                <strong style="color:#D97706;">40% Correlation</strong>
+              </div>
+              <div class="akvile-corr-track"><div class="akvile-corr-fill" style="width:40%; background:#D97706;"></div></div>
+            </div>
+            <div class="akvile-corr-item">
+              <div class="akvile-corr-row">
+                <span><i class="ti ti-cloud-rain"></i> Climate Humidity &gt; 70%</span>
+                <strong style="color:#2563EB;">20% Correlation</strong>
+              </div>
+              <div class="akvile-corr-track"><div class="akvile-corr-fill" style="width:20%; background:#2563EB;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Log History Strip -->
+        <p class="section-label" style="margin-top:20px;"><i class="ti ti-calendar-event"></i> Recent Daily Logs</p>
+        <div class="akvile-history-list" id="akvile-history-list"></div>
+      </div>
+    </div>
+
+    <!-- SUBVIEW 3: Pore-Clogging & INCI Ingredient Safety Checker -->
+    <div id="akvile-view-inci" class="akvile-subview" style="display:none;">
+      <div class="section-block">
+        <div class="akvile-hero-card">
+          <div class="akvile-hero-top">
+            <div class="akvile-badge-icon" style="background:#E0F2FE; color:#0284C7;"><i class="ti ti-flask"></i></div>
+            <div>
+              <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Pore & Comedogenic Checker</h3>
+              <p class="muted-note" style="margin:2px 0 0;">Scan ingredient lists for pore-cloggers (0–5 rating), fungal acne triggers, and barrier irritants.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preset Quick Testers -->
+        <p class="section-label" style="margin-top:14px;">Try Popular Skincare Presets:</p>
+        <div class="akvile-preset-pills">
+          <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('cerave')">🧴 CeraVe PM Lotion</button>
+          <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('heavycream')">⚠️ Rich Coconut Cream</button>
+          <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('bha')">🧪 Paula's Choice 2% BHA</button>
+          <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('spf50')">☀️ Mineral SPF 50</button>
+        </div>
+
+        <!-- Textarea input for INCI List -->
+        <div class="inci-input-wrap" style="margin-top:12px;">
+          <textarea id="inci-input-text" class="inci-textarea" placeholder="Paste ingredients list separated by commas (e.g. Water, Niacinamide, Isopropyl Myristate, Glycerin, Cetearyl Alcohol, Fragrance...)" rows="4"></textarea>
+          <div class="row-between" style="margin-top:8px; gap:8px;">
+            <button type="button" id="clear-inci-btn" class="check-sub-btn" style="flex:0.3;"><i class="ti ti-trash"></i> Clear</button>
+            <button type="button" id="analyze-inci-btn" class="auth-primary-btn" style="flex:1;">
+              <i class="ti ti-scan"></i> Analyze Ingredients
+            </button>
+          </div>
+        </div>
+
+        <!-- INCI Results Container -->
+        <div id="inci-results-box" class="inci-results-card" style="display:none; margin-top:16px;">
+          <div class="inci-verdict-top">
+            <div>
+              <div class="inci-verdict-badge" id="inci-verdict-badge">✅ 100% Acne-Safe</div>
+              <p class="inci-verdict-sub" id="inci-verdict-sub">No high comedogenic (4-5) or fungal acne triggers found.</p>
+            </div>
+            <div class="inci-score-circle" id="inci-score-circle">
+              <span id="inci-safe-score">96</span>
+              <small>/ 100</small>
+            </div>
+          </div>
+
+          <!-- Highlight Counters -->
+          <div class="inci-highlights-grid">
+            <div class="inci-stat-item">
+              <span class="inci-stat-val" id="inci-clog-count" style="color:var(--danger);">0</span>
+              <span class="inci-stat-lbl">Pore Cloggers</span>
+            </div>
+            <div class="inci-stat-item">
+              <span class="inci-stat-val" id="inci-fa-count" style="color:#D97706;">0</span>
+              <span class="inci-stat-lbl">Fungal Acne</span>
+            </div>
+            <div class="inci-stat-item">
+              <span class="inci-stat-val" id="inci-irr-count" style="color:#8C6A2E;">0</span>
+              <span class="inci-stat-lbl">Sensitizers</span>
+            </div>
+            <div class="inci-stat-item">
+              <span class="inci-stat-val" id="inci-safe-count" style="color:#16A34A;">8</span>
+              <span class="inci-stat-lbl">Acne-Safe</span>
+            </div>
+          </div>
+
+          <!-- Detailed Ingredient Breakdown Chips -->
+          <div class="inci-breakdown-wrap">
+            <span class="akvile-sub-lbl">Identified Ingredients & Comedogenic Scale (0–5):</span>
+            <div class="inci-items-list" id="inci-items-list"></div>
+          </div>
         </div>
       </div>
-      <input id="photo-input" type="file" accept="image/*" style="display:none;">
+    </div>
 
-      <!-- Retake / Rescan actions if photo present -->
-      <div id="photo-actions" class="photo-actions-row" style="display:none;">
-        <button id="retake-live-btn" class="check-sub-btn"><i class="ti ti-camera"></i> Live Camera</button>
-        <button id="rescan-btn" class="check-sub-btn"><i class="ti ti-scan"></i> Re-Scan</button>
-        <button id="change-photo-btn" class="check-sub-btn"><i class="ti ti-photo"></i> Gallery</button>
-      </div>
-
-      <!-- Live AI Diagnostic Analysis Report (shown after scan) -->
-      <div id="diagnostic-results" class="diagnostic-card" style="display:none;">
-        <div class="diagnostic-top">
-          <div>
-            <span class="diag-lbl">AI Skin Health Index</span>
-            <div class="diag-score" id="diag-score">86 <span class="diag-max">/ 100</span></div>
-          </div>
-          <span class="diag-grade-badge" id="diag-grade-badge">Healthy Barrier</span>
-        </div>
-
-        <!-- 4 Diagnostic Metric Bars -->
-        <div class="diag-metrics-grid">
-          <div class="diag-metric-item">
-            <div class="diag-metric-head">
-              <span><i class="ti ti-droplet"></i> Hydration & Barrier</span>
-              <strong id="metric-hyd">84%</strong>
+    <!-- SUBVIEW 4: Dermatology Skin School Micro-Lessons -->
+    <div id="akvile-view-school" class="akvile-subview" style="display:none;">
+      <div class="section-block">
+        <div class="akvile-hero-card">
+          <div class="akvile-hero-top">
+            <div class="akvile-badge-icon" style="background:#FEF3C7; color:#B45309;"><i class="ti ti-school"></i></div>
+            <div>
+              <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Dermatology Skin School</h3>
+              <p class="muted-note" style="margin:2px 0 0;">Science-backed micro-lessons created by dermatologists & cosmetic chemists.</p>
             </div>
-            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-hyd-bar" style="width:84%; background:#1976D2;"></div></div>
           </div>
-
-          <div class="diag-metric-item">
-            <div class="diag-metric-head">
-              <span><i class="ti ti-flame"></i> Redness & Irritation</span>
-              <strong id="metric-red">18% (Low)</strong>
+          <!-- Progress Bar -->
+          <div class="school-progress-bar-wrap" style="margin-top:12px;">
+            <div class="row-between" style="font-size:11px; margin-bottom:4px;">
+              <span style="color:var(--text-muted);">Mastery Progress</span>
+              <strong id="school-progress-pct" style="color:var(--gold);">50% Mastered</strong>
             </div>
-            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-red-bar" style="width:18%; background:#2E7D32;"></div></div>
-          </div>
-
-          <div class="diag-metric-item">
-            <div class="diag-metric-head">
-              <span><i class="ti ti-sparkles"></i> Pore & Sebum Clarity</span>
-              <strong id="metric-pore">79%</strong>
-            </div>
-            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-pore-bar" style="width:79%; background:#8C6A2E;"></div></div>
-          </div>
-
-          <div class="diag-metric-item">
-            <div class="diag-metric-head">
-              <span><i class="ti ti-sun"></i> UV Photoprotection</span>
-              <strong id="metric-uv">92% (Optimal)</strong>
-            </div>
-            <div class="diag-metric-track"><div class="diag-metric-fill" id="metric-uv-bar" style="width:92%; background:#E65100;"></div></div>
+            <div class="school-track"><div class="school-fill" id="school-fill" style="width:50%;"></div></div>
           </div>
         </div>
 
-        <!-- Interactive Facial Zone Heatmap Selector -->
-        <div class="zone-selector-wrap">
-          <span class="diag-sub-lbl">Facial Zone Analysis</span>
-          <div class="zone-pills" id="zone-pills">
-            <button class="zone-pill active" data-zone="tzone">T-Zone (Forehead)</button>
-            <button class="zone-pill" data-zone="cheeks">Cheeks (U-Zone)</button>
-            <button class="zone-pill" data-zone="eyes">Eye Contour</button>
-            <button class="zone-pill" data-zone="chin">Jaw & Chin</button>
-          </div>
-          <div class="zone-insight-box" id="zone-insight-box">
-            <i class="ti ti-info-circle"></i>
-            <span id="zone-insight-text">T-Zone: Sebum production is balanced. Current climate humidity is well managed by your morning cleanser.</span>
-          </div>
-        </div>
-
-        <!-- AI Dermatologist Directives -->
-        <div class="diag-actions-box">
-          <div class="diag-actions-title"><i class="ti ti-shield-check"></i> <span>Today's Clinical Action Directives</span></div>
-          <ul class="diag-actions-list" id="diag-actions-list">
-            <li>Hydration level is optimal; lock moisture with squalane or lightweight lotion.</li>
-            <li>Low redness detected; safe for evening active treatment (Retinol/Exfoliant).</li>
-            <li>Maintain SPF 50+ reapplication under today's UV levels.</li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- Quick Daily Symptom & Skin Feel Logger -->
-      <p class="section-label" style="margin-top:20px;"><i class="ti ti-mood-smile"></i> Daily Skin Feel & Symptoms</p>
-      <div class="pill-group" id="skin-feel-pills">
-        <button class="sfeel-pill active" data-val="Dewy & Calm">💧 Dewy & Calm</button>
-        <button class="sfeel-pill" data-val="Tight & Dry">🌵 Tight & Dry</button>
-        <button class="sfeel-pill" data-val="Flushed / Red">🔴 Flushed / Red</button>
-        <button class="sfeel-pill" data-val="Oily / Congested">✨ Oily T-Zone</button>
-        <button class="sfeel-pill" data-val="Sensitive">⚡ Sensitive</button>
-      </div>
-
-      <!-- 7-Day Past Week Photo Comparison Tracker (matching user requirement) -->
-      <div class="past-week-card">
-        <div class="row-between" style="align-items:center; margin-bottom: 12px;">
-          <div>
-            <p class="section-label" style="margin-bottom:0; letter-spacing:0.1em; color:var(--text-muted);">PAST WEEK</p>
-            <span class="compare-subtitle">7-Day Skin Progression & Glow</span>
-          </div>
-          <span class="compare-badge" id="compare-score-badge">+8% Barrier Health</span>
-        </div>
-
-        <!-- 7 Daily Photo Circle Dots (Mon, Tue, Wed, Thu, Fri, Sat, Today) -->
-        <div class="past-week-dots-row" id="past-week-dots-row"></div>
-
-        <!-- Interactive Before & After / Split-Screen Comparison Box -->
-        <div class="split-compare-box" id="split-compare-box">
-          <div class="split-compare-container" id="split-container">
-            <div class="split-img-before" id="split-before-img">
-              <span class="split-tag left" id="split-before-lbl">Mon (Aug 17)</span>
+        <!-- Lesson Modules List -->
+        <div class="school-modules-list" id="school-modules-list" style="margin-top:14px;">
+          <!-- Module 1 -->
+          <div class="school-card" data-lesson="1">
+            <div class="school-card-head" onclick="window.toggleSchoolLesson(1)">
+              <div class="school-card-icon"><i class="ti ti-microscope"></i></div>
+              <div style="flex:1;">
+                <div class="school-card-title">1. The 4 Pillars of Acne</div>
+                <div class="school-card-meta">Sebum, Hyperkeratinization, C. Acnes & Inflammation</div>
+              </div>
+              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(1)"><i class="ti ti-circle-check"></i></button>
             </div>
-            <div class="split-img-after" id="split-after-img">
-              <span class="split-tag right" id="split-after-lbl">Today (Aug 23)</span>
-            </div>
-            <input type="range" min="0" max="100" value="50" class="split-slider" id="split-slider" aria-label="Slide to compare before and after">
-            <div class="split-slider-line" id="split-slider-line">
-              <div class="split-slider-handle"><i class="ti ti-arrows-left-right"></i></div>
+            <div class="school-card-body" id="school-body-1" style="display:none;">
+              <p>Acne is fundamentally an inflammatory condition within the pilosebaceous unit triggered by 4 interconnected steps:</p>
+              <ul class="school-points">
+                <li><strong>Excess Sebum:</strong> Androgens stimulate sebaceous glands to produce high-viscosity squalene & wax esters.</li>
+                <li><strong>Follicular Retention:</strong> Sticky dead corneocytes clog the pore opening instead of desquamating.</li>
+                <li><strong>C. Acnes Proliferation:</strong> Anaerobic bacteria consume sebum triglycerides and release irritating lipases.</li>
+                <li><strong>Inflammatory Cascade:</strong> Immune neutrophils rush in, resulting in red inflammatory papules or pustules.</li>
+              </ul>
+              <div class="school-takeaway">
+                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> Treat acne from both angles: normalize cell turnover (BHA/Retinoids) while reducing inflammation and barrier stress.
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Skin Progression Delta Chips -->
-        <div class="progress-deltas-row">
-          <div class="delta-chip">
-            <span class="delta-lbl">Barrier Health</span>
-            <span class="delta-val" style="color:#2E7D32;">78% ➔ 86% <small>(+8%)</small></span>
+          <!-- Module 2 -->
+          <div class="school-card" data-lesson="2" style="margin-top:10px;">
+            <div class="school-card-head" onclick="window.toggleSchoolLesson(2)">
+              <div class="school-card-icon"><i class="ti ti-shield-check"></i></div>
+              <div style="flex:1;">
+                <div class="school-card-title">2. Barrier Repair: 3:1:1 Ratio</div>
+                <div class="school-card-meta">Ceramides, Cholesterol & Free Fatty Acids</div>
+              </div>
+              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(2)"><i class="ti ti-circle-check"></i></button>
+            </div>
+            <div class="school-card-body" id="school-body-2" style="display:none;">
+              <p>Your stratum corneum functions like a brick-and-mortar wall:</p>
+              <ul class="school-points">
+                <li><strong>Corneocytes (Bricks):</strong> Protein-rich skin cells.</li>
+                <li><strong>Lipid Bilayer (Mortar):</strong> Exactly 50% Ceramides, 25% Cholesterol, and 15% Free Fatty Acids (approx. 3:1:1 molar ratio).</li>
+                <li>When compromised by over-cleansing or harsh climates, Trans-Epidermal Water Loss (TEWL) spikes, allowing bacteria and irritants in.</li>
+              </ul>
+              <div class="school-takeaway">
+                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> If skin feels tight or stings, suspend all exfoliants and switch to ceramide/squalane barrier moisturizers for 5 days.
+              </div>
+            </div>
           </div>
-          <div class="delta-chip">
-            <span class="delta-lbl">Redness / Sensitivity</span>
-            <span class="delta-val" style="color:#1976D2;">32% ➔ 18% <small>(-14%)</small></span>
+
+          <!-- Module 3 -->
+          <div class="school-card" data-lesson="3" style="margin-top:10px;">
+            <div class="school-card-head" onclick="window.toggleSchoolLesson(3)">
+              <div class="school-card-icon"><i class="ti ti-atom-2"></i></div>
+              <div style="flex:1;">
+                <div class="school-card-title">3. Actives Compatibility Matrix</div>
+                <div class="school-card-meta">What to combine vs what to separate in routines</div>
+              </div>
+              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(3)"><i class="ti ti-circle-check"></i></button>
+            </div>
+            <div class="school-card-body" id="school-body-3" style="display:none;">
+              <p>Combining the wrong actives cancels efficacy or compromises your barrier:</p>
+              <ul class="school-points">
+                <li><strong>✅ Synergistic Pairs:</strong> Vitamin C + Ferulic Acid · Niacinamide + Salicylic Acid · Retinol + Hyaluronic Acid / Ceramides.</li>
+                <li><strong>❌ Separate (Use on Alternate Days):</strong> Retinol + AHA/BHA exfoliants · Pure L-Ascorbic Acid + Benzoyl Peroxide (oxidizes Vit C).</li>
+                <li><strong>⚡ Golden Rule:</strong> Never introduce two new active ingredients simultaneously. Space introductions 2 weeks apart.</li>
+              </ul>
+              <div class="school-takeaway">
+                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> Use antioxidants and SPF during AM for environmental defense; reserve cell-renewing Retinoids for PM reset.
+              </div>
+            </div>
           </div>
-          <div class="delta-chip">
-            <span class="delta-lbl">Hydration Level</span>
-            <span class="delta-val" style="color:#8C6A2E;">74% ➔ 84% <small>(+10%)</small></span>
+
+          <!-- Module 4 -->
+          <div class="school-card" data-lesson="4" style="margin-top:10px;">
+            <div class="school-card-head" onclick="window.toggleSchoolLesson(4)">
+              <div class="school-card-icon"><i class="ti ti-dna"></i></div>
+              <div style="flex:1;">
+                <div class="school-card-title">4. Diet, Hormones & IGF-1</div>
+                <div class="school-card-meta">The biological connection between lifestyle and breakouts</div>
+              </div>
+              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(4)"><i class="ti ti-circle-check"></i></button>
+            </div>
+            <div class="school-card-body" id="school-body-4" style="display:none;">
+              <p>How internal lifestyle triggers biochemically alter sebum chemistry:</p>
+              <ul class="school-points">
+                <li><strong>Insulin / IGF-1 Spike:</strong> High glycemic carbs and skim milk trigger Insulin-like Growth Factor 1, activating mTORC1 and boosting sebum lipid production.</li>
+                <li><strong>Cortisol & Stress:</strong> Chronically elevated stress hormone upregulates CRH (Corticotropin-Releasing Hormone) receptors in sebocytes, fueling inflammation.</li>
+                <li><strong>Luteal Phase Progesterone:</strong> Rises in the week before menstruation, narrowing pore diameter while skin temperature rises.</li>
+              </ul>
+              <div class="school-takeaway">
+                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> Prioritize low-GI foods, quality sleep, and switch to gentle calming hydrators during the luteal phase.
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -864,6 +1382,6 @@
 
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=3.1"></script>
 </body>
 </html>

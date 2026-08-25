@@ -12,10 +12,10 @@ const historyStore = require('./historyStore');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const API_KEY = process.env.WEATHER_API_KEY;
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.WEATHER_API_KEY;
 
 if (API_KEY) {
-  console.log('✓ Google Weather API key detected');
+  console.log('✓ Google Maps & Weather API key detected');
 } else {
   console.log('✓ Open-Meteo Real-Time Global Weather & AQI Engine Active');
 }
@@ -84,9 +84,40 @@ function wmoToDescription(code, isDay = 1) {
   };
   return map[code] || (isDay === 0 ? 'Clear Night' : 'Sunny / Fair');
 }
+// Helper to calculate Skin TEWL (Trans-Epidermal Water Loss) & Barrier Stress
+function calculateSkinClimateMetrics(temp, humidity, dewPoint = null, windSpeed = 10) {
+  const calculatedDewPoint = dewPoint !== null ? dewPoint : Math.round(temp - ((100 - humidity) / 5));
+  let tewlRisk = 'Balanced';
+  let tewlLevel = 'normal'; // low, normal, elevated, severe
+  let barrierAdvice = 'Skin moisture balance is stable. Standard hydration routine recommended.';
+
+  if (humidity < 30 || calculatedDewPoint < 0) {
+    tewlRisk = 'Severe Moisture Loss';
+    tewlLevel = 'severe';
+    barrierAdvice = 'Very dry air rapidly dehydrates the stratum corneum. Layer hydrating toner with rich ceramide/squalane occlusives.';
+  } else if (humidity < 45 || calculatedDewPoint < 8) {
+    tewlRisk = 'Elevated TEWL Risk';
+    tewlLevel = 'elevated';
+    barrierAdvice = 'Dry atmosphere increases moisture evaporation. Apply hyaluronic acid on damp skin & seal with moisturizer.';
+  } else if (humidity > 75) {
+    tewlRisk = 'High Humidity / Sebum Flux';
+    tewlLevel = 'humid';
+    barrierAdvice = 'High ambient moisture may increase sebum production and sweat entrapment. Switch to lightweight gel hydrators.';
+  }
+
+  const windStress = windSpeed > 25 ? 'High Wind Barrier Friction' : (windSpeed > 15 ? 'Moderate Wind Exposure' : 'Mild Wind');
+
+  return {
+    dewPoint: calculatedDewPoint,
+    tewlRisk,
+    tewlLevel,
+    barrierAdvice,
+    windStress
+  };
+}
 
 // ---- GET /api/weather?lat=&lon= ----
-// Live real-time current conditions: temperature, humidity, UV index, wind, condition.
+// Live real-time current conditions: temperature, humidity, UV index, wind, condition, TEWL.
 app.get('/api/weather', async (req, res) => {
   const { lat, lon } = req.query;
   if (!lat || !lon) return res.status(400).json({ error: 'lat and lon are required' });
@@ -104,16 +135,30 @@ app.get('/api/weather', async (req, res) => {
         const raw = await gRes.json();
         const hour = new Date().getHours();
         const isDay = hour >= 6 && hour < 18 ? 1 : 0;
+        const temp = Math.round(raw.temperature?.degrees ?? 30);
+        const hum = Math.round(raw.relativeHumidity ?? 65);
+        const dew = raw.dewPoint?.degrees ? Math.round(raw.dewPoint.degrees) : null;
+        const wind = Math.round(raw.wind?.speed?.value ?? 12);
+        const climateMetrics = calculateSkinClimateMetrics(temp, hum, dew, wind);
+
         const normalized = {
-          temperature: Math.round(raw.temperature?.degrees ?? 30),
-          feelsLike: Math.round(raw.feelsLikeTemperature?.degrees ?? raw.temperature?.degrees ?? 30),
-          humidity: Math.round(raw.relativeHumidity ?? 65),
+          temperature: temp,
+          feelsLike: Math.round(raw.feelsLikeTemperature?.degrees ?? temp),
+          humidity: hum,
+          dewPoint: climateMetrics.dewPoint,
+          tewlRisk: climateMetrics.tewlRisk,
+          tewlLevel: climateMetrics.tewlLevel,
+          barrierAdvice: climateMetrics.barrierAdvice,
+          windStress: climateMetrics.windStress,
+          heatIndex: raw.heatIndex?.degrees ? Math.round(raw.heatIndex.degrees) : temp,
+          windChill: raw.windChill?.degrees ? Math.round(raw.windChill.degrees) : temp,
           uv: isDay === 0 ? 0 : Math.round((raw.uvIndex ?? 7) * 10) / 10,
           uvMax: Math.round((raw.uvIndex ?? 8) * 10) / 10,
           isDay,
-          wind: Math.round(raw.wind?.speed?.value ?? 12),
+          wind,
           condition: raw.weatherCondition?.description?.text ?? (isDay === 0 ? 'Clear Night' : 'Sunny / Fair'),
-          hourlyTemps: [Math.round(raw.temperature?.degrees ?? 30), Math.round(raw.temperature?.degrees ?? 30) - 1, Math.round(raw.temperature?.degrees ?? 30) - 1, Math.round(raw.temperature?.degrees ?? 30) - 2, Math.round(raw.temperature?.degrees ?? 30) - 2]
+          iconUri: raw.weatherCondition?.iconBaseUri ? `${raw.weatherCondition.iconBaseUri}.png` : null,
+          hourlyTemps: [temp, temp - 1, temp - 1, temp - 2, temp - 2]
         };
         setCached(key, normalized);
         return res.json({ ...normalized, _cache: 'google' });
@@ -125,7 +170,7 @@ app.get('/api/weather', async (req, res) => {
 
   // 2. Open-Meteo High-Resolution Meteorological Engine
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,uv_index&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,uv_index&timezone=auto`;
     const r = await fetchWithTimeout(url, {}, 3500);
     if (r.ok) {
       const data = await r.json();
@@ -150,14 +195,25 @@ app.get('/api/weather', async (req, res) => {
         hourlyTemps.push(Math.round(tempArr[hIdx] ?? curr.temperature_2m ?? 30));
       }
 
+      const temp = Math.round(curr.temperature_2m ?? 30);
+      const hum = Math.round(curr.relative_humidity_2m ?? 65);
+      const dew = curr.dew_point_2m ? Math.round(curr.dew_point_2m) : null;
+      const wind = Math.round(curr.wind_speed_10m ?? 12);
+      const climateMetrics = calculateSkinClimateMetrics(temp, hum, dew, wind);
+
       const normalized = {
-        temperature: Math.round(curr.temperature_2m ?? 30),
-        feelsLike: Math.round(curr.apparent_temperature ?? curr.temperature_2m ?? 30),
-        humidity: Math.round(curr.relative_humidity_2m ?? 65),
+        temperature: temp,
+        feelsLike: Math.round(curr.apparent_temperature ?? temp),
+        humidity: hum,
+        dewPoint: climateMetrics.dewPoint,
+        tewlRisk: climateMetrics.tewlRisk,
+        tewlLevel: climateMetrics.tewlLevel,
+        barrierAdvice: climateMetrics.barrierAdvice,
+        windStress: climateMetrics.windStress,
         uv: Math.round(currentUv * 10) / 10,
         uvMax: Math.round(maxUvToday * 10) / 10,
         isDay,
-        wind: Math.round(curr.wind_speed_10m ?? 12),
+        wind,
         condition: wmoToDescription(curr.weather_code, isDay),
         hourlyTemps
       };
@@ -170,18 +226,210 @@ app.get('/api/weather', async (req, res) => {
   }
 
   // Resilient Fallback
+  const fallbackMetrics = calculateSkinClimateMetrics(28, 75, 23, 12);
   const fallback = {
     temperature: 28,
     humidity: 75,
     uv: 0,
     uvMax: 8,
-    isDay: 0,
-    wind: 10,
+    wind: 12,
+    feelsLike: 31,
+    dewPoint: fallbackMetrics.dewPoint,
+    tewlRisk: fallbackMetrics.tewlRisk,
+    tewlLevel: fallbackMetrics.tewlLevel,
+    barrierAdvice: fallbackMetrics.barrierAdvice,
+    windStress: fallbackMetrics.windStress,
     condition: 'Partly Cloudy Night',
     hourlyTemps: [28, 27, 27, 26, 26]
   };
   setCached(key, fallback);
   return res.json({ ...fallback, _cache: 'fallback' });
+});
+
+// Helper for Skincare Pollutant Interpretation
+function interpretSkinPollutants(pollutantsMap, uaqiCategory) {
+  const pm25 = pollutantsMap.pm25?.concentration?.value || 0;
+  const o3 = pollutantsMap.o3?.concentration?.value || 0;
+  const no2 = pollutantsMap.no2?.concentration?.value || 0;
+
+  let topConcern = 'Clean Air Zone';
+  let skinTip = 'Air is pure. Maintain standard daily cleanse and hydration.';
+
+  if (o3 > 50 || (o3 > 35 && pm25 < 25)) {
+    topConcern = 'Ozone Lipid Stress (Free Radicals)';
+    skinTip = 'Elevated ground-level ozone oxidizes skin sebum & degrades Vitamin E. Boost antioxidant serum (Vitamin C / Ferulic Acid).';
+  } else if (pm25 > 35) {
+    topConcern = 'PM2.5 Micro-Particle Pore Congestion';
+    skinTip = 'High microscopic particulate matter can penetrate skin pores and cause inflammation. Double cleanse tonight & apply barrier soothing serum.';
+  } else if (no2 > 20) {
+    topConcern = 'Traffic Emissions (Barrier Sensitizer)';
+    skinTip = 'Elevated nitrogen dioxide from vehicle exhaust. Use a ceramide barrier cream to defend against oxidative stress.';
+  } else if (uaqiCategory && !uaqiCategory.toLowerCase().includes('good')) {
+    topConcern = 'Ambient Urban Pollution';
+    skinTip = 'Heightened environmental particulate load. Cleanse thoroughly in the evening and apply soothing antioxidants.';
+  }
+
+  return { topConcern, skinTip };
+}
+
+// ---- GET /api/air-quality?lat=&lon= ----
+// Google Air Quality API (Universal AQI, Pollutants PM2.5/O3/NO2, Health Recommendations)
+app.get('/api/air-quality', async (req, res) => {
+  const { lat, lon } = req.query;
+  if (!lat || !lon) return res.status(400).json({ error: 'lat and lon are required' });
+
+  const key = cacheKey('aqi', lat, lon);
+  const cached = getCached(key);
+  if (cached) return res.json({ ...cached, _cache: 'hit' });
+
+  // 1. Google Air Quality API
+  if (API_KEY) {
+    try {
+      const gUrl = `https://airquality.googleapis.com/v1/currentConditions:lookup?key=${API_KEY}`;
+      const gRes = await fetchWithTimeout(gUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          location: { latitude: parseFloat(lat), longitude: parseFloat(lon) },
+          extraComputations: [
+            'HEALTH_RECOMMENDATIONS',
+            'DOMINANT_POLLUTANT_CONCENTRATION',
+            'POLLUTANT_CONCENTRATION',
+            'LOCAL_AQI'
+          ]
+        })
+      }, 4000);
+
+      if (gRes.ok) {
+        const raw = await gRes.json();
+        const uaqiObj = raw.indexes?.find(idx => idx.code === 'uaqi') || raw.indexes?.[0] || {};
+        const aqiVal = uaqiObj.aqi ?? 65;
+        const category = uaqiObj.category || 'Moderate';
+        const dominantPollutant = uaqiObj.dominantPollutant || 'pm25';
+
+        // Extract individual pollutant concentrations
+        const pollutants = {};
+        if (Array.isArray(raw.pollutants)) {
+          for (const p of raw.pollutants) {
+            pollutants[p.code] = {
+              code: p.code,
+              displayName: p.displayName,
+              fullName: p.fullName,
+              value: Math.round((p.concentration?.value ?? 0) * 10) / 10,
+              units: p.concentration?.units === 'MICROGRAMS_PER_CUBIC_METER' ? 'µg/m³' : (p.concentration?.units === 'PARTS_PER_BILLION' ? 'ppb' : p.concentration?.units || '')
+            };
+          }
+        }
+
+        const skinImpact = interpretSkinPollutants(pollutants, category);
+
+        const normalized = {
+          aqi: aqiVal,
+          category,
+          dominantPollutant,
+          pollutants,
+          healthRecommendations: raw.healthRecommendations || {},
+          skinConcern: skinImpact.topConcern,
+          skinTip: skinImpact.skinTip,
+          color: uaqiObj.color || null,
+          hasHeatmap: true
+        };
+
+        setCached(key, normalized);
+        return res.json({ ...normalized, _cache: 'google' });
+      }
+    } catch (e) {
+      console.warn('Google Air Quality live fetch failed, falling back to Open-Meteo:', e.message);
+    }
+  }
+
+  // 2. Open-Meteo Air Quality Engine Fallback
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=us_aqi,pm2_5,pm10,ozone,nitrogen_dioxide`;
+    const r = await fetchWithTimeout(url, {}, 3500);
+    if (r.ok) {
+      const data = await r.json();
+      const aqiVal = data.current?.us_aqi ?? 65;
+      let category = 'Good';
+      if (aqiVal > 150) category = 'Unhealthy';
+      else if (aqiVal > 100) category = 'Unhealthy for Sensitive Groups';
+      else if (aqiVal > 50) category = 'Moderate';
+
+      const pollutants = {
+        pm25: { code: 'pm25', displayName: 'PM2.5', fullName: 'Fine Particulate Matter', value: data.current?.pm2_5 ?? 18, units: 'µg/m³' },
+        pm10: { code: 'pm10', displayName: 'PM10', fullName: 'Inhalable Particulate Matter', value: data.current?.pm10 ?? 32, units: 'µg/m³' },
+        o3: { code: 'o3', displayName: 'O3', fullName: 'Ozone', value: data.current?.ozone ?? 40, units: 'µg/m³' },
+        no2: { code: 'no2', displayName: 'NO2', fullName: 'Nitrogen Dioxide', value: data.current?.nitrogen_dioxide ?? 12, units: 'µg/m³' }
+      };
+
+      const skinImpact = interpretSkinPollutants(pollutants, category);
+
+      const normalized = {
+        aqi: aqiVal,
+        category,
+        dominantPollutant: 'pm25',
+        pollutants,
+        healthRecommendations: {},
+        skinConcern: skinImpact.topConcern,
+        skinTip: skinImpact.skinTip,
+        hasHeatmap: Boolean(API_KEY)
+      };
+      setCached(key, normalized);
+      return res.json({ ...normalized, _cache: 'live' });
+    }
+  } catch (err) {
+    console.warn('Open-Meteo Air Quality live fetch failed, using fallback:', err.message);
+  }
+
+  // Fallback AQI
+  const fallbackAQI = {
+    aqi: 65,
+    category: 'Moderate',
+    dominantPollutant: 'pm25',
+    pollutants: {
+      pm25: { code: 'pm25', displayName: 'PM2.5', fullName: 'Fine Particulate Matter', value: 22, units: 'µg/m³' },
+      pm10: { code: 'pm10', displayName: 'PM10', fullName: 'Inhalable Particulate Matter', value: 38, units: 'µg/m³' },
+      o3: { code: 'o3', displayName: 'O3', fullName: 'Ozone', value: 34, units: 'µg/m³' }
+    },
+    skinConcern: 'Moderate Environmental Load',
+    skinTip: 'Standard particulate exposure. Double cleanse at night.',
+    hasHeatmap: Boolean(API_KEY)
+  };
+  setCached(key, fallbackAQI);
+  return res.json({ ...fallbackAQI, _cache: 'fallback' });
+});
+
+// ---- GET /api/air-quality/tile/:z/:x/:y ----
+// Stream Google Air Quality Heatmap Tiles to the frontend map
+app.get('/api/air-quality/tile/:z/:x/:y', async (req, res) => {
+  const { z, x, y } = req.params;
+  if (!API_KEY) {
+    return res.status(404).send('Google API key not configured');
+  }
+
+  const tileCacheKey = `tile:${z}:${x}:${y}`;
+  const cachedTile = getCached(tileCacheKey);
+  if (cachedTile) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=1800');
+    return res.send(cachedTile);
+  }
+
+  try {
+    const tileUrl = `https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/${z}/${x}/${y}?key=${API_KEY}`;
+    const tileRes = await fetchWithTimeout(tileUrl, {}, 5000);
+    if (tileRes.ok) {
+      const buffer = Buffer.from(await tileRes.arrayBuffer());
+      setCached(tileCacheKey, buffer);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=1800');
+      return res.send(buffer);
+    } else {
+      return res.status(tileRes.status).send('Tile fetch error');
+    }
+  } catch (err) {
+    return res.status(502).send('Error streaming tile: ' + err.message);
+  }
 });
 
 // ---- GET /api/forecast?lat=&lon=&days=7 ----
@@ -550,6 +798,63 @@ app.get('/api/history', (req, res) => {
       barrierStatus
     },
     note: `Tracking ${entries.length} day(s) of environmental exposure.`
+  });
+});
+
+// ---------- User Authentication & Database API ----------
+const userStore = require('./userStore');
+
+// Login with Phone & Password
+app.post('/api/auth/login', (req, res) => {
+  const { phone, password } = req.body || {};
+  if (!phone || !password) {
+    return res.status(400).json({ success: false, error: 'Phone number and password are required.' });
+  }
+  const result = userStore.authenticate(phone, password);
+  if (!result.success) {
+    return res.status(401).json(result);
+  }
+  res.json(result);
+});
+
+// Register New User
+app.post('/api/auth/register', (req, res) => {
+  const { name, phone, password, city, skinType } = req.body || {};
+  if (!phone || !password) {
+    return res.status(400).json({ success: false, error: 'Phone number and password are required.' });
+  }
+  const result = userStore.register({ name, phone, password, city, skinType });
+  if (!result.success) {
+    return res.status(400).json(result);
+  }
+  res.json(result);
+});
+
+// Sync User Routine, Profile & Scans
+app.post('/api/auth/sync', (req, res) => {
+  const { phone, data } = req.body || {};
+  if (!phone) {
+    return res.status(400).json({ success: false, error: 'Phone number is required.' });
+  }
+  const result = userStore.updateUserData(phone, data || {});
+  res.json(result);
+});
+
+// Fetch User Profile
+app.get('/api/auth/user/:phone', (req, res) => {
+  const user = userStore.findByPhone(req.params.phone);
+  if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+  res.json({ success: true, user: userStore.sanitizeUser(user) });
+});
+
+// Demo accounts for instant 1-tap testing
+app.get('/api/auth/demo-accounts', (req, res) => {
+  res.json({
+    success: true,
+    accounts: [
+      { name: 'Balaji (Trichy)', phone: '+91 98765 43210', rawPhone: '9876543210', password: 'password123', city: 'Trichy, Tamil Nadu', skinType: 'III - Medium / Olive' },
+      { name: 'Priya (Paris)', phone: '+91 91234 56789', rawPhone: '9123456789', password: 'password123', city: 'Paris, France', skinType: 'II - Fair / Sensitive' }
+    ]
   });
 });
 

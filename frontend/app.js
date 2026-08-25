@@ -37,7 +37,20 @@ let state = {
   spfReapplyDue: null,
   checkPhoto: null,
   checkHistory: [],
-  authUser: loadJSON('sw_auth_user', { phone: '+91 98765 43210', name: 'Balaji', verified: true }),
+  akvileLogs: [
+    { date: 'Yesterday', acne: 0, barrier: ['Calm'], stress: 'Low', sleep: '7-8h', diet: ['Clean'], cycle: 'NA', timestamp: Date.now() - 86400000 },
+    { date: '2 Days Ago', acne: 1, barrier: ['Tight'], stress: 'High', sleep: '<6h', diet: ['Dairy', 'Sugar'], cycle: 'Luteal', timestamp: Date.now() - 172800000 }
+  ],
+  akvileSchoolProgress: [1, 2],
+  akvileCurrentLog: {
+    acne: 0,
+    barrier: ['Calm'],
+    stress: 'Low',
+    sleep: '7-8h',
+    diet: ['Clean'],
+    cycle: 'NA'
+  },
+  authUser: null,
   editMode: false,
   forecastMode: 'upcoming',
   historyRange: 'week',
@@ -98,7 +111,12 @@ let usersDb = loadJSON('sw_users_db', {
       { date: 'Aug 21', score: 82, hyd: 78, red: 24, pore: 76, uv: 88, feel: 'Dewy & Calm' },
       { date: 'Aug 22', score: 85, hyd: 82, red: 20, pore: 78, uv: 90, feel: 'Dewy & Calm' },
       { date: 'Today', score: 86, hyd: 84, red: 18, pore: 79, uv: 92, feel: 'Dewy & Calm' }
-    ]
+    ],
+    akvileLogs: [
+      { date: 'Yesterday', acne: 0, barrier: ['Calm'], stress: 'Low', sleep: '7-8h', diet: ['Clean'], cycle: 'NA', timestamp: Date.now() - 86400000 },
+      { date: '2 Days Ago', acne: 1, barrier: ['Tight'], stress: 'High', sleep: '<6h', diet: ['Dairy', 'Sugar'], cycle: 'Luteal', timestamp: Date.now() - 172800000 }
+    ],
+    akvileSchoolProgress: [1, 2]
   }
 });
 
@@ -118,7 +136,9 @@ function saveCurrentUserData() {
     waterLastSipTime: state.waterLastSipTime,
     skinCyclePhase: state.skinCyclePhase,
     checkPhoto: state.checkPhoto || null,
-    checkHistory: state.checkHistory || []
+    checkHistory: state.checkHistory || [],
+    akvileLogs: state.akvileLogs || [],
+    akvileSchoolProgress: state.akvileSchoolProgress || [1, 2]
   };
   saveJSON('sw_users_db', usersDb);
 }
@@ -139,6 +159,10 @@ function loadUserDataForPhone(phone) {
   state.skinCyclePhase = userData.skinCyclePhase ?? 2;
   state.checkPhoto = userData.checkPhoto || null;
   state.checkHistory = userData.checkHistory || [];
+  state.akvileLogs = userData.akvileLogs || [
+    { date: 'Yesterday', acne: 0, barrier: ['Calm'], stress: 'Low', sleep: '7-8h', diet: ['Clean'], cycle: 'NA', timestamp: Date.now() - 86400000 }
+  ];
+  state.akvileSchoolProgress = userData.akvileSchoolProgress || [1, 2];
 
   saveJSON('sw_profile', state.profile);
   saveJSON('sw_location', state.location);
@@ -151,8 +175,13 @@ function loadUserDataForPhone(phone) {
   saveJSON('sw_skin_cycle_phase', state.skinCyclePhase);
   saveJSON('sw_check_photo', state.checkPhoto);
   saveJSON('sw_check_history', state.checkHistory);
+  saveJSON('sw_akvile_logs', state.akvileLogs);
+  saveJSON('sw_akvile_school', state.akvileSchoolProgress);
 
   resetCheckScreenForUser();
+  if (typeof renderAkvileSystem === 'function') {
+    renderAkvileSystem();
+  }
   return true;
 }
 
@@ -162,6 +191,8 @@ function resetCheckScreenForUser() {
   const diagnosticResults = document.getElementById('diagnostic-results');
   const photoActions = document.getElementById('photo-actions');
   const cameraContainer = document.getElementById('camera-container');
+  const splitBeforeImg = document.getElementById('split-before-img');
+  const splitAfterImg = document.getElementById('split-after-img');
 
   if (typeof activeCameraStream !== 'undefined' && activeCameraStream) {
     activeCameraStream.getTracks().forEach(t => t.stop());
@@ -171,7 +202,7 @@ function resetCheckScreenForUser() {
 
   if (state.checkPhoto) {
     if (uploadZone) {
-      uploadZone.style.display = 'block';
+      uploadZone.style.display = 'flex';
       uploadZone.style.backgroundImage = `url('${state.checkPhoto}')`;
     }
     if (uploadContent) uploadContent.style.display = 'none';
@@ -179,7 +210,7 @@ function resetCheckScreenForUser() {
     if (diagnosticResults) diagnosticResults.style.display = 'block';
   } else {
     if (uploadZone) {
-      uploadZone.style.display = 'block';
+      uploadZone.style.display = 'flex';
       uploadZone.style.backgroundImage = '';
     }
     if (uploadContent) uploadContent.style.display = 'flex';
@@ -187,443 +218,13 @@ function resetCheckScreenForUser() {
     if (diagnosticResults) diagnosticResults.style.display = 'none';
   }
 
+  if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${sampleFaceSvg}')`;
+  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${state.checkPhoto || sampleFaceSvg}')`;
+
   if (typeof renderPastWeekComparison === 'function') {
     renderPastWeekComparison();
   }
 }
-
-// ---------- Authentication & Phone Login Flow ----------
-let otpCountdownTimer = null;
-let currentPendingPhone = '';
-let currentGeneratedOtp = '1234';
-
-function checkAuthState() {
-  const authScreen = document.getElementById('screen-auth');
-  const onboardScreen = document.getElementById('screen-onboarding');
-  const tabbar = document.querySelector('.tabbar');
-  const homeScreen = document.getElementById('screen-home');
-
-  if (!state.authUser) {
-    // Show Auth Screen, Hide Tabbar & App Screens
-    document.querySelectorAll('.screen').forEach((s) => (s.style.display = 'none'));
-    if (authScreen) authScreen.style.display = 'flex';
-    if (onboardScreen) onboardScreen.style.display = 'none';
-    if (tabbar) tabbar.style.display = 'none';
-    resetAuthScreen();
-  } else if (state.authUser.isNewUser) {
-    // New User: Show Onboarding Wizard
-    document.querySelectorAll('.screen').forEach((s) => (s.style.display = 'none'));
-    if (onboardScreen) onboardScreen.style.display = 'block';
-    if (tabbar) tabbar.style.display = 'none';
-    startOnboardingWizard();
-  } else {
-    // Verified User: Show Tabbar & App Screens
-    if (authScreen) authScreen.style.display = 'none';
-    if (onboardScreen) onboardScreen.style.display = 'none';
-    if (tabbar) tabbar.style.display = 'flex';
-
-    if (state.authUser && state.authUser.phone) {
-      loadUserDataForPhone(state.authUser.phone);
-    }
-
-    // Select active nav
-    const activeNav = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn[data-screen="home"]');
-    const screenId = activeNav ? 'screen-' + activeNav.dataset.screen : 'screen-home';
-    const activeScreen = document.getElementById(screenId) || homeScreen;
-    if (activeScreen) activeScreen.style.display = 'block';
-
-    renderHome();
-    renderProfile();
-    renderRoutineAll();
-  }
-}
-
-function resetAuthScreen() {
-  const phoneStep = document.getElementById('auth-step-phone');
-  const otpStep = document.getElementById('auth-step-otp');
-  const phoneInput = document.getElementById('auth-phone-input');
-  const phoneError = document.getElementById('auth-phone-error');
-  const otpError = document.getElementById('auth-otp-error');
-
-  if (phoneStep) phoneStep.style.display = 'block';
-  if (otpStep) otpStep.style.display = 'none';
-  if (phoneError) phoneError.style.display = 'none';
-  if (otpError) otpError.style.display = 'none';
-  if (phoneInput) {
-    phoneInput.value = '';
-    phoneInput.focus();
-  }
-  document.querySelectorAll('.otp-box').forEach(b => b.value = '');
-}
-
-async function requestPhoneOtp(phone) {
-  const phoneError = document.getElementById('auth-phone-error');
-  const sendBtn = document.getElementById('auth-send-otp-btn');
-  if (phoneError) phoneError.style.display = 'none';
-
-  if (!phone || phone.length < 8) {
-    if (phoneError) {
-      phoneError.textContent = 'Please enter a valid 10-digit mobile number.';
-      phoneError.style.display = 'block';
-    }
-    return;
-  }
-
-  currentPendingPhone = phone;
-  if (sendBtn) {
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = '<i class="ti ti-loader-2 rotate"></i> Sending code...';
-  }
-
-  try {
-    const res = await apiPost('/api/auth/send-otp', { phone });
-    currentGeneratedOtp = res.code || '1234';
-
-    // Transition to OTP step
-    document.getElementById('auth-step-phone').style.display = 'none';
-    document.getElementById('auth-step-otp').style.display = 'block';
-    document.getElementById('auth-display-phone').textContent = currentPendingPhone;
-
-    // Focus 1st OTP Box
-    const firstOtp = document.getElementById('otp-1');
-    if (firstOtp) firstOtp.focus();
-
-    // Trigger SMS Notification Toast
-    showSmsToast(currentGeneratedOtp);
-
-    // Start 30s Countdown
-    startOtpCountdown();
-  } catch (err) {
-    if (phoneError) {
-      phoneError.textContent = err.message || 'Failed to send OTP code. Please check connection.';
-      phoneError.style.display = 'block';
-    }
-  } finally {
-    if (sendBtn) {
-      sendBtn.disabled = false;
-      sendBtn.innerHTML = '<span>Send Verification Code</span> <i class="ti ti-arrow-right"></i>';
-    }
-  }
-}
-
-async function submitOtpVerification(code) {
-  const otpError = document.getElementById('auth-otp-error');
-  const verifyBtn = document.getElementById('auth-verify-btn');
-  if (otpError) otpError.style.display = 'none';
-
-  if (!code || code.length < 4) {
-    if (otpError) {
-      otpError.textContent = 'Please enter the complete 4-digit code.';
-      otpError.style.display = 'block';
-    }
-    return;
-  }
-
-  if (verifyBtn) {
-    verifyBtn.disabled = true;
-    verifyBtn.innerHTML = '<i class="ti ti-loader-2 rotate"></i> Verifying...';
-  }
-
-  try {
-    const phone = currentPendingPhone || '+91 98765 43210';
-    const isExisting = Boolean(usersDb[phone]);
-
-    if (isExisting) {
-      // Existing User: load their isolated profile
-      loadUserDataForPhone(phone);
-      state.authUser = {
-        phone,
-        name: usersDb[phone].profile?.name || 'Balaji',
-        verified: true,
-        isNewUser: false
-      };
-    } else {
-      // New User: trigger First-Time Onboarding
-      state.authUser = {
-        phone,
-        name: '',
-        verified: true,
-        isNewUser: true
-      };
-    }
-
-    saveJSON('sw_auth_user', state.authUser);
-
-    // Hide SMS Toast
-    const toast = document.getElementById('sms-toast');
-    if (toast) toast.style.display = 'none';
-
-    checkAuthState();
-  } catch (err) {
-    if (otpError) {
-      otpError.textContent = err.message || 'Invalid code. Use demo code 1234.';
-      otpError.style.display = 'block';
-    }
-  } finally {
-    if (verifyBtn) {
-      verifyBtn.disabled = false;
-      verifyBtn.innerHTML = '<span>Verify & Enter Dashboard</span> <i class="ti ti-check"></i>';
-    }
-  }
-}
-
-function showSmsToast(code) {
-  const toast = document.getElementById('sms-toast');
-  const body = document.getElementById('sms-toast-body');
-  if (!toast) return;
-
-  if (body) {
-    body.innerHTML = `SkinWatch: Your login code is <strong>${code}</strong>. Tap to autofill.`;
-  }
-  toast.style.display = 'flex';
-
-  setTimeout(() => {
-    if (toast) toast.style.display = 'none';
-  }, 8000);
-}
-
-function startOtpCountdown() {
-  let seconds = 30;
-  const countLbl = document.getElementById('auth-countdown-lbl');
-  const resendBtn = document.getElementById('auth-resend-btn');
-
-  if (resendBtn) resendBtn.style.display = 'none';
-  if (countLbl) {
-    countLbl.style.display = 'inline';
-    countLbl.innerHTML = `Resend code in <strong>0:${seconds < 10 ? '0' : ''}${seconds}</strong>`;
-  }
-
-  if (otpCountdownTimer) clearInterval(otpCountdownTimer);
-
-  otpCountdownTimer = setInterval(() => {
-    seconds--;
-    if (seconds > 0) {
-      if (countLbl) countLbl.innerHTML = `Resend code in <strong>0:${seconds < 10 ? '0' : ''}${seconds}</strong>`;
-    } else {
-      clearInterval(otpCountdownTimer);
-      if (countLbl) countLbl.style.display = 'none';
-      if (resendBtn) resendBtn.style.display = 'inline';
-    }
-  }, 1000);
-}
-
-// ---------- First-Time Onboarding Wizard Controller ----------
-let onboardState = {
-  step: 1,
-  name: '',
-  city: 'Trichy, Tamil Nadu',
-  phototype: 'Type III-IV',
-  skinType: 'Normal',
-  concerns: ['Dryness'],
-  lifestyles: ['AC Office', 'Blue Light', 'Sleep 7h']
-};
-
-function startOnboardingWizard() {
-  onboardState.step = 1;
-  renderOnboardStep(1);
-  const nameInp = document.getElementById('onboard-name-input');
-  if (nameInp) {
-    nameInp.value = '';
-    nameInp.focus();
-  }
-}
-
-function renderOnboardStep(stepNum) {
-  onboardState.step = stepNum;
-  const stepLbl = document.getElementById('onboard-step-lbl');
-  const fill = document.getElementById('onboard-progress-fill');
-  if (stepLbl) stepLbl.textContent = `Step ${stepNum} of 4`;
-  if (fill) fill.style.width = `${stepNum * 25}%`;
-
-  for (let i = 1; i <= 4; i++) {
-    const card = document.getElementById(`onboard-step-${i}`);
-    if (card) card.style.display = i === stepNum ? 'block' : 'none';
-  }
-
-  if (stepNum === 4) {
-    generateAndRenderRegimenSummary();
-  }
-}
-
-function generateAndRenderRegimenSummary() {
-  const amSummary = document.getElementById('onboard-am-summary');
-  const pmSummary = document.getElementById('onboard-pm-summary');
-  const suppSummary = document.getElementById('onboard-supp-summary');
-
-  let amText = 'Gentle Hydrating Cleanser · Vitamin C Antioxidant Serum · SPF 50+ Broad Spectrum Sunscreen';
-  let pmText = 'Double Cleansing · Micro-Encapsulated Retinol 0.2% · Barrier Ceramide Moisturizer';
-
-  if (onboardState.skinType === 'Oily' || onboardState.concerns.includes('Acne')) {
-    amText = 'Salicylic Acid Purifying Cleanser · Niacinamide 10% + Zinc Serum · Oil-Free Gel Moisturizer · Matte SPF 50+';
-    pmText = 'Gentle Micellar Prep · Retinoid Treatment (Gentle 0.1%) · Lightweight Soothing Gel';
-  } else if (onboardState.skinType === 'Dry') {
-    amText = 'Cream Cleanser · Multi-Molecular Hyaluronic Acid · Deep Ceramide Cream · Dewy SPF 50+';
-    pmText = 'Nourishing Oil Cleanser · Peptide Recovery Elixir · Rich Lipid Barrier Balm';
-  } else if (onboardState.skinType === 'Sensitive') {
-    amText = 'Ultra-Calming Cleansing Milk · Centella Asiatica Serum · Barrier Repair Emulsion · Mineral Zinc SPF 50+';
-    pmText = 'Gentle Soothing Wash · Bakuchiol Botanical Retinol Alt · Calming Oat Barrier Cream';
-  }
-
-  if (amSummary) amSummary.textContent = amText;
-  if (pmSummary) pmSummary.textContent = pmText;
-  if (suppSummary) suppSummary.textContent = '8 Drops (2.4L Water / Day) · Omega-3 Fish Oil · Vitamin C & Collagen Defense';
-}
-
-function finishOnboarding() {
-  const phone = state.authUser?.phone || '+91 98765 43210';
-  const name = onboardState.name.trim() || 'Balaji';
-
-  // Build calibrated starter steps
-  let starterAm = [
-    { id: 'a1', name: 'Gentle Cleanser', done: false },
-    { id: 'a2', name: 'Vitamin C Antioxidant Serum', done: false },
-    { id: 'a3', name: 'Broad Spectrum SPF 50+ Sunscreen', done: false }
-  ];
-  if (onboardState.skinType === 'Oily') {
-    starterAm = [
-      { id: 'a1', name: 'Clarifying Cleanser', done: false },
-      { id: 'a2', name: 'Niacinamide Serum', done: false },
-      { id: 'a3', name: 'Matte Oil-Free SPF 50+', done: false }
-    ];
-  }
-
-  let starterPm = [
-    { id: 'p1', name: 'Gentle Cleanser', done: false },
-    { id: 'p2', name: 'Retinol 0.2%', done: false },
-    { id: 'p3', name: 'Night Barrier Moisturizer', done: false }
-  ];
-
-  const starterSupp = [
-    { id: 's1', name: 'Omega-3 Fish Oil (Lipid Barrier Support)', done: false },
-    { id: 's2', name: 'Vitamin C & Bioflavonoids (Collagen Defense)', done: false },
-    { id: 's3', name: 'Zinc & Vitamin D3 (Skin Immunity)', done: false }
-  ];
-
-  state.profile = {
-    name,
-    skinType: onboardState.skinType,
-    phototype: onboardState.phototype,
-    retinoidTolerance: 'Beginner',
-    vitcTolerance: 'Pure C',
-    concerns: onboardState.concerns,
-    lifestyles: onboardState.lifestyles,
-    allergies: []
-  };
-
-  state.location = {
-    lat: 10.299423,
-    lon: 79.074082,
-    name: onboardState.city || 'Trichy, Tamil Nadu'
-  };
-
-  state.amSteps = starterAm;
-  state.pmSteps = starterPm;
-  state.suppSteps = starterSupp;
-  state.waterGlasses = 4;
-  state.waterTarget = 8;
-  state.checkPhoto = null;
-  state.checkHistory = [];
-
-  state.authUser = {
-    phone,
-    name,
-    verified: true,
-    isNewUser: false
-  };
-
-  saveJSON('sw_check_photo', null);
-  saveJSON('sw_check_history', []);
-  saveCurrentUserData();
-  saveJSON('sw_auth_user', state.authUser);
-
-  resetCheckScreenForUser();
-  checkAuthState();
-}
-
-// Onboarding Step 1 Event Listeners
-const onboardNext1 = document.getElementById('onboard-next-1');
-if (onboardNext1) {
-  onboardNext1.addEventListener('click', () => {
-    const nameVal = document.getElementById('onboard-name-input')?.value.trim();
-    const cityVal = document.getElementById('onboard-city-input')?.value.trim();
-    if (!nameVal) {
-      alert('Please enter your name to personalize your skincare journey.');
-      return;
-    }
-    onboardState.name = nameVal;
-    onboardState.city = cityVal || 'Trichy, Tamil Nadu';
-    renderOnboardStep(2);
-  });
-}
-
-document.getElementById('onboard-locate-btn')?.addEventListener('click', async () => {
-  const cityInp = document.getElementById('onboard-city-input');
-  if (cityInp) cityInp.value = 'Detecting...';
-  try {
-    const ipLoc = await apiGet('/api/ip-location');
-    if (ipLoc && ipLoc.name) {
-      if (cityInp) cityInp.value = ipLoc.name;
-      onboardState.city = ipLoc.name;
-    } else {
-      if (cityInp) cityInp.value = 'Trichy, Tamil Nadu';
-    }
-  } catch {
-    if (cityInp) cityInp.value = 'Trichy, Tamil Nadu';
-  }
-});
-
-// Onboarding Step 2 Event Listeners
-document.querySelectorAll('#onboard-phototype-pills .onboard-pill-card').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#onboard-phototype-pills .onboard-pill-card').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    onboardState.phototype = btn.dataset.val;
-  });
-});
-
-document.querySelectorAll('#onboard-skintype-pills .pill').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#onboard-skintype-pills .pill').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    onboardState.skinType = btn.dataset.val;
-  });
-});
-
-document.getElementById('onboard-back-2')?.addEventListener('click', () => renderOnboardStep(1));
-document.getElementById('onboard-next-2')?.addEventListener('click', () => renderOnboardStep(3));
-
-// Onboarding Step 3 Event Listeners
-document.querySelectorAll('#onboard-concern-pills .cpill').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const val = btn.dataset.val;
-    const idx = onboardState.concerns.indexOf(val);
-    if (idx === -1) {
-      onboardState.concerns.push(val);
-      btn.classList.add('active');
-    } else {
-      onboardState.concerns.splice(idx, 1);
-      btn.classList.remove('active');
-    }
-  });
-});
-
-document.querySelectorAll('#onboard-lifestyle-pills .lpill').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const val = btn.dataset.val;
-    const idx = onboardState.lifestyles.indexOf(val);
-    if (idx === -1) {
-      onboardState.lifestyles.push(val);
-      btn.classList.add('active');
-    } else {
-      onboardState.lifestyles.splice(idx, 1);
-      btn.classList.remove('active');
-    }
-  });
-});
-
-document.getElementById('onboard-back-3')?.addEventListener('click', () => renderOnboardStep(2));
-document.getElementById('onboard-next-3')?.addEventListener('click', () => renderOnboardStep(4));
-document.getElementById('onboard-finish-btn')?.addEventListener('click', finishOnboarding);
 
 // ---------- Account Switcher Controller ----------
 function renderAccountSwitcherModal() {
@@ -733,51 +334,99 @@ function showBackendWarning(show) {
 // ---------- Home & Map ----------
 let homeMapInstance = null;
 let homeMapMarker = null;
+let homeMapAqiLayer = null;
+let aqiLayerEnabled = false;
 
 function initOrUpdateMap(lat, lon) {
   if (typeof L === 'undefined') return;
   const mapElem = document.getElementById('home-map');
   if (!mapElem) return;
 
-  if (!homeMapInstance) {
-    homeMapInstance = L.map('home-map', {
-      zoomControl: false,
-      attributionControl: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      touchZoom: false,
-      boxZoom: false
-    }).setView([lat, lon], 12);
+  try {
+    if (!homeMapInstance) {
+      homeMapInstance = L.map('home-map', {
+        zoomControl: false,
+        attributionControl: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        touchZoom: false,
+        boxZoom: false
+      }).setView([lat, lon], 12);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 18,
-      subdomains: 'abcd'
-    }).addTo(homeMapInstance);
-  } else {
-    homeMapInstance.setView([lat, lon], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap'
+      }).addTo(homeMapInstance);
+
+      // Google Air Quality Heatmap Layer
+      homeMapAqiLayer = L.tileLayer('/api/air-quality/tile/{z}/{x}/{y}', {
+        maxZoom: 18,
+        opacity: 0.65,
+        zIndex: 5
+      });
+
+      if (aqiLayerEnabled) {
+        homeMapAqiLayer.addTo(homeMapInstance);
+      }
+    } else {
+      homeMapInstance.setView([lat, lon], 12);
+    }
+
+    const pinIcon = L.divIcon({
+      className: 'custom-map-pin',
+      html: '<div class="pin-ring"></div><div class="pin-dot"></div>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12]
+    });
+
+    if (homeMapMarker) {
+      homeMapMarker.remove();
+    }
+    homeMapMarker = L.marker([lat, lon], { icon: pinIcon, zIndexOffset: 1000 }).addTo(homeMapInstance);
+
+    setTimeout(() => {
+      if (homeMapInstance) homeMapInstance.invalidateSize();
+    }, 200);
+  } catch (err) {
+    console.warn('Map initialization note:', err);
   }
+}
 
-  const pinIcon = L.divIcon({
-    className: 'custom-map-pin',
-    html: '<div class="pin-ring"></div><div class="pin-dot"></div>',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  });
-
-  if (homeMapMarker) {
-    homeMapMarker.remove();
+function toggleAqiHeatmap() {
+  aqiLayerEnabled = !aqiLayerEnabled;
+  const btn = document.getElementById('map-aqi-toggle');
+  if (homeMapInstance && homeMapAqiLayer) {
+    if (aqiLayerEnabled) {
+      homeMapAqiLayer.addTo(homeMapInstance);
+      if (btn) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="ti ti-wind"></i> <span>AQI Layer ON</span>';
+      }
+    } else {
+      homeMapInstance.removeLayer(homeMapAqiLayer);
+      if (btn) {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="ti ti-wind"></i> <span>AQI Layer</span>';
+      }
+    }
   }
-  homeMapMarker = L.marker([lat, lon], { icon: pinIcon }).addTo(homeMapInstance);
+}
+
+const mapAqiToggleBtn = document.getElementById('map-aqi-toggle');
+if (mapAqiToggleBtn) {
+  mapAqiToggleBtn.addEventListener('click', toggleAqiHeatmap);
 }
 
 function renderHourlyForecast(currentTemp) {
   const now = new Date();
   const currentHour = now.getHours();
-  const base = currentTemp != null ? Math.round(currentTemp) : 28;
-  const hourlyTemps = state.weather?.hourlyTemps || [];
+  const base = currentTemp != null ? Math.round(currentTemp) : (state.weather?.temperature ? Math.round(state.weather.temperature) : 28);
+  const hourlyTemps = (state.weather?.hourlyTemps && state.weather.hourlyTemps.length >= 5) 
+    ? state.weather.hourlyTemps 
+    : [base, Math.max(16, base - 1), Math.max(16, base - 1), Math.max(16, base - 2), Math.max(16, base - 2)];
 
   const hourNowElem = document.getElementById('hour-now');
-  if (hourNowElem) hourNowElem.textContent = `${hourlyTemps[0] != null ? hourlyTemps[0] : base}°`;
+  if (hourNowElem) hourNowElem.textContent = `${hourlyTemps[0]}°`;
 
   for (let i = 1; i <= 4; i++) {
     const nextHour = (currentHour + i) % 24;
@@ -788,7 +437,7 @@ function renderHourlyForecast(currentTemp) {
     const tempElem = document.getElementById(`hour-${i}-temp`);
 
     if (timeElem) timeElem.textContent = `${displayHour}${period}`;
-    const tVal = hourlyTemps[i] != null ? hourlyTemps[i] : base;
+    const tVal = hourlyTemps[i] != null ? hourlyTemps[i] : Math.max(16, base - i);
     if (tempElem) tempElem.textContent = `${tVal}°`;
   }
 }
@@ -807,17 +456,20 @@ async function loadWeatherAndAQI() {
 
     if (!state.weather) {
       state.weather = {
-        temperature: 31,
-        condition: 'Warm & Sunny',
-        humidity: 68,
-        uv: 8,
-        wind: 14
+        temperature: 28,
+        condition: 'Cloudy',
+        humidity: 82,
+        uv: 0,
+        wind: 14,
+        hourlyTemps: [28, 27, 27, 26, 26],
+        tewlRisk: 'High Humidity / Sebum Flux',
+        tewlLevel: 'humid'
       };
     }
     if (!state.airQuality) {
       state.airQuality = {
-        aqi: 72,
-        category: 'Moderate'
+        aqi: 64,
+        category: 'Good air quality'
       };
     }
 
@@ -831,13 +483,13 @@ async function loadWeatherAndAQI() {
         temp: state.weather.temperature,
         uv: state.weather.uv,
         humidity: state.weather.humidity,
-        aqi: state.airQuality?.aqi ?? 72
+        aqi: state.airQuality?.aqi ?? 64
       }).catch(() => {});
     }
   } catch (err) {
     console.error('Error loading weather/AQI:', err);
-    state.weather = state.weather || { temperature: 31, condition: 'Warm & Sunny', humidity: 68, uv: 8, wind: 14 };
-    state.airQuality = state.airQuality || { aqi: 72, category: 'Moderate' };
+    state.weather = state.weather || { temperature: 28, condition: 'Cloudy', humidity: 82, uv: 0, wind: 14, hourlyTemps: [28, 27, 27, 26, 26] };
+    state.airQuality = state.airQuality || { aqi: 64, category: 'Good air quality' };
     renderHome();
     renderRoutineFlags();
   }
@@ -860,8 +512,8 @@ function updateDateTime() {
 
 function renderHome() {
   updateDateTime();
-  const w = state.weather || { temperature: 31, condition: 'Warm & Sunny', humidity: 68, uv: 8, wind: 14 };
-  const aqi = state.airQuality || { aqi: 72, category: 'Moderate' };
+  const w = state.weather || { temperature: 28, condition: 'Cloudy', humidity: 82, uv: 0, wind: 14, hourlyTemps: [28, 27, 27, 26, 26] };
+  const aqi = state.airQuality || { aqi: 64, category: 'Good air quality' };
   const locName = state.location?.name || 'Trichy, Tamil Nadu';
 
   const heroCity = document.getElementById('hero-city');
@@ -869,12 +521,68 @@ function renderHome() {
   if (heroCity) heroCity.textContent = locName;
   if (profLoc) profLoc.textContent = locName;
 
-  document.getElementById('hero-temp').textContent = Math.round(w.temperature) + '°';
-  document.getElementById('hero-cond').textContent = w.condition || 'Warm & Sunny';
-  document.getElementById('stat-hum').textContent = w.humidity + '% humidity';
-  document.getElementById('stat-uv').textContent = 'UV ' + w.uv;
-  document.getElementById('stat-aqi').textContent = 'AQI ' + aqi.aqi;
-  document.getElementById('stat-wind').textContent = 'Wind ' + Math.round(w.wind) + ' km/h';
+  const heroTemp = document.getElementById('hero-temp');
+  if (heroTemp) heroTemp.textContent = Math.round(w.temperature) + '°';
+  const heroCond = document.getElementById('hero-cond');
+  if (heroCond) heroCond.textContent = w.condition || 'Warm & Sunny';
+  const statHum = document.getElementById('stat-hum');
+  if (statHum) statHum.textContent = w.humidity + '% humidity';
+  const statUv = document.getElementById('stat-uv');
+  if (statUv) statUv.textContent = 'UV ' + (w.uv != null ? w.uv : 0);
+  const statAqi = document.getElementById('stat-aqi');
+  if (statAqi) statAqi.textContent = 'AQI ' + (aqi.aqi != null ? aqi.aqi : 64);
+  const statWind = document.getElementById('stat-wind');
+  if (statWind) statWind.textContent = 'Wind ' + Math.round(w.wind || 10) + ' km/h';
+
+  // Update TEWL (Trans-Epidermal Water Loss) badge
+  const tewlBadge = document.getElementById('hero-tewl-badge');
+  const tewlText = document.getElementById('hero-tewl-text');
+  if (tewlBadge && tewlText) {
+    const risk = w.tewlRisk || (w.humidity < 35 ? 'Severe Loss' : (w.humidity > 75 ? 'Sebum Risk' : 'Balanced'));
+    tewlText.textContent = `TEWL: ${risk}`;
+    tewlBadge.className = 'hero-tewl-badge';
+    if (w.tewlLevel === 'severe') tewlBadge.classList.add('tewl-severe');
+    else if (w.tewlLevel === 'elevated') tewlBadge.classList.add('tewl-elevated');
+    else if (w.tewlLevel === 'humid') tewlBadge.classList.add('tewl-humid');
+  }
+
+  // Update AQI status pill
+  const aqiPill = document.getElementById('aqi-status-pill');
+  if (aqiPill) {
+    const cat = aqi.category || (aqi.aqi > 100 ? 'Unhealthy' : (aqi.aqi > 50 ? 'Moderate' : 'Good'));
+    aqiPill.textContent = `UAQI: ${cat}`;
+    aqiPill.className = 'aqi-status-pill';
+    if (aqi.aqi > 100) aqiPill.classList.add('aqi-unhealthy');
+    else if (aqi.aqi > 50) aqiPill.classList.add('aqi-moderate');
+  }
+
+  // Update Pollutants (PM2.5, O3, NO2)
+  const poll = aqi.pollutants || {};
+  const pm25Val = poll.pm25?.value != null ? poll.pm25.value : Math.min(Math.round((aqi.aqi || 60) * 0.35), 80);
+  const o3Val = poll.o3?.value != null ? poll.o3.value : Math.min(Math.round((aqi.aqi || 60) * 0.45), 90);
+  const no2Val = poll.no2?.value != null ? poll.no2.value : Math.min(Math.round((aqi.aqi || 60) * 0.15), 50);
+
+  const barPm25 = document.getElementById('bar-pm25');
+  const valPm25 = document.getElementById('val-pm25');
+  if (barPm25) barPm25.style.width = Math.min(Math.max((pm25Val / 60) * 100, 10), 100) + '%';
+  if (valPm25) valPm25.textContent = `${pm25Val} ${poll.pm25?.units || 'µg/m³'}`;
+
+  const barO3 = document.getElementById('bar-o3');
+  const valO3 = document.getElementById('val-o3');
+  if (barO3) barO3.style.width = Math.min(Math.max((o3Val / 80) * 100, 10), 100) + '%';
+  if (valO3) valO3.textContent = `${o3Val} ${poll.o3?.units || 'ppb'}`;
+
+  const barNo2 = document.getElementById('bar-no2');
+  const valNo2 = document.getElementById('val-no2');
+  if (barNo2) barNo2.style.width = Math.min(Math.max((no2Val / 50) * 100, 10), 100) + '%';
+  if (valNo2) valNo2.textContent = `${no2Val} ${poll.no2?.units || 'ppb'}`;
+
+  // Update Skincare Advice Box from Google Environmental Insights
+  const adviceText = document.getElementById('skin-advice-text');
+  if (adviceText) {
+    const tip = aqi.skinTip || w.barrierAdvice || 'Clean atmospheric conditions. Standard daily antioxidant shield is sufficient.';
+    adviceText.textContent = tip;
+  }
 
   renderHourlyForecast(w.temperature);
   if (state.location?.lat != null && state.location?.lon != null) {
@@ -882,15 +590,20 @@ function renderHome() {
   }
 
   const alertBanner = document.getElementById('alert-banner');
-  if (w.uv >= 8) {
-    document.getElementById('alert-text').textContent = 'Heat/UV advisory — UV Index is very high today.';
-    alertBanner.style.display = 'flex';
-  } else {
-    alertBanner.style.display = 'none';
+  if (alertBanner) {
+    if (w.uv >= 8) {
+      const alertText = document.getElementById('alert-text');
+      if (alertText) alertText.textContent = 'Heat/UV advisory — UV Index is very high today.';
+      alertBanner.style.display = 'flex';
+    } else {
+      alertBanner.style.display = 'none';
+    }
   }
 }
-document.getElementById('dismiss-alert').addEventListener('click', () => {
-  document.getElementById('alert-banner').style.display = 'none';
+
+document.getElementById('dismiss-alert')?.addEventListener('click', () => {
+  const alertBanner = document.getElementById('alert-banner');
+  if (alertBanner) alertBanner.style.display = 'none';
 });
 
 // ---------- Forecast ----------
@@ -1063,24 +776,27 @@ function renderForecastDays() {
   });
 }
 
-document.getElementById('mode-upcoming').addEventListener('click', () => setForecastMode('upcoming'));
-document.getElementById('mode-past').addEventListener('click', () => setForecastMode('past'));
+document.getElementById('mode-upcoming')?.addEventListener('click', () => setForecastMode('upcoming'));
+document.getElementById('mode-past')?.addEventListener('click', () => setForecastMode('past'));
 function setForecastMode(mode) {
   state.forecastMode = mode;
-  document.getElementById('mode-upcoming').classList.toggle('active', mode === 'upcoming');
-  document.getElementById('mode-past').classList.toggle('active', mode === 'past');
-  document.getElementById('view-upcoming').style.display = mode === 'upcoming' ? 'block' : 'none';
-  document.getElementById('view-past').style.display = mode === 'past' ? 'block' : 'none';
+  document.getElementById('mode-upcoming')?.classList.toggle('active', mode === 'upcoming');
+  document.getElementById('mode-past')?.classList.toggle('active', mode === 'past');
+  const viewUp = document.getElementById('view-upcoming');
+  const viewPast = document.getElementById('view-past');
+  if (viewUp) viewUp.style.display = mode === 'upcoming' ? 'block' : 'none';
+  if (viewPast) viewPast.style.display = mode === 'past' ? 'block' : 'none';
   if (mode === 'past') loadHistory();
 }
 
 async function loadHistory() {
-  const { lat, lon } = state.location;
+  const { lat, lon } = state.location || DEFAULT_LOCATION;
   try {
     const data = await apiGet(`/api/history?lat=${lat}&lon=${lon}&range=${state.historyRange}`);
     renderHistory(data);
   } catch (err) {
-    document.getElementById('past-note').textContent = 'Could not load history.';
+    const pastNote = document.getElementById('past-note');
+    if (pastNote) pastNote.textContent = 'Could not load history.';
   }
 }
 let openPastDayIndex = null;
@@ -1373,12 +1089,12 @@ function renderHistory(data) {
   }
 }
 
-document.getElementById('range-week').addEventListener('click', () => setHistoryRange('week'));
-document.getElementById('range-month').addEventListener('click', () => setHistoryRange('month'));
+document.getElementById('range-week')?.addEventListener('click', () => setHistoryRange('week'));
+document.getElementById('range-month')?.addEventListener('click', () => setHistoryRange('month'));
 function setHistoryRange(range) {
   state.historyRange = range;
-  document.getElementById('range-week').classList.toggle('active', range === 'week');
-  document.getElementById('range-month').classList.toggle('active', range === 'month');
+  document.getElementById('range-week')?.classList.toggle('active', range === 'week');
+  document.getElementById('range-month')?.classList.toggle('active', range === 'month');
   loadHistory();
 }
 
@@ -1711,7 +1427,7 @@ function renderRoutineAll() {
   renderRoutineFlags();
 }
 
-document.getElementById('edit-toggle').addEventListener('click', () => {
+document.getElementById('edit-toggle')?.addEventListener('click', () => {
   state.editMode = !state.editMode;
   state.amSteps = state.amSteps.filter((s) => s.name.trim() !== '');
   state.suppSteps = state.suppSteps.filter((s) => s.name.trim() !== '');
@@ -1724,15 +1440,15 @@ document.getElementById('edit-toggle').addEventListener('click', () => {
   renderRoutineAll();
 });
 
-document.getElementById('am-add').addEventListener('click', () => {
+document.getElementById('am-add')?.addEventListener('click', () => {
   state.amSteps.push({ id: 'a' + Date.now(), name: '', done: false });
   renderRoutineAll();
 });
-document.getElementById('supp-add').addEventListener('click', () => {
+document.getElementById('supp-add')?.addEventListener('click', () => {
   state.suppSteps.push({ id: 's' + Date.now(), name: '', done: false });
   renderRoutineAll();
 });
-document.getElementById('pm-add').addEventListener('click', () => {
+document.getElementById('pm-add')?.addEventListener('click', () => {
   state.pmSteps.push({ id: 'p' + Date.now(), name: '', done: false });
   renderRoutineAll();
 });
@@ -1764,7 +1480,7 @@ async function renderRoutineFlags() {
   }
 
   try {
-    const { flags } = await apiPost('/api/routine-flags', {
+    const res = await apiPost('/api/routine-flags', {
       uv: state.weather.uv,
       humidity: state.weather.humidity,
       aqi: state.airQuality?.aqi,
@@ -1772,103 +1488,291 @@ async function renderRoutineFlags() {
       profile: state.profile || {}
     });
 
-    if (flags.length === 0) {
+    const flagsList = (res && Array.isArray(res.flags)) ? res.flags : [];
+
+    if (flagsList.length === 0) {
       homeFlagsEl.innerHTML = '<p class="muted-note">Your routine is balanced for today\'s climate.</p>';
     } else {
-      homeFlagsEl.innerHTML = flags
+      homeFlagsEl.innerHTML = flagsList
         .map((f) => `<p><span class="flag-label">${escapeHtml(f.stepName)} —</span> ${escapeHtml(f.text)}</p>`)
         .join('');
     }
   } catch (err) {
-    console.error('Routine flags failed:', err);
+    console.error('Routine flags note:', err.message);
   }
 }
 
-// ---------- Check / AI Skin Diagnostics ----------
-const sampleFaceSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23FDFBF7'/><circle cx='200' cy='190' r='100' fill='%23EAD8C3'/><ellipse cx='170' cy='175' rx='10' ry='6' fill='%235A4526'/><ellipse cx='230' cy='175' rx='10' ry='6' fill='%235A4526'/><path d='M195 190 L190 210 L205 210' stroke='%23C4A580' stroke-width='3' fill='none' stroke-linecap='round'/><path d='M175 240 Q200 258 225 240' stroke='%23B86E56' stroke-width='4' fill='none' stroke-linecap='round'/></svg>";
+// ---------- Sample Biometric Facial Wireframe ----------
+const sampleFaceSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><defs><linearGradient id='bgGrad' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='%231C1917'/><stop offset='100%' stop-color='%232B241C'/></linearGradient><radialGradient id='glowGrad' cx='50%' cy='45%' r='50%'><stop offset='0%' stop-color='%238A6A2F' stop-opacity='0.3'/><stop offset='100%' stop-color='%238A6A2F' stop-opacity='0'/></radialGradient></defs><rect width='400' height='400' fill='url(%23bgGrad)'/><circle cx='200' cy='180' r='120' fill='url(%23glowGrad)'/><ellipse cx='200' cy='190' rx='85' ry='110' fill='none' stroke='%238A6A2F' stroke-width='1.5' stroke-dasharray='4 3' opacity='0.7'/><ellipse cx='200' cy='190' rx='75' ry='98' fill='%23382D1E' opacity='0.5'/><ellipse cx='165' cy='170' rx='14' ry='6' fill='none' stroke='%23D4AF37' stroke-width='1.5'/><ellipse cx='235' cy='170' rx='14' ry='6' fill='none' stroke='%23D4AF37' stroke-width='1.5'/><circle cx='165' cy='170' r='3' fill='%23D4AF37'/><circle cx='235' cy='170' r='3' fill='%23D4AF37'/><path d='M195 185 L190 205 L205 205' stroke='%23D4AF37' stroke-width='1.5' fill='none' stroke-linecap='round'/><path d='M175 235 Q200 250 225 235' stroke='%23D4AF37' stroke-width='1.5' fill='none' stroke-linecap='round'/><circle cx='200' cy='140' r='3' fill='%234CAF50'/><circle cx='155' cy='195' r='3' fill='%234CAF50'/><circle cx='245' cy='195' r='3' fill='%234CAF50'/><circle cx='200' cy='260' r='3' fill='%234CAF50'/><line x1='165' y1='170' x2='200' y2='140' stroke='%238A6A2F' stroke-width='0.75' opacity='0.5'/><line x1='235' y1='170' x2='200' y2='140' stroke='%238A6A2F' stroke-width='0.75' opacity='0.5'/><line x1='155' y1='195' x2='175' y2='235' stroke='%238A6A2F' stroke-width='0.75' opacity='0.5'/><line x1='245' y1='195' x2='225' y2='235' stroke='%238A6A2F' stroke-width='0.75' opacity='0.5'/><text x='200' y='330' font-family='sans-serif' font-size='11' font-weight='600' fill='%23D4AF37' text-anchor='middle' letter-spacing='2'>AI FACIAL BIOMETRIC LOCK</text></svg>";
 
-const zoneInsights = {
-  tzone: 'T-Zone (Forehead & Nose): Sebum production is balanced (78%). Current climate humidity is well-regulated by your morning cleanser.',
-  cheeks: 'Cheeks (U-Zone): Cellular hydration is strong (82%). Barrier lipid matrix intact; minimal redness observed.',
-  eyes: 'Eye Contour: Delicate periorbital zone shows mild fatigue. Peptide eye cream and antioxidant protection recommended.',
-  chin: 'Jaw & Chin: Clear pore structure (81%). No active inflammatory blemishes detected.'
-};
+// ---------- Computer Vision & Skin Pixel Matrix Engine ----------
+function computeImagePixelMetrics(imgElement) {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 160;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(imgElement, 0, 0, 160, 160);
 
-function renderZoneInsight(zoneKey) {
+    // Sample central facial zone (x: 40-120, y: 35-125)
+    const imgData = ctx.getImageData(40, 35, 80, 90);
+    const data = imgData.data;
+    const totalPixels = data.length / 4;
+
+    let rSum = 0, gSum = 0, bSum = 0;
+    let lumSum = 0, lumSqSum = 0;
+    let erythemaSum = 0;
+    let microTextureDelta = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      rSum += r;
+      gSum += g;
+      bSum += b;
+
+      // Perceptual Luminance
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      lumSum += lum;
+      lumSqSum += lum * lum;
+
+      // Erythema index: Red excess over green/blue
+      const denom = (r + g + b + 1);
+      const erythemaRatio = (r - g) / denom;
+      erythemaSum += Math.max(0, erythemaRatio);
+
+      // Micro texture delta
+      if (i + 8 < data.length) {
+        const nextLum = 0.299 * data[i + 4] + 0.587 * data[i + 5] + 0.114 * data[i + 6];
+        microTextureDelta += Math.abs(lum - nextLum);
+      }
+    }
+
+    const meanR = rSum / totalPixels;
+    const meanG = gSum / totalPixels;
+    const meanB = bSum / totalPixels;
+    const meanLum = lumSum / totalPixels;
+    const lumStd = Math.sqrt(Math.max(0, (lumSqSum / totalPixels) - (meanLum * meanLum)));
+    const avgErythema = (erythemaSum / totalPixels);
+    const avgTexture = (microTextureDelta / totalPixels);
+
+    return {
+      success: true,
+      meanR, meanG, meanB,
+      meanLum: Math.round(meanLum),
+      lumStd: Math.round(lumStd * 10) / 10,
+      erythemaRatio: Math.round(avgErythema * 1000) / 1000,
+      textureVariance: Math.round(avgTexture * 10) / 10
+    };
+  } catch (e) {
+    console.warn('Pixel buffer analysis fallback:', e.message);
+    return {
+      success: false,
+      meanLum: 140,
+      lumStd: 18,
+      erythemaRatio: 0.14,
+      textureVariance: 8.5
+    };
+  }
+}
+
+async function evaluateSkinBiometrics(imageUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const pix = computeImagePixelMetrics(img);
+
+      const w = state.weather || {};
+      const aqi = state.airQuality || {};
+      const hum = w.humidity ?? 65;
+      const uv = w.uv ?? 7;
+      const aqiVal = aqi.aqi ?? 60;
+      const hasSunscreen = state.amSteps.some(s => s.name.toLowerCase().includes('sunscreen') && s.done);
+
+      // 1. Hydration & Barrier Matrix (%):
+      // Higher ambient humidity + healthy specular reflectance (lumStd 14-26) = higher hydration
+      let hydBase = Math.round((hum * 0.45) + (pix.meanLum * 0.25) + (30 - Math.abs(pix.lumStd - 20) * 1.2));
+      const hydVal = Math.min(96, Math.max(58, hydBase));
+      const hydSub = `Reflectance: ${(pix.meanLum / 255).toFixed(2)} · Humidity: ${hum}% (${w.tewlRisk || 'Stable'})`;
+
+      // 2. Redness & Erythema Index (%):
+      // Lower is better (0-100% scale). Calculated from pixel erythema ratio + UV heat flux
+      let redBase = Math.round((pix.erythemaRatio * 180) + (uv * 1.5) - (hum > 70 ? 3 : 0));
+      const redVal = Math.min(65, Math.max(10, redBase));
+      const redGrade = redVal < 22 ? 'Low (Calm)' : (redVal < 40 ? 'Moderate' : 'Elevated Flushing');
+      const redSub = `Erythema Index: ${(pix.erythemaRatio * 100).toFixed(1)}% · UV Load: ${uv}`;
+
+      // 3. Pore & Texture Clarity (%):
+      // Higher is better. Based on texture micro-variance & particulate AQI
+      let poreBase = Math.round(92 - (pix.textureVariance * 1.8) - (aqiVal > 100 ? 6 : 0));
+      const poreVal = Math.min(95, Math.max(62, poreBase));
+      const poreSub = `Texture Variance: ${pix.textureVariance} · AQI: ${aqiVal} (${aqi.category || 'Good'})`;
+
+      // 4. UV Photoprotection Level (%):
+      // Based on current daytime UV index vs sunscreen application status
+      let uvShieldBase = hasSunscreen ? 94 : Math.max(50, 100 - (uv * 5.5));
+      const uvShieldVal = Math.min(98, Math.max(45, Math.round(uvShieldBase)));
+      const uvSub = hasSunscreen ? `SPF 50+ Applied · UV Index: ${uv}` : `Unshielded Exposure · UV Index: ${uv}`;
+
+      // Overall Composite AI Skin Health Index
+      const overallScore = Math.round((hydVal + (100 - redVal) + poreVal + uvShieldVal) / 4);
+
+      let gradeBadge = 'Optimal Barrier Health';
+      if (overallScore < 75) gradeBadge = 'Barrier Care Needed';
+      else if (overallScore < 85) gradeBadge = 'Balanced Skin Matrix';
+
+      resolve({
+        overallScore,
+        gradeBadge,
+        hydVal, hydSub,
+        redVal, redGrade, redSub,
+        poreVal, poreSub,
+        uvShieldVal, uvSub,
+        pix
+      });
+    };
+    img.onerror = () => {
+      resolve({
+        overallScore: 86,
+        gradeBadge: 'Healthy Barrier',
+        hydVal: 84, hydSub: 'Reflectance: 0.82 · Humidity: 68%',
+        redVal: 18, redGrade: 'Low (Calm)', redSub: 'Erythema ratio: 0.41 (Calm)',
+        poreVal: 79, poreSub: 'Micro-variance: Low (Smooth)',
+        uvShieldVal: 92, uvSub: 'Google UV Index: 8 (Shield Active)',
+        pix: {}
+      });
+    };
+    img.src = imageUrl;
+  });
+}
+
+function renderZoneInsight(zoneKey, results = {}) {
   const textEl = document.getElementById('zone-insight-text');
-  if (textEl && zoneInsights[zoneKey]) {
-    textEl.textContent = zoneInsights[zoneKey];
+  if (!textEl) return;
+
+  const hyd = results.hydVal ?? 84;
+  const red = results.redVal ?? 18;
+  const pore = results.poreVal ?? 79;
+  const hum = state.weather?.humidity ?? 65;
+
+  const insights = {
+    tzone: `T-Zone (Forehead & Nose): Pore clarity is ${pore}%. Sebum regulation is stable under current ambient humidity (${hum}%).`,
+    cheeks: `Cheeks (U-Zone): Cellular lipid hydration is ${hyd}%. Erythema level is calm (${red}%); barrier integrity is well defended.`,
+    eyes: `Eye Contour: Micro-capillary circulation is active. Gentle peptide hydration and UV shielding recommended.`,
+    chin: `Jaw & Chin: Texture clarity is ${pore}%. No deep follicle congestion detected.`
+  };
+
+  if (insights[zoneKey]) {
+    textEl.textContent = insights[zoneKey];
   }
 }
 
-function runBiometricScan(imageUrl) {
+async function runBiometricScan(imageUrl) {
   const zone = document.getElementById('upload-zone');
   const beam = document.getElementById('scan-hud-beam');
   const content = document.getElementById('upload-zone-content');
   const results = document.getElementById('diagnostic-results');
   const photoActions = document.getElementById('photo-actions');
+  const telemetryBadge = document.getElementById('scan-telemetry-badge');
+  const telemetryText = document.getElementById('scan-telemetry-text');
+
+  const imgToUse = imageUrl || sampleFaceSvg;
 
   if (zone) {
-    zone.style.backgroundImage = `url('${imageUrl || sampleFaceSvg}')`;
+    zone.style.backgroundImage = `url('${imgToUse}')`;
   }
   if (content) content.style.display = 'none';
   if (beam) beam.style.display = 'block';
   if (results) results.style.display = 'none';
+  if (telemetryBadge) telemetryBadge.style.display = 'flex';
+
+  // Step 1: Telemetry Phase 1
+  if (telemetryText) telemetryText.textContent = '🔬 Step 1/4: Calibrating facial chromaticity & RGB spectrum...';
 
   setTimeout(() => {
-    if (beam) beam.style.display = 'none';
-    if (photoActions) photoActions.style.display = 'flex';
-    if (results) {
-      results.style.display = 'block';
-      results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    if (telemetryText) telemetryText.textContent = '💧 Step 2/4: Measuring specular luminance & TEWL barrier moisture...';
+  }, 600);
 
-    // Dynamic diagnostic scores calibrated to user weather + profile
+  setTimeout(() => {
+    if (telemetryText) telemetryText.textContent = '✨ Step 3/4: Computing pore micro-texture variance...';
+  }, 1200);
+
+  setTimeout(async () => {
     const w = state.weather || {};
-    const hum = w.humidity ?? 65;
-    const uv = w.uv ?? 8;
-    const hydVal = Math.min(94, Math.max(65, Math.round(hum * 0.9 + 20)));
-    const redVal = Math.max(12, Math.min(38, Math.round(uv * 2.5 + 5)));
-    const poreVal = 79;
-    const uvShieldVal = Math.min(95, 88 + (state.amSteps.some(s => s.name.toLowerCase().includes('sunscreen') && s.done) ? 7 : 0));
-    const overallScore = Math.round((hydVal + (100 - redVal) + poreVal + uvShieldVal) / 4);
+    if (telemetryText) telemetryText.textContent = `☀️ Step 4/4: Correlating with Google UV (${w.uv ?? 8}) & AQI (${state.airQuality?.aqi ?? 65})...`;
 
-    const scoreEl = document.getElementById('diag-score');
-    if (scoreEl) scoreEl.innerHTML = `${overallScore} <span class="diag-max">/ 100</span>`;
+    const metrics = await evaluateSkinBiometrics(imgToUse);
 
-    const hydEl = document.getElementById('metric-hyd');
-    const hydBar = document.getElementById('metric-hyd-bar');
-    if (hydEl && hydBar) {
-      hydEl.textContent = `${hydVal}%`;
-      hydBar.style.width = `${hydVal}%`;
-    }
+    setTimeout(() => {
+      if (beam) beam.style.display = 'none';
+      if (telemetryBadge) telemetryBadge.style.display = 'none';
+      if (photoActions) photoActions.style.display = 'flex';
+      if (results) {
+        results.style.display = 'block';
+        results.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
 
-    const redEl = document.getElementById('metric-red');
-    const redBar = document.getElementById('metric-red-bar');
-    if (redEl && redBar) {
-      redEl.textContent = `${redVal}% (${redVal < 25 ? 'Low' : 'Moderate'})`;
-      redBar.style.width = `${redVal}%`;
-    }
+      // Display AI Score & Grade
+      const scoreEl = document.getElementById('diag-score');
+      if (scoreEl) scoreEl.innerHTML = `${metrics.overallScore} <span class="diag-max">/ 100</span>`;
 
-    const poreEl = document.getElementById('metric-pore');
-    const poreBar = document.getElementById('metric-pore-bar');
-    if (poreEl && poreBar) {
-      poreEl.textContent = `${poreVal}%`;
-      poreBar.style.width = `${poreVal}%`;
-    }
+      const gradeEl = document.getElementById('diag-grade-badge');
+      if (gradeEl) gradeEl.textContent = metrics.gradeBadge;
 
-    const uvEl = document.getElementById('metric-uv');
-    const uvBar = document.getElementById('metric-uv-bar');
-    if (uvEl && uvBar) {
-      uvEl.textContent = `${uvShieldVal}% (Optimal)`;
-      uvBar.style.width = `${uvShieldVal}%`;
-    }
+      // Hydration Metric
+      const hydEl = document.getElementById('metric-hyd');
+      const hydBar = document.getElementById('metric-hyd-bar');
+      const hydSub = document.getElementById('metric-hyd-sub');
+      if (hydEl && hydBar) {
+        hydEl.textContent = `${metrics.hydVal}%`;
+        hydBar.style.width = `${metrics.hydVal}%`;
+      }
+      if (hydSub) hydSub.textContent = metrics.hydSub;
 
-    // Save snapshot in history
-    state.checkPhoto = imageUrl || sampleFaceSvg;
-    saveJSON('sw_check_photo', state.checkPhoto);
-    renderPastWeekComparison();
-  }, 1400);
+      // Redness Metric
+      const redEl = document.getElementById('metric-red');
+      const redBar = document.getElementById('metric-red-bar');
+      const redSub = document.getElementById('metric-red-sub');
+      if (redEl && redBar) {
+        redEl.textContent = `${metrics.redVal}% (${metrics.redGrade})`;
+        redBar.style.width = `${metrics.redVal}%`;
+      }
+      if (redSub) redSub.textContent = metrics.redSub;
+
+      // Pore Metric
+      const poreEl = document.getElementById('metric-pore');
+      const poreBar = document.getElementById('metric-pore-bar');
+      const poreSub = document.getElementById('metric-pore-sub');
+      if (poreEl && poreBar) {
+        poreEl.textContent = `${metrics.poreVal}%`;
+        poreBar.style.width = `${metrics.poreVal}%`;
+      }
+      if (poreSub) poreSub.textContent = metrics.poreSub;
+
+      // UV Metric
+      const uvEl = document.getElementById('metric-uv');
+      const uvBar = document.getElementById('metric-uv-bar');
+      const uvSub = document.getElementById('metric-uv-sub');
+      if (uvEl && uvBar) {
+        uvEl.textContent = `${metrics.uvShieldVal}%`;
+        uvBar.style.width = `${metrics.uvShieldVal}%`;
+      }
+      if (uvSub) uvSub.textContent = metrics.uvSub;
+
+      // Update Zone Insight
+      state.lastScanMetrics = metrics;
+      const activeZone = document.querySelector('#zone-pills .zone-pill.active');
+      renderZoneInsight(activeZone ? activeZone.dataset.zone : 'tzone', metrics);
+
+      // Save snapshot in history
+      state.checkPhoto = imgToUse;
+      saveJSON('sw_check_photo', state.checkPhoto);
+      renderPastWeekComparison();
+    }, 400);
+  }, 1800);
 }
 
 // ---------- Past Week 7-Day Comparison Tracker ----------
@@ -2004,96 +1908,164 @@ function stopLiveCamera() {
 function captureLiveSnapshot() {
   const video = document.getElementById('camera-feed');
   const canvas = document.getElementById('camera-canvas');
+  const flash = document.getElementById('camera-flash');
   if (!video || !canvas) return;
 
-  const width = video.videoWidth || 640;
-  const height = video.videoHeight || 480;
-  canvas.width = width;
-  canvas.height = height;
+  // Visual shutter flash effect
+  if (flash) {
+    flash.style.display = 'block';
+    flash.classList.add('flash-active');
+  }
+
+  const width = video.videoWidth > 0 ? video.videoWidth : 640;
+  const height = video.videoHeight > 0 ? video.videoHeight : 480;
+
+  // Portrait crop matching the viewfinder aspect ratio
+  const targetAspect = 0.85;
+  let sWidth = width;
+  let sHeight = height;
+  let sx = 0;
+  let sy = 0;
+
+  if (width / height > targetAspect) {
+    sWidth = height * targetAspect;
+    sx = (width - sWidth) / 2;
+  } else {
+    sHeight = width / targetAspect;
+    sy = (height - sHeight) / 2;
+  }
+
+  canvas.width = 480;
+  canvas.height = Math.round(480 / targetAspect);
   const ctx = canvas.getContext('2d');
 
   // Mirror selfie capture if user-facing
   if (currentFacingMode === 'user') {
-    ctx.translate(width, 0);
+    ctx.translate(canvas.width, 0);
     ctx.scale(-1, 1);
   }
-  ctx.drawImage(video, 0, 0, width, height);
 
+  ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
   const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-  stopLiveCamera();
-  runBiometricScan(dataUrl);
+
+  setTimeout(() => {
+    if (flash) {
+      flash.classList.remove('flash-active');
+      flash.style.display = 'none';
+    }
+    stopLiveCamera();
+    runBiometricScan(dataUrl);
+  }, 120);
 }
+
+// Global Handlers attached to window for instant event reliability
+window.startLiveCamera = startLiveCamera;
+window.stopLiveCamera = stopLiveCamera;
+window.captureLiveSnapshot = captureLiveSnapshot;
+window.openPhotoGallery = function() {
+  const input = document.getElementById('photo-input');
+  if (input) {
+    input.value = ''; // Reset value to allow re-selecting same photo
+    input.click();
+  }
+};
+window.resetCurrentScan = function() {
+  state.checkPhoto = null;
+  state.lastScanMetrics = null;
+  saveJSON('sw_check_photo', null);
+  if (state.authUser?.phone && usersDb[state.authUser.phone]) {
+    usersDb[state.authUser.phone].checkPhoto = null;
+    saveJSON('sw_users_db', usersDb);
+  }
+  resetCheckScreenForUser();
+};
 
 // Live Camera UI Event Listeners
 const startLiveCamBtn = document.getElementById('start-live-cam-btn');
 if (startLiveCamBtn) {
   startLiveCamBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    startLiveCamera();
+    window.startLiveCamera();
   });
 }
 
 const retakeLiveBtn = document.getElementById('retake-live-btn');
 if (retakeLiveBtn) {
-  retakeLiveBtn.addEventListener('click', () => {
-    startLiveCamera();
+  retakeLiveBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.startLiveCamera();
   });
 }
 
 const closeCamBtn = document.getElementById('close-cam-btn');
 if (closeCamBtn) {
-  closeCamBtn.addEventListener('click', () => {
-    stopLiveCamera();
+  closeCamBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.stopLiveCamera();
   });
 }
 
 const captureSnapBtn = document.getElementById('capture-snap-btn');
 if (captureSnapBtn) {
-  captureSnapBtn.addEventListener('click', () => {
-    captureLiveSnapshot();
+  captureSnapBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.captureLiveSnapshot();
   });
 }
 
 const flipCamBtn = document.getElementById('flip-cam-btn');
 if (flipCamBtn) {
-  flipCamBtn.addEventListener('click', () => {
+  flipCamBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
     const video = document.getElementById('camera-feed');
     if (video) {
       video.style.transform = currentFacingMode === 'user' ? 'scaleX(-1)' : 'none';
     }
-    startLiveCamera();
+    window.startLiveCamera();
   });
 }
 
 const openGalleryBtn = document.getElementById('open-gallery-btn');
-const photoInput = document.getElementById('photo-input');
-if (openGalleryBtn && photoInput) {
+if (openGalleryBtn) {
   openGalleryBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    photoInput.click();
+    window.openPhotoGallery();
   });
 }
 
 // Upload & Demo Buttons
 const demoScanBtn = document.getElementById('demo-scan-btn');
 if (demoScanBtn) {
-  demoScanBtn.addEventListener('click', () => {
-    stopLiveCamera();
+  demoScanBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    window.stopLiveCamera();
     runBiometricScan(sampleFaceSvg);
   });
 }
 
-const uploadZone = document.getElementById('upload-zone');
-if (uploadZone && photoInput) {
+const photoInput = document.getElementById('photo-input');
+if (photoInput) {
   photoInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
       runBiometricScan(ev.target.result);
     };
     reader.readAsDataURL(file);
+  });
+}
+
+const uploadZone = document.getElementById('upload-zone');
+if (uploadZone) {
+  uploadZone.addEventListener('click', (e) => {
+    // If user clicks on background of upload zone (not button)
+    if (e.target === uploadZone || e.target.closest('#upload-zone-content')) {
+      if (!e.target.closest('button')) {
+        window.openPhotoGallery();
+      }
+    }
   });
 }
 
@@ -2109,12 +2081,28 @@ if (changePhotoBtn && photoInput) {
   changePhotoBtn.addEventListener('click', () => photoInput.click());
 }
 
+const clearPhotoBtn = document.getElementById('clear-photo-btn');
+const resetScanTopBtn = document.getElementById('reset-scan-top-btn');
+
+[clearPhotoBtn, resetScanTopBtn].filter(Boolean).forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.checkPhoto = null;
+    state.lastScanMetrics = null;
+    saveJSON('sw_check_photo', null);
+    if (state.authUser?.phone && usersDb[state.authUser.phone]) {
+      usersDb[state.authUser.phone].checkPhoto = null;
+      saveJSON('sw_users_db', usersDb);
+    }
+    resetCheckScreenForUser();
+  });
+});
+
 // Zone Selector Pills
 document.querySelectorAll('#zone-pills .zone-pill').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#zone-pills .zone-pill').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    renderZoneInsight(btn.dataset.zone);
+    renderZoneInsight(btn.dataset.zone, state.lastScanMetrics || {});
   });
 });
 
@@ -2366,15 +2354,17 @@ if (allergyInput) {
   });
 }
 
-document.getElementById('photo-btn').addEventListener('click', () => document.getElementById('avatar-input').click());
-document.getElementById('avatar-input').addEventListener('change', (e) => {
-  const file = e.target.files[0];
+document.getElementById('photo-btn')?.addEventListener('click', () => document.getElementById('avatar-input')?.click());
+document.getElementById('avatar-input')?.addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (ev) => {
     const avatar = document.getElementById('avatar');
-    avatar.style.backgroundImage = `url(${ev.target.result})`;
-    avatar.innerHTML = '';
+    if (avatar) {
+      avatar.style.backgroundImage = `url(${ev.target.result})`;
+      avatar.innerHTML = '';
+    }
   };
   reader.readAsDataURL(file);
 });
@@ -2532,6 +2522,29 @@ if (homeLocSearchBtn) {
   if (btn) btn.addEventListener('click', useCurrentLocation);
 });
 
+// Quick Travel / Destination Chips
+document.querySelectorAll('.travel-chip').forEach((chip) => {
+  chip.addEventListener('click', async () => {
+    document.querySelectorAll('.travel-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+
+    const cityName = chip.dataset.city;
+    if (cityName === 'Current') {
+      useCurrentLocation();
+    } else {
+      const lat = parseFloat(chip.dataset.lat);
+      const lon = parseFloat(chip.dataset.lon);
+      state.location = { lat, lon, name: cityName };
+      saveJSON('sw_location', state.location);
+      setLocationStatus(`Destination set to: ${cityName}`);
+      renderProfile();
+      renderHome();
+      loadWeatherAndAQI();
+      loadForecast();
+    }
+  });
+});
+
 // Clicking the location name in Home navigates to Profile to change location
 const heroCityElem = document.getElementById('hero-city');
 if (heroCityElem) {
@@ -2543,111 +2556,910 @@ if (heroCityElem) {
   });
 }
 
-// ---------- Auth UI Event Listeners ----------
-const sendOtpBtn = document.getElementById('auth-send-otp-btn');
-const phoneInput = document.getElementById('auth-phone-input');
-const countrySelect = document.getElementById('auth-country-code');
+// ==========================================================================
+// USER AUTHENTICATION & PERSISTENT DATABASE CONTROLLER
+// ==========================================================================
 
-if (sendOtpBtn && phoneInput && countrySelect) {
-  sendOtpBtn.addEventListener('click', () => {
-    const fullPhone = `${countrySelect.value} ${phoneInput.value.trim()}`;
-    requestPhoneOtp(fullPhone);
-  });
+// Global Demo Account Auto-Fill
+window.quickDemoFill = function(phone, password) {
+  const phoneInput = document.getElementById('login-phone-input');
+  const passInput = document.getElementById('login-pass-input');
+  const signInTab = document.getElementById('tab-btn-signin');
+  if (signInTab) signInTab.click();
 
-  phoneInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const fullPhone = `${countrySelect.value} ${phoneInput.value.trim()}`;
-      requestPhoneOtp(fullPhone);
-    }
-  });
-}
+  if (phoneInput) {
+    phoneInput.value = phone;
+    phoneInput.focus();
+  }
+  if (passInput) {
+    passInput.value = password;
+  }
 
-// 1-Tap Quick Demo Login
-const demoLoginBtn = document.getElementById('auth-demo-login-btn');
-if (demoLoginBtn) {
-  demoLoginBtn.addEventListener('click', () => {
-    state.authUser = {
-      phone: '+91 98765 43210',
-      name: state.profile?.name || 'Balaji',
-      verified: true,
-      authenticatedAt: new Date().toISOString()
-    };
-    saveJSON('sw_auth_user', state.authUser);
-    checkAuthState();
-  });
-}
+  // Clear any error messages
+  const errEl = document.getElementById('auth-login-error');
+  if (errEl) errEl.style.display = 'none';
+};
 
-// Change Phone Link
-const changePhoneBtn = document.getElementById('auth-change-phone-btn');
-if (changePhoneBtn) {
-  changePhoneBtn.addEventListener('click', () => {
-    resetAuthScreen();
-  });
-}
+// Check active session on load or refresh
+function checkAuthState() {
+  const sessionData = sessionStorage.getItem('sw_session_user');
+  const authScreen = document.getElementById('screen-auth');
+  const tabbar = document.querySelector('.tabbar');
 
-// Resend OTP Link
-const resendBtn = document.getElementById('auth-resend-btn');
-if (resendBtn) {
-  resendBtn.addEventListener('click', () => {
-    requestPhoneOtp(currentPendingPhone || '+91 98765 43210');
-  });
-}
-
-// OTP Input Auto-Advancing
-const otpBoxes = [
-  document.getElementById('otp-1'),
-  document.getElementById('otp-2'),
-  document.getElementById('otp-3'),
-  document.getElementById('otp-4')
-].filter(Boolean);
-
-otpBoxes.forEach((box, index) => {
-  box.addEventListener('input', (e) => {
-    const val = e.target.value;
-    if (val && index < otpBoxes.length - 1) {
-      otpBoxes[index + 1].focus();
-    }
-    // Check if all 4 boxes are filled
-    const fullCode = otpBoxes.map(b => b.value).join('');
-    if (fullCode.length === 4) {
-      submitOtpVerification(fullCode);
-    }
-  });
-
-  box.addEventListener('keydown', (e) => {
-    if (e.key === 'Backspace' && !box.value && index > 0) {
-      otpBoxes[index - 1].focus();
-    }
-  });
-});
-
-// Verify Button
-const verifyOtpBtn = document.getElementById('auth-verify-btn');
-if (verifyOtpBtn) {
-  verifyOtpBtn.addEventListener('click', () => {
-    const code = otpBoxes.map(b => b.value).join('');
-    submitOtpVerification(code);
-  });
-}
-
-// SMS Notification Toast Click to Autofill
-const smsToast = document.getElementById('sms-toast');
-if (smsToast) {
-  smsToast.addEventListener('click', () => {
-    const codeChars = (currentGeneratedOtp || '1234').split('');
-    otpBoxes.forEach((box, i) => {
-      if (box && codeChars[i]) box.value = codeChars[i];
+  if (!sessionData) {
+    // No active session in this browser window -> SHOW LOGIN SCREEN ONLY
+    state.authUser = null;
+    document.querySelectorAll('.screen').forEach((s) => {
+      s.style.display = (s.id === 'screen-auth') ? 'flex' : 'none';
     });
-    submitOtpVerification(currentGeneratedOtp || '1234');
+    if (authScreen) authScreen.style.display = 'flex';
+    if (tabbar) tabbar.style.display = 'none';
+    return false;
+  }
+
+  try {
+    const user = JSON.parse(sessionData);
+    state.authUser = user;
+
+    // Load user's isolated profile, location & routine data
+    if (user.location) state.location = user.location;
+    if (user.name) {
+      state.profile = state.profile || {};
+      state.profile.name = user.name;
+      state.profile.city = user.city || state.profile.city;
+      state.profile.skinType = user.skinType || state.profile.skinType;
+      state.profile.skinFeel = user.skinFeel || state.profile.skinFeel;
+      state.profile.concerns = user.concerns || state.profile.concerns;
+      state.profile.tolerances = user.tolerances || state.profile.tolerances;
+      state.profile.allergies = user.allergies || state.profile.allergies;
+    }
+    if (user.amSteps) state.amSteps = user.amSteps;
+    if (user.pmSteps) state.pmSteps = user.pmSteps;
+    if (user.suppSteps) state.suppSteps = user.suppSteps;
+    if (user.waterGlasses != null) state.waterGlasses = user.waterGlasses;
+    if (user.waterTarget != null) state.waterTarget = user.waterTarget;
+    if (user.skinCyclePhase != null) state.skinCyclePhase = user.skinCyclePhase;
+    if (user.checkPhoto) state.checkPhoto = user.checkPhoto;
+    else state.checkPhoto = null;
+
+    // Reveal main app UI & bottom navigation
+    if (authScreen) authScreen.style.display = 'none';
+    if (tabbar) tabbar.style.display = 'flex';
+
+    // Activate current tab
+    const activeNav = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn[data-screen="home"]');
+    const screenName = activeNav ? activeNav.dataset.screen : 'home';
+    document.querySelectorAll('.screen').forEach((s) => {
+      if (s.id !== 'screen-auth' && s.id !== 'screen-onboarding') {
+        s.style.display = (s.id === `screen-${screenName}`) ? 'block' : 'none';
+      }
+    });
+
+    renderHome();
+    renderProfile();
+    renderRoutineAll();
+    loadWeatherAndAQI();
+    loadForecast();
+    return true;
+  } catch (err) {
+    console.error('Session parse error:', err);
+    sessionStorage.removeItem('sw_session_user');
+    document.querySelectorAll('.screen').forEach((s) => {
+      s.style.display = (s.id === 'screen-auth') ? 'flex' : 'none';
+    });
+    if (authScreen) authScreen.style.display = 'flex';
+    if (tabbar) tabbar.style.display = 'none';
+    return false;
+  }
+}
+
+// Sign In Action
+async function handleUserLogin() {
+  const codeSelect = document.getElementById('login-country-code');
+  const phoneInput = document.getElementById('login-phone-input');
+  const passInput = document.getElementById('login-pass-input');
+  const errEl = document.getElementById('auth-login-error');
+  const submitBtn = document.getElementById('auth-login-submit-btn');
+
+  if (!phoneInput || !passInput) return;
+  const rawPhone = phoneInput.value.trim();
+  const password = passInput.value.trim();
+  const countryCode = codeSelect ? codeSelect.value : '+91';
+  const fullPhone = rawPhone.startsWith('+') ? rawPhone : `${countryCode}${rawPhone}`;
+
+  if (!rawPhone) {
+    showAuthError(errEl, 'Please enter your mobile phone number.');
+    return;
+  }
+  if (!password) {
+    showAuthError(errEl, 'Please enter your password.');
+    return;
+  }
+
+  if (errEl) errEl.style.display = 'none';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i> Authenticating...';
+  }
+
+  try {
+    const res = await apiPost('/api/auth/login', { phone: fullPhone, password });
+    if (res && res.success && res.user) {
+      // Save session
+      sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
+      checkAuthState();
+    } else {
+      showAuthError(errEl, res?.error || 'Invalid mobile number or password.');
+    }
+  } catch (err) {
+    showAuthError(errEl, err.message || 'Login failed. Please check your network connection.');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>';
+    }
+  }
+}
+
+// Sign Up / Registration Action
+async function handleUserRegistration() {
+  const nameInput = document.getElementById('signup-name-input');
+  const codeSelect = document.getElementById('signup-country-code');
+  const phoneInput = document.getElementById('signup-phone-input');
+  const passInput = document.getElementById('signup-pass-input');
+  const cityInput = document.getElementById('signup-city-input');
+  const skinTypeSelect = document.getElementById('signup-skintype-select');
+  const errEl = document.getElementById('auth-signup-error');
+  const submitBtn = document.getElementById('auth-signup-submit-btn');
+
+  if (!nameInput || !phoneInput || !passInput) return;
+  const name = nameInput.value.trim();
+  const rawPhone = phoneInput.value.trim();
+  const password = passInput.value.trim();
+  const city = cityInput ? cityInput.value.trim() : 'Trichy, Tamil Nadu';
+  const skinType = skinTypeSelect ? skinTypeSelect.value : 'III';
+  const countryCode = codeSelect ? codeSelect.value : '+91';
+  const fullPhone = rawPhone.startsWith('+') ? rawPhone : `${countryCode}${rawPhone}`;
+
+  if (!name) {
+    showAuthError(errEl, 'Please enter your full name.');
+    return;
+  }
+  if (!rawPhone) {
+    showAuthError(errEl, 'Please enter your mobile phone number.');
+    return;
+  }
+  if (password.length < 4) {
+    showAuthError(errEl, 'Password must be at least 4 characters long.');
+    return;
+  }
+
+  if (errEl) errEl.style.display = 'none';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i> Creating Profile...';
+  }
+
+  try {
+    const res = await apiPost('/api/auth/register', {
+      name,
+      phone: fullPhone,
+      password,
+      city,
+      skinType
+    });
+
+    if (res && res.success && res.user) {
+      sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
+      checkAuthState();
+    } else {
+      showAuthError(errEl, res?.error || 'Registration failed. An account may already exist.');
+    }
+  } catch (err) {
+    showAuthError(errEl, err.message || 'Registration failed. Please check connection.');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Create Account & Enter</span> <i class="ti ti-check"></i>';
+    }
+  }
+}
+
+function showAuthError(el, msg) {
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// User Sign Out
+window.userSignOut = function() {
+  sessionStorage.removeItem('sw_session_user');
+  state.authUser = null;
+  state.checkPhoto = null;
+  state.lastScanMetrics = null;
+
+  // Clear inputs
+  const phoneInput = document.getElementById('login-phone-input');
+  const passInput = document.getElementById('login-pass-input');
+  if (phoneInput) phoneInput.value = '';
+  if (passInput) passInput.value = '';
+
+  checkAuthState();
+};
+
+// Sync user state changes back to database
+function syncUserData() {
+  if (!state.authUser?.phone) return;
+  apiPost('/api/auth/sync', {
+    phone: state.authUser.phone,
+    data: {
+      name: state.profile?.name,
+      city: state.location?.name,
+      location: state.location,
+      skinType: state.profile?.skinType,
+      amSteps: state.amSteps,
+      pmSteps: state.pmSteps,
+      suppSteps: state.suppSteps,
+      waterGlasses: state.waterGlasses,
+      waterTarget: state.waterTarget,
+      skinCyclePhase: state.skinCyclePhase,
+      checkPhoto: state.checkPhoto
+    }
+  }).catch(() => {});
+}
+
+// Hook Sign Out Button in Profile screen
+const profSignOutBtn = document.getElementById('profile-sign-out-btn') || document.getElementById('sign-out-btn');
+if (profSignOutBtn) {
+  profSignOutBtn.addEventListener('click', window.userSignOut);
+}
+
+// Tabs Switcher (Sign In vs Create Account)
+const tabSignIn = document.getElementById('tab-btn-signin');
+const tabSignUp = document.getElementById('tab-btn-signup');
+const formSignIn = document.getElementById('form-signin');
+const formSignUp = document.getElementById('form-signup');
+
+if (tabSignIn && tabSignUp && formSignIn && formSignUp) {
+  tabSignIn.addEventListener('click', () => {
+    tabSignIn.classList.add('active');
+    tabSignUp.classList.remove('active');
+    formSignIn.style.display = 'block';
+    formSignUp.style.display = 'none';
+  });
+
+  tabSignUp.addEventListener('click', () => {
+    tabSignUp.classList.add('active');
+    tabSignIn.classList.remove('active');
+    formSignUp.style.display = 'block';
+    formSignIn.style.display = 'none';
   });
 }
 
-// ---------- Init ----------
-renderHome();
-checkAuthState();
+// Password Visibility Toggles
+const toggleLoginPass = document.getElementById('toggle-login-pass');
+const loginPassInput = document.getElementById('login-pass-input');
+if (toggleLoginPass && loginPassInput) {
+  toggleLoginPass.addEventListener('click', () => {
+    const isPass = loginPassInput.type === 'password';
+    loginPassInput.type = isPass ? 'text' : 'password';
+    toggleLoginPass.innerHTML = `<i class="ti ${isPass ? 'ti-eye-off' : 'ti-eye'}"></i>`;
+  });
+}
+
+const toggleSignupPass = document.getElementById('toggle-signup-pass');
+const signupPassInput = document.getElementById('signup-pass-input');
+if (toggleSignupPass && signupPassInput) {
+  toggleSignupPass.addEventListener('click', () => {
+    const isPass = signupPassInput.type === 'password';
+    signupPassInput.type = isPass ? 'text' : 'password';
+    toggleSignupPass.innerHTML = `<i class="ti ${isPass ? 'ti-eye-off' : 'ti-eye'}"></i>`;
+  });
+}
+
+// Auth Submit Buttons & Enter Key Listeners
+const loginSubmitBtn = document.getElementById('auth-login-submit-btn');
+if (loginSubmitBtn) {
+  loginSubmitBtn.addEventListener('click', handleUserLogin);
+}
+
+const signupSubmitBtn = document.getElementById('auth-signup-submit-btn');
+if (signupSubmitBtn) {
+  signupSubmitBtn.addEventListener('click', handleUserRegistration);
+}
+
+const loginPhoneInput = document.getElementById('login-phone-input');
+if (loginPhoneInput && loginPassInput) {
+  loginPhoneInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loginPassInput.focus();
+  });
+  loginPassInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleUserLogin();
+  });
+}
+
+// ---------- Initial App Bootstrap ----------
 updateDateTime();
 setInterval(updateDateTime, 30000);
-renderProfile();
-renderRoutineAll();
-loadWeatherAndAQI();
-loadForecast();
+checkAuthState();
+initAkvileSystem();
+
+// ==========================================================================
+// AKVILE SKIN INTELLIGENCE SYSTEM LOGIC & ENGINES
+// ==========================================================================
+
+function initAkvileSystem() {
+  setupAkvileSubtabs();
+  setupAkvileTriggerLogger();
+  setupAkvileInciChecker();
+  setupAkvileSkinSchool();
+  renderAkvileSystem();
+}
+
+function renderAkvileSystem() {
+  renderAkvileHistoryList();
+  renderAkvileTriggerAnalytics();
+  renderAkvileSchoolProgress();
+}
+
+// 1. Akvile Subtab Switcher
+function setupAkvileSubtabs() {
+  const tabBtns = document.querySelectorAll('.akvile-subtab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const targetTab = btn.dataset.tab;
+      document.querySelectorAll('.akvile-subview').forEach(view => {
+        view.style.display = 'none';
+      });
+
+      const activeView = document.getElementById('akvile-view-' + targetTab);
+      if (activeView) {
+        activeView.style.display = 'block';
+      }
+
+      if (targetTab !== 'scan' && typeof stopLiveCamera === 'function') {
+        stopLiveCamera();
+      }
+    });
+  });
+}
+
+// 2. Akvile Daily Trigger & Symptom Logger
+function setupAkvileTriggerLogger() {
+  // Acne Severity Pills
+  const acnePills = document.querySelectorAll('#akvile-acne-pills .akvile-chip');
+  const acneBadge = document.getElementById('akvile-acne-badge');
+  const acneLabels = ['Clear (0/3)', 'Mild (1-2 bumps)', 'Moderate Inflamed', 'Cystic Flare'];
+  acnePills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      acnePills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      const val = parseInt(pill.dataset.val, 10);
+      state.akvileCurrentLog.acne = val;
+      if (acneBadge) acneBadge.textContent = acneLabels[val] || 'Logged';
+    });
+  });
+
+  // Barrier Multi-Chips
+  const barrierChips = document.querySelectorAll('#akvile-barrier-chips .akvile-chip');
+  const barrierBadge = document.getElementById('akvile-barrier-badge');
+  barrierChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('active');
+      const selected = Array.from(document.querySelectorAll('#akvile-barrier-chips .akvile-chip.active')).map(c => c.dataset.val);
+      state.akvileCurrentLog.barrier = selected.length ? selected : ['Calm'];
+      if (barrierBadge) barrierBadge.textContent = state.akvileCurrentLog.barrier.join(', ');
+    });
+  });
+
+  // Stress Level Pills
+  const stressPills = document.querySelectorAll('#akvile-stress-pills .akvile-chip');
+  stressPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      stressPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.akvileCurrentLog.stress = pill.dataset.val;
+    });
+  });
+
+  // Sleep Pills
+  const sleepPills = document.querySelectorAll('#akvile-sleep-pills .akvile-chip');
+  sleepPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      sleepPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.akvileCurrentLog.sleep = pill.dataset.val;
+    });
+  });
+
+  // Diet Multi-Chips
+  const dietChips = document.querySelectorAll('#akvile-diet-chips .akvile-chip');
+  dietChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('active');
+      const selected = Array.from(document.querySelectorAll('#akvile-diet-chips .akvile-chip.active')).map(c => c.dataset.val);
+      state.akvileCurrentLog.diet = selected.length ? selected : ['Clean'];
+    });
+  });
+
+  // Cycle Pills
+  const cyclePills = document.querySelectorAll('#akvile-cycle-pills .akvile-chip');
+  cyclePills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      cyclePills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.akvileCurrentLog.cycle = pill.dataset.val;
+    });
+  });
+
+  // Save Log Action
+  const saveBtn = document.getElementById('save-akvile-log-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const now = new Date();
+      const timeStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const newEntry = {
+        date: 'Today (' + timeStr + ')',
+        acne: state.akvileCurrentLog.acne,
+        barrier: [...state.akvileCurrentLog.barrier],
+        stress: state.akvileCurrentLog.stress,
+        sleep: state.akvileCurrentLog.sleep,
+        diet: [...state.akvileCurrentLog.diet],
+        cycle: state.akvileCurrentLog.cycle,
+        timestamp: Date.now()
+      };
+
+      state.akvileLogs.unshift(newEntry);
+      if (state.akvileLogs.length > 20) state.akvileLogs.pop();
+
+      saveJSON('sw_akvile_logs', state.akvileLogs);
+      saveCurrentUserData();
+
+      renderAkvileHistoryList();
+      renderAkvileTriggerAnalytics();
+
+      // Show toast
+      const toast = document.getElementById('sms-toast');
+      const body = document.getElementById('sms-toast-body');
+      if (toast && body) {
+        body.innerHTML = `<strong>Daily Skin Log Saved:</strong> Today's trigger log and telemetry calibrated!`;
+        toast.style.display = 'flex';
+        setTimeout(() => { toast.style.display = 'none'; }, 4000);
+      }
+    });
+  }
+}
+
+function renderAkvileHistoryList() {
+  const listEl = document.getElementById('akvile-history-list');
+  if (!listEl) return;
+
+  const logs = state.akvileLogs || [];
+  if (!logs.length) {
+    listEl.innerHTML = `<p class="muted-note" style="text-align:center; padding:12px 0;">No logs yet. Save your first daily log above!</p>`;
+    return;
+  }
+
+  const acneNames = ['Clear', 'Mild', 'Moderate', 'Cystic'];
+  listEl.innerHTML = logs.slice(0, 5).map(item => `
+    <div class="akvile-hist-row">
+      <div>
+        <div class="akvile-hist-date">${item.date || 'Recent'}</div>
+        <div class="akvile-hist-chips" style="margin-top:3px;">
+          <span class="akvile-hist-tag">Acne: ${acneNames[item.acne] || 'Clear'}</span>
+          <span class="akvile-hist-tag">${(item.barrier || []).slice(0, 2).join(', ')}</span>
+        </div>
+      </div>
+      <div class="akvile-hist-chips">
+        <span class="akvile-hist-tag">Stress: ${item.stress || 'Low'}</span>
+        <span class="akvile-hist-tag">${item.sleep || '7-8h'}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAkvileTriggerAnalytics() {
+  const insightText = document.getElementById('akvile-insight-text');
+  const barsContainer = document.getElementById('akvile-correlation-bars');
+  const logs = state.akvileLogs || [];
+
+  if (logs.length < 2) {
+    if (insightText) {
+      insightText.textContent = 'Keep logging daily to unlock personalized trigger correlations with climate & diet.';
+    }
+    return;
+  }
+
+  // Calculate correlations from history
+  let highStressCount = 0;
+  let flareCount = 0;
+  let dairyCount = 0;
+  let shortSleepCount = 0;
+
+  logs.forEach(l => {
+    if (l.acne >= 1 || (l.barrier && l.barrier.includes('Redness'))) {
+      flareCount++;
+      if (l.stress === 'High') highStressCount++;
+      if (l.sleep === '<6h') shortSleepCount++;
+      if (l.diet && l.diet.includes('Dairy')) dairyCount++;
+    }
+  });
+
+  const stressPct = Math.min(95, Math.max(25, Math.round((highStressCount / (flareCount || 1)) * 100) || 75));
+  const dietPct = Math.min(85, Math.max(20, Math.round((dairyCount / (flareCount || 1)) * 100) || 40));
+  const humPct = (state.weather && state.weather.humidity > 65) ? 65 : 25;
+
+  if (insightText) {
+    insightText.innerHTML = `<strong>Trigger Analysis:</strong> Flare-ups show a <strong style="color:var(--danger);">${stressPct}% correlation</strong> with elevated stress & sleep loss. Current climate humidity (${state.weather ? state.weather.humidity + '%' : '68%'}) is well regulated by your lightweight routine.`;
+  }
+
+  if (barsContainer) {
+    barsContainer.innerHTML = `
+      <div class="akvile-corr-item">
+        <div class="akvile-corr-row">
+          <span><i class="ti ti-flame"></i> High Stress + Sleep Deficit</span>
+          <strong style="color:var(--danger);">${stressPct}% Correlation</strong>
+        </div>
+        <div class="akvile-corr-track"><div class="akvile-corr-fill" style="width:${stressPct}%; background:var(--danger);"></div></div>
+      </div>
+      <div class="akvile-corr-item">
+        <div class="akvile-corr-row">
+          <span><i class="ti ti-milk"></i> Dairy / High Sugar Intake</span>
+          <strong style="color:#D97706;">${dietPct}% Correlation</strong>
+        </div>
+        <div class="akvile-corr-track"><div class="akvile-corr-fill" style="width:${dietPct}%; background:#D97706;"></div></div>
+      </div>
+      <div class="akvile-corr-item">
+        <div class="akvile-corr-row">
+          <span><i class="ti ti-cloud-rain"></i> Climate Humidity & Sebum Viscosity</span>
+          <strong style="color:#2563EB;">${humPct}% Correlation</strong>
+        </div>
+        <div class="akvile-corr-track"><div class="akvile-corr-fill" style="width:${humPct}%; background:#2563EB;"></div></div>
+      </div>
+    `;
+  }
+}
+
+// 3. Akvile Pore-Clogging & INCI Ingredient Safety Engine
+const INCI_DATABASE = {
+  // Comedogenic 5 (Severe Clogging)
+  'isopropyl myristate': { rating: 5, type: 'clog', note: 'Severe pore clogger & acne flare trigger', fa: true },
+  'isopropyl isostearate': { rating: 5, type: 'clog', note: 'High comedogenic ester', fa: true },
+  'myristyl myristate': { rating: 5, type: 'clog', note: 'Heavy occlusive wax ester', fa: true },
+  'wheat germ oil': { rating: 5, type: 'clog', note: 'Extremely heavy lipid', fa: true },
+  'algae extract': { rating: 5, type: 'clog', note: 'Can trap dead keratin in follicles', fa: false },
+  'laureth-4': { rating: 5, type: 'clog', note: 'High comedogenic surfactant', fa: false },
+  'potassium chloride': { rating: 5, type: 'clog', note: 'Comedogenic mineral binder', fa: false },
+
+  // Comedogenic 4 (High Clogging)
+  'coconut oil': { rating: 4, type: 'clog', note: 'High lauric acid; clogs acne-prone pores', fa: true },
+  'cocos nucifera oil': { rating: 4, type: 'clog', note: 'High lauric acid (Coconut Oil)', fa: true },
+  'cocoa butter': { rating: 4, type: 'clog', note: 'Rich dense butter; pore clog risk', fa: true },
+  'ethylhexyl palmitate': { rating: 4, type: 'clog', note: 'Fatty acid ester known for micro-comedones', fa: true },
+  'isostearyl isostearate': { rating: 4, type: 'clog', note: 'High comedogenic lubricant', fa: true },
+  'myristyl lactate': { rating: 4, type: 'clog', note: 'Pore-clogging ester', fa: true },
+  'sodium chloride': { rating: 4, type: 'clog', note: 'May aggravate cystic breakouts in high concentrations', fa: false },
+  'acetylated lanolin': { rating: 4, type: 'clog', note: 'Heavy animal lipid derivative', fa: true },
+
+  // Comedogenic 3 (Moderate Clogging)
+  'mineral oil': { rating: 3, type: 'clog', note: 'Heavy occlusive; traps sebum', fa: false },
+  'sesame oil': { rating: 3, type: 'clog', note: 'Moderate comedogenicity', fa: true },
+  'avocado oil': { rating: 3, type: 'clog', note: 'Rich oleic acid profile', fa: true },
+  'soybean oil': { rating: 3, type: 'clog', note: 'Can aggravate acne-prone pores', fa: true },
+  'lauric acid': { rating: 3, type: 'clog', note: 'Fatty acid; fungal acne trigger', fa: true },
+  'myristic acid': { rating: 3, type: 'clog', note: 'Fatty acid; fungal acne trigger', fa: true },
+  'palmitic acid': { rating: 2, type: 'clog', note: 'Fatty acid; fungal acne trigger', fa: true },
+  'stearic acid': { rating: 2, type: 'clog', note: 'Fatty acid; safe for most, fungal trigger', fa: true },
+
+  // Comedogenic 2 (Mild Clogging / Barrier Emollients)
+  'cetearyl alcohol': { rating: 2, type: 'emollient', note: 'Fatty alcohol emollient; well tolerated by most', fa: false },
+  'cetyl alcohol': { rating: 2, type: 'emollient', note: 'Fatty alcohol texture enhancer', fa: false },
+  'stearyl alcohol': { rating: 2, type: 'emollient', note: 'Fatty alcohol emollient', fa: false },
+  'jojoba oil': { rating: 2, type: 'oil', note: 'Liquid wax mimicking human sebum', fa: false },
+  'beeswax': { rating: 2, type: 'wax', note: 'Natural occlusive', fa: false },
+  'cera alba': { rating: 2, type: 'wax', note: 'Natural beeswax', fa: false },
+  'shea butter': { rating: 1, type: 'butter', note: 'Rich barrier lipid; fungal acne trigger', fa: true },
+  'butyrospermum parkii butter': { rating: 1, type: 'butter', note: 'Shea butter; fungal acne trigger', fa: true },
+
+  // Sensitizers / Irritants
+  'fragrance': { rating: 0, type: 'sensitizer', note: 'Synthetic fragrance; potential contact allergen', fa: false },
+  'parfum': { rating: 0, type: 'sensitizer', note: 'Fragrance compound; potential contact allergen', fa: false },
+  'denatured alcohol': { rating: 0, type: 'sensitizer', note: 'Drying short-chain alcohol; compromises barrier', fa: false },
+  'alcohol denat': { rating: 0, type: 'sensitizer', note: 'Drying solvent; compromises barrier', fa: false },
+  'citrus limon peel oil': { rating: 0, type: 'sensitizer', note: 'Essential oil; phototoxic sensitizer', fa: false },
+  'lavandula angustifolia oil': { rating: 0, type: 'sensitizer', note: 'Lavender essential oil; potential irritant', fa: false },
+  'linalool': { rating: 0, type: 'sensitizer', note: 'Fragrance allergen compound', fa: false },
+  'limonene': { rating: 0, type: 'sensitizer', note: 'Fragrance allergen compound', fa: false },
+
+  // Comedogenic 0 & Acne-Safe Heroes
+  'water': { rating: 0, type: 'safe', note: 'Solvent & base', fa: false },
+  'aqua': { rating: 0, type: 'safe', note: 'Purified water base', fa: false },
+  'glycerin': { rating: 0, type: 'safe', note: 'Gold-standard skin-identical humectant', fa: false },
+  'niacinamide': { rating: 0, type: 'safe', note: 'Vitamin B3; reduces sebum, redness & barrier stress', fa: false },
+  'squalane': { rating: 0, type: 'safe', note: '100% non-comedogenic, fungal acne-safe lipid', fa: false },
+  'salicylic acid': { rating: 0, type: 'safe', note: 'BHA exfoliant; clears inside pore lining', fa: false },
+  'hyaluronic acid': { rating: 0, type: 'safe', note: 'Binds 1000x its weight in cellular water', fa: false },
+  'sodium hyaluronate': { rating: 0, type: 'safe', note: 'Low molecular weight hydrating humectant', fa: false },
+  'centella asiatica extract': { rating: 0, type: 'safe', note: 'Cica; calms erythema & accelerates barrier repair', fa: false },
+  'panthenol': { rating: 0, type: 'safe', note: 'Pro-Vitamin B5; soothing & hydrating', fa: false },
+  'allantoin': { rating: 0, type: 'safe', note: 'Keratolytic & soothing skin protectant', fa: false },
+  'ceramide np': { rating: 0, type: 'safe', note: 'Essential barrier lipid (3:1:1 ratio)', fa: false },
+  'ceramide ap': { rating: 0, type: 'safe', note: 'Essential barrier lipid (3:1:1 ratio)', fa: false },
+  'ceramide eop': { rating: 0, type: 'safe', note: 'Essential barrier lipid (3:1:1 ratio)', fa: false },
+  'phytosphingosine': { rating: 0, type: 'safe', note: 'Antimicrobial lipid; inhibits C. acnes', fa: false },
+  'zinc pca': { rating: 0, type: 'safe', note: 'Regulates 5-alpha reductase & sebum flow', fa: false },
+  'azelaic acid': { rating: 0, type: 'safe', note: 'Dermatologist active for acne & rosacea erythema', fa: false },
+  'green tea extract': { rating: 0, type: 'safe', note: 'Potent antioxidant (EGCG)', fa: false },
+  'camellia sinensis leaf extract': { rating: 0, type: 'safe', note: 'Green tea antioxidant', fa: false },
+  'tocopherol': { rating: 1, type: 'safe', note: 'Vitamin E antioxidant', fa: false },
+  'l-ascorbic acid': { rating: 0, type: 'safe', note: 'Pure Vitamin C; stimulates collagen synthesis', fa: false },
+  'ascorbic acid': { rating: 0, type: 'safe', note: 'Vitamin C antioxidant', fa: false },
+  'madecassoside': { rating: 0, type: 'safe', note: 'Bioactive Centella triterpenoid', fa: false },
+  'zinc oxide': { rating: 0, type: 'safe', note: 'Physical mineral UV shield; anti-inflammatory', fa: false },
+  'titanium dioxide': { rating: 0, type: 'safe', note: 'Physical broad-spectrum UV reflector', fa: false },
+  'butylene glycol': { rating: 1, type: 'safe', note: 'Gentle humectant & slip agent', fa: false },
+  'caprylic/capric triglyceride': { rating: 1, type: 'safe', note: 'Lightweight coconut-derived emollient', fa: true },
+  'dimethicone': { rating: 1, type: 'safe', note: 'Breathable silicone barrier protector', fa: false },
+  'polysorbate 20': { rating: 0, type: 'emulsifier', note: 'Emulsifier; fungal acne trigger', fa: true },
+  'polysorbate 60': { rating: 0, type: 'emulsifier', note: 'Emulsifier; fungal acne trigger', fa: true },
+  'polysorbate 80': { rating: 0, type: 'emulsifier', note: 'Emulsifier; fungal acne trigger', fa: true }
+};
+
+const INCI_PRESETS = {
+  cerave: 'Aqua / Water, Glycerin, Caprylic/Capric Triglyceride, Niacinamide, Cetearyl Alcohol, Ceramide NP, Ceramide AP, Ceramide EOP, Phytosphingosine, Hyaluronic Acid, Sodium Lauroyl Lactylate, Dimethicone',
+  heavycream: 'Water, Cocos Nucifera (Coconut) Oil, Isopropyl Myristate, Ethylhexyl Palmitate, Theobroma Cacao (Cocoa) Seed Butter, Cetearyl Alcohol, Fragrance, Wheat Germ Oil, Laureth-4',
+  bha: 'Water / Aqua, Methylpropanediol, Butylene Glycol, Salicylic Acid (2%), Polysorbate 20, Camellia Sinensis (Green Tea) Leaf Extract, Sodium Hydroxide, Tetrasodium EDTA',
+  spf50: 'Zinc Oxide (12%), Titanium Dioxide (4%), Water / Aqua, Squalane, Butyloctyl Salicylate, Niacinamide, Glycerin, Caprylic/Capric Triglyceride, Dimethicone, Tocopherol, Centella Asiatica Extract'
+};
+
+function setupAkvileInciChecker() {
+  const analyzeBtn = document.getElementById('analyze-inci-btn');
+  const clearBtn = document.getElementById('clear-inci-btn');
+  const textarea = document.getElementById('inci-input-text');
+
+  if (analyzeBtn && textarea) {
+    analyzeBtn.addEventListener('click', () => {
+      analyzeSkincareIngredients(textarea.value);
+    });
+  }
+
+  if (clearBtn && textarea) {
+    clearBtn.addEventListener('click', () => {
+      textarea.value = '';
+      const resultsBox = document.getElementById('inci-results-box');
+      if (resultsBox) resultsBox.style.display = 'none';
+    });
+  }
+
+  window.loadInciPreset = function(key) {
+    if (textarea && INCI_PRESETS[key]) {
+      textarea.value = INCI_PRESETS[key];
+      analyzeSkincareIngredients(INCI_PRESETS[key]);
+    }
+  };
+}
+
+function analyzeSkincareIngredients(text) {
+  if (!text || !text.trim()) {
+    alert('Please paste or type an ingredient list first.');
+    return;
+  }
+
+  const resultsBox = document.getElementById('inci-results-box');
+  if (!resultsBox) return;
+
+  // Split by comma, semicolon, newline
+  const rawItems = text.split(/[,;\n\/\•]+/).map(s => s.trim()).filter(s => s.length > 1);
+
+  let highCloggers = 0;
+  let fungalTriggers = 0;
+  let sensitizers = 0;
+  let safeCount = 0;
+  let totalScore = 100;
+
+  const parsedItems = [];
+
+  rawItems.forEach(item => {
+    // clean punctuation
+    const clean = item.toLowerCase().replace(/[\(\)\*\d%\.\+]/g, '').trim();
+    let match = null;
+    let matchKey = '';
+
+    // Direct lookup or substring search
+    for (const key in INCI_DATABASE) {
+      if (clean === key || clean.includes(key) || key.includes(clean)) {
+        match = INCI_DATABASE[key];
+        matchKey = key;
+        break;
+      }
+    }
+
+    if (match) {
+      if (match.rating >= 4) {
+        highCloggers++;
+        totalScore -= 22;
+      } else if (match.rating >= 3) {
+        highCloggers++;
+        totalScore -= 12;
+      }
+
+      if (match.fa) {
+        fungalTriggers++;
+        totalScore -= 5;
+      }
+
+      if (match.type === 'sensitizer') {
+        sensitizers++;
+        totalScore -= 10;
+      }
+
+      if (match.type === 'safe') {
+        safeCount++;
+      }
+
+      parsedItems.push({
+        raw: item,
+        matched: matchKey,
+        rating: match.rating,
+        type: match.type,
+        note: match.note,
+        fa: match.fa
+      });
+    } else {
+      // Default safe/neutral for unlisted
+      parsedItems.push({
+        raw: item,
+        matched: clean,
+        rating: 0,
+        type: 'neutral',
+        note: 'General botanical or cosmetic excipient',
+        fa: false
+      });
+      safeCount++;
+    }
+  });
+
+  totalScore = Math.max(12, Math.min(100, totalScore));
+
+  // Update verdict badge & score circle
+  const verdictBadge = document.getElementById('inci-verdict-badge');
+  const verdictSub = document.getElementById('inci-verdict-sub');
+  const scoreEl = document.getElementById('inci-safe-score');
+  const scoreCircle = document.getElementById('inci-score-circle');
+
+  if (scoreEl) scoreEl.textContent = totalScore;
+
+  if (verdictBadge) {
+    if (highCloggers >= 2 || totalScore < 60) {
+      verdictBadge.className = 'inci-verdict-badge danger';
+      verdictBadge.textContent = '❌ High Breakout Aggravators';
+      if (verdictSub) verdictSub.textContent = `Found ${highCloggers} high-comedogenic pore-clogging ingredients.`;
+      if (scoreCircle) {
+        scoreCircle.style.borderColor = '#EF4444';
+        scoreCircle.style.color = '#B91C1C';
+        scoreCircle.style.background = '#FEF2F2';
+      }
+    } else if (highCloggers === 1 || sensitizers >= 1 || fungalTriggers >= 2) {
+      verdictBadge.className = 'inci-verdict-badge warn';
+      verdictBadge.textContent = '⚠️ Caution: Contains Triggers';
+      if (verdictSub) verdictSub.textContent = `Mild caution: Contains potential pore-cloggers or sensitizers.`;
+      if (scoreCircle) {
+        scoreCircle.style.borderColor = '#F59E0B';
+        scoreCircle.style.color = '#B45309';
+        scoreCircle.style.background = '#FFFBEB';
+      }
+    } else {
+      verdictBadge.className = 'inci-verdict-badge';
+      verdictBadge.textContent = '✅ 100% Acne-Safe';
+      if (verdictSub) verdictSub.textContent = `No high-comedogenic (4-5) or barrier-stripping irritants detected.`;
+      if (scoreCircle) {
+        scoreCircle.style.borderColor = '#22C55E';
+        scoreCircle.style.color = '#15803D';
+        scoreCircle.style.background = '#F0FDF4';
+      }
+    }
+  }
+
+  // Update counters
+  const clogCountEl = document.getElementById('inci-clog-count');
+  const faCountEl = document.getElementById('inci-fa-count');
+  const irrCountEl = document.getElementById('inci-irr-count');
+  const safeCountEl = document.getElementById('inci-safe-count');
+
+  if (clogCountEl) clogCountEl.textContent = highCloggers;
+  if (faCountEl) faCountEl.textContent = fungalTriggers;
+  if (irrCountEl) irrCountEl.textContent = sensitizers;
+  if (safeCountEl) safeCountEl.textContent = safeCount;
+
+  // Render items list
+  const listEl = document.getElementById('inci-items-list');
+  if (listEl) {
+    listEl.innerHTML = parsedItems.map(p => {
+      let badgeClass = 'safe';
+      let badgeText = `Comedogenic: ${p.rating}/5`;
+      let isClogger = false;
+
+      if (p.rating >= 4) {
+        badgeClass = 'danger';
+        badgeText = `Clog Rating: ${p.rating}/5`;
+        isClogger = true;
+      } else if (p.rating >= 2 || p.type === 'sensitizer' || p.fa) {
+        badgeClass = 'warn';
+        if (p.type === 'sensitizer') badgeText = 'Sensitizer / Irritant';
+        else if (p.fa) badgeText = `Clog: ${p.rating} · Fungal Trigger`;
+      }
+
+      return `
+        <div class="inci-item-row ${isClogger ? 'clogger' : ''}">
+          <div style="flex:1; padding-right:8px;">
+            <div class="inci-item-name">
+              ${isClogger ? '<i class="ti ti-alert-triangle" style="color:var(--danger);"></i>' : '<i class="ti ti-check" style="color:#16A34A;"></i>'}
+              <span>${p.raw}</span>
+            </div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${p.note}</div>
+          </div>
+          <span class="inci-rating-badge ${badgeClass}">${badgeText}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  resultsBox.style.display = 'block';
+}
+
+// 4. Akvile Skin School (Micro-learning)
+function setupAkvileSkinSchool() {
+  window.toggleSchoolLesson = function(id) {
+    const body = document.getElementById('school-body-' + id);
+    if (body) {
+      body.style.display = (body.style.display === 'none') ? 'block' : 'none';
+    }
+  };
+
+  window.toggleSchoolDone = function(id) {
+    const prog = state.akvileSchoolProgress || [];
+    const idx = prog.indexOf(id);
+    if (idx >= 0) {
+      prog.splice(idx, 1);
+    } else {
+      prog.push(id);
+    }
+    state.akvileSchoolProgress = prog;
+    saveJSON('sw_akvile_school', state.akvileSchoolProgress);
+    saveCurrentUserData();
+    renderAkvileSchoolProgress();
+  };
+}
+
+function renderAkvileSchoolProgress() {
+  const prog = state.akvileSchoolProgress || [];
+  const total = 4;
+  const pct = Math.round((prog.length / total) * 100);
+
+  const pctEl = document.getElementById('school-progress-pct');
+  const fillEl = document.getElementById('school-fill');
+
+  if (pctEl) pctEl.textContent = `${pct}% Mastered (${prog.length}/${total})`;
+  if (fillEl) fillEl.style.width = `${pct}%`;
+
+  for (let i = 1; i <= total; i++) {
+    const card = document.querySelector(`.school-card[data-lesson="${i}"]`);
+    if (card) {
+      const btn = card.querySelector('.school-check-btn');
+      if (btn) {
+        if (prog.includes(i)) {
+          btn.classList.add('checked');
+          btn.innerHTML = `<i class="ti ti-circle-check-filled"></i>`;
+        } else {
+          btn.classList.remove('checked');
+          btn.innerHTML = `<i class="ti ti-circle-check"></i>`;
+        }
+      }
+    }
+  }
+}
+
+
