@@ -1,5 +1,5 @@
 // SkinWatch Service Worker
-const CACHE_NAME = 'skinwatch-cache-v2';
+const CACHE_NAME = 'skinwatch-cache-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

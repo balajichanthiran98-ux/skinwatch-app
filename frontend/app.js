@@ -205,14 +205,17 @@ function resetCheckScreenForUser() {
   if (photoInput) photoInput.value = '';
   if (avatarInput) avatarInput.value = '';
 
-  if (state.checkPhoto) {
+  const userPhoto = state.checkPhoto || (state.authUser && state.authUser.checkPhoto) || null;
+
+  if (userPhoto) {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
-      uploadZone.style.backgroundImage = `url('${state.checkPhoto}')`;
+      uploadZone.style.backgroundImage = `url('${userPhoto}')`;
     }
     if (uploadContent) uploadContent.style.display = 'none';
     if (photoActions) photoActions.style.display = 'flex';
     if (diagnosticResults) diagnosticResults.style.display = 'block';
+    if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${userPhoto}')`;
   } else {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
@@ -221,10 +224,10 @@ function resetCheckScreenForUser() {
     if (uploadContent) uploadContent.style.display = 'flex';
     if (photoActions) photoActions.style.display = 'none';
     if (diagnosticResults) diagnosticResults.style.display = 'none';
+    if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${sampleFaceSvg}')`;
   }
 
   if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${sampleFaceSvg}')`;
-  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${state.checkPhoto || sampleFaceSvg}')`;
 
   if (avatar && !state.authUser?.avatar) {
     avatar.style.backgroundImage = 'none';
@@ -1840,8 +1843,10 @@ function renderPastWeekComparison() {
   const splitBeforeLbl = document.getElementById('split-before-lbl');
   const splitAfterLbl = document.getElementById('split-after-lbl');
 
+  const userPhoto = state.checkPhoto || (state.authUser && state.authUser.checkPhoto) || null;
+
   if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${sampleFaceSvg}')`;
-  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${state.checkPhoto || sampleFaceSvg}')`;
+  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${userPhoto || sampleFaceSvg}')`;
   if (splitBeforeLbl) splitBeforeLbl.textContent = `${activeItem.day} (${activeItem.date})`;
   if (splitAfterLbl) splitAfterLbl.textContent = `Today (${todayItem.date})`;
 
