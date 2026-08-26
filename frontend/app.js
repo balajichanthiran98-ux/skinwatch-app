@@ -193,12 +193,17 @@ function resetCheckScreenForUser() {
   const cameraContainer = document.getElementById('camera-container');
   const splitBeforeImg = document.getElementById('split-before-img');
   const splitAfterImg = document.getElementById('split-after-img');
+  const photoInput = document.getElementById('photo-input');
+  const avatarInput = document.getElementById('avatar-input');
+  const avatar = document.getElementById('avatar');
 
   if (typeof activeCameraStream !== 'undefined' && activeCameraStream) {
     activeCameraStream.getTracks().forEach(t => t.stop());
     activeCameraStream = null;
   }
   if (cameraContainer) cameraContainer.style.display = 'none';
+  if (photoInput) photoInput.value = '';
+  if (avatarInput) avatarInput.value = '';
 
   if (state.checkPhoto) {
     if (uploadZone) {
@@ -211,7 +216,7 @@ function resetCheckScreenForUser() {
   } else {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
-      uploadZone.style.backgroundImage = '';
+      uploadZone.style.backgroundImage = 'none';
     }
     if (uploadContent) uploadContent.style.display = 'flex';
     if (photoActions) photoActions.style.display = 'none';
@@ -220,6 +225,11 @@ function resetCheckScreenForUser() {
 
   if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${sampleFaceSvg}')`;
   if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${state.checkPhoto || sampleFaceSvg}')`;
+
+  if (avatar && !state.authUser?.avatar) {
+    avatar.style.backgroundImage = 'none';
+    avatar.innerHTML = `<i class="ti ti-user"></i>`;
+  }
 
   if (typeof renderPastWeekComparison === 'function') {
     renderPastWeekComparison();
@@ -1767,9 +1777,14 @@ async function runBiometricScan(imageUrl) {
       const activeZone = document.querySelector('#zone-pills .zone-pill.active');
       renderZoneInsight(activeZone ? activeZone.dataset.zone : 'tzone', metrics);
 
-      // Save snapshot in history
+      // Save snapshot in history and attach to active user
       state.checkPhoto = imgToUse;
       saveJSON('sw_check_photo', state.checkPhoto);
+      if (state.authUser) {
+        state.authUser.checkPhoto = state.checkPhoto;
+        sessionStorage.setItem('sw_session_user', JSON.stringify(state.authUser));
+        syncUserData();
+      }
       renderPastWeekComparison();
     }, 400);
   }, 1800);
@@ -2089,6 +2104,11 @@ const resetScanTopBtn = document.getElementById('reset-scan-top-btn');
     state.checkPhoto = null;
     state.lastScanMetrics = null;
     saveJSON('sw_check_photo', null);
+    if (state.authUser) {
+      state.authUser.checkPhoto = null;
+      sessionStorage.setItem('sw_session_user', JSON.stringify(state.authUser));
+      syncUserData();
+    }
     if (state.authUser?.phone && usersDb[state.authUser.phone]) {
       usersDb[state.authUser.phone].checkPhoto = null;
       saveJSON('sw_users_db', usersDb);
@@ -2589,6 +2609,9 @@ function checkAuthState() {
   if (!sessionData) {
     // No active session in this browser window -> SHOW LOGIN SCREEN ONLY
     state.authUser = null;
+    state.checkPhoto = null;
+    state.lastScanMetrics = null;
+    resetCheckScreenForUser();
     document.querySelectorAll('.screen').forEach((s) => {
       s.style.display = (s.id === 'screen-auth') ? 'flex' : 'none';
     });
@@ -2621,6 +2644,10 @@ function checkAuthState() {
     if (user.skinCyclePhase != null) state.skinCyclePhase = user.skinCyclePhase;
     if (user.checkPhoto) state.checkPhoto = user.checkPhoto;
     else state.checkPhoto = null;
+    state.lastScanMetrics = null;
+
+    // Reset check screen DOM elements specifically for this user
+    resetCheckScreenForUser();
 
     // Reveal main app UI & bottom navigation
     if (authScreen) authScreen.style.display = 'none';
@@ -2777,6 +2804,7 @@ window.userSignOut = function() {
   state.authUser = null;
   state.checkPhoto = null;
   state.lastScanMetrics = null;
+  resetCheckScreenForUser();
 
   // Clear inputs
   const phoneInput = document.getElementById('login-phone-input');
