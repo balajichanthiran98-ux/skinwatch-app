@@ -310,7 +310,9 @@ document.querySelectorAll('.nav-btn').forEach((btn) => {
     const screen = document.getElementById('screen-' + btn.dataset.screen);
     if (screen) screen.style.display = 'block';
 
-    if (btn.dataset.screen !== 'check' && typeof stopLiveCamera === 'function') {
+    if (btn.dataset.screen === 'check') {
+      resetCheckScreenForUser();
+    } else if (typeof stopLiveCamera === 'function') {
       stopLiveCamera();
     }
 
