@@ -1,27 +1,24 @@
 $gitExe = 'C:\Users\balaj\AppData\Local\OpenClaw\deps\portable-git\mingw64\bin\git.exe'
 
-Write-Host "Configuring Git..."
-& $gitExe config --global user.name "balajichanthiran98-ux"
-& $gitExe config --global user.email "balajichanthiran98@gmail.com"
+Set-Location "c:\Users\balaj\Downloads\files1\skinwatch-app"
 
-Write-Host "Initializing repository..."
-& $gitExe init
+Write-Host "--- Git Remotes ---"
+& $gitExe remote -v
 
-Write-Host "Staging files..."
-& $gitExe add .
+Write-Host "--- Staging Files ---"
+& $gitExe add -A
 
-Write-Host "Creating commit..."
-& $gitExe commit -m "feat: SkinWatch with Google Weather, 7D UV analytics & Anime Facial Exercises"
-
-Write-Host "Setting main branch..."
-& $gitExe branch -M main
-
-Write-Host "Adding remote origin..."
-& $gitExe remote remove origin 2>$null
-& $gitExe remote add origin "https://github.com/balajichanthiran98-ux/skinwatch-app.git"
-
-Write-Host "Git Status:"
+Write-Host "--- Git Status ---"
 & $gitExe status
 
-Write-Host "Attempting push..."
-& $gitExe push -u origin main
+Write-Host "--- Committing ---"
+& $gitExe commit -m "feat: complete SkinWatch with 7D climate analytics and 10 Anime facial yoga exercises" 2>$null
+
+Write-Host "--- Current Branch ---"
+& $gitExe branch -M main
+
+Write-Host "--- Push to Remote ---"
+& $gitExe push -u origin main --force
+
+Write-Host "--- Latest Commit Info ---"
+& $gitExe log -n 3 --oneline
