@@ -1,0 +1,81 @@
+{
+  "phone": "+919123456789",
+  "displayPhone": "+91 91234 56789",
+  "name": "Priya",
+  "city": "Paris, France",
+  "location": {
+    "name": "Paris, France",
+    "lat": 48.8566,
+    "lon": 2.3522
+  },
+  "skinType": "II",
+  "skinTypeName": "Type II (Fair / Sensitive)",
+  "skinFeel": "Dry / Sensitive",
+  "concerns": [
+    "Deep Hydration",
+    "Erythema Calming",
+    "Anti-Pollution"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Squalane",
+    "Panthenol"
+  ],
+  "allergies": [
+    "AHA Glycolic",
+    "Salicylic Acid"
+  ],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Milky Hydrating Cleanser",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Hyaluronic Acid Multi-Weight Essence",
+      "done": true
+    },
+    {
+      "id": "a3",
+      "name": "Squalane Moisture Shield",
+      "done": true
+    },
+    {
+      "id": "a4",
+      "name": "Mineral SPF 50 Sensitive Sunscreen",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Marine Collagen Peptides",
+      "done": true
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Micellar Water Rinse",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Peptide Repair Ampoule",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Rich Ceramide Overnight Balm",
+      "done": false
+    }
+  ],
+  "waterGlasses": 7,
+  "waterTarget": 8,
+  "skinCyclePhase": 3,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "createdAt": "2026-08-20T00:00:00.000Z",
+  "lastLoginAt": "2026-08-29T16:07:36.793Z"
+}

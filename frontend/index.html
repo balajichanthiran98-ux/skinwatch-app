@@ -56,7 +56,7 @@
 
     <div class="auth-card">
       <!-- Form 1: Sign In with Phone & Password -->
-      <form id="form-signin" class="auth-form" onsubmit="return false;">
+      <form id="form-signin" class="auth-form" onsubmit="event.preventDefault(); window.handleLogin(); return false;">
         <div class="auth-heading">
           <h2 class="serif-heading-dark">Welcome Back</h2>
           <p class="muted-note">Enter your mobile number and password to sign in.</p>
@@ -87,7 +87,7 @@
 
         <p id="auth-login-error" class="auth-error-msg" style="display:none;"></p>
 
-        <button id="auth-login-submit-btn" class="auth-primary-btn" type="button">
+        <button id="auth-login-submit-btn" class="auth-primary-btn" type="submit" onclick="window.handleLogin()">
           <span>Sign In to Dashboard</span>
           <i class="ti ti-arrow-right"></i>
         </button>
@@ -117,7 +117,7 @@
       </form>
 
       <!-- Form 2: Register New User -->
-      <form id="form-signup" class="auth-form" style="display:none;" onsubmit="return false;">
+      <form id="form-signup" class="auth-form" style="display:none;" onsubmit="event.preventDefault(); window.handleSignup(); return false;">
         <div class="auth-heading">
           <h2 class="serif-heading-dark">New Account</h2>
           <p class="muted-note">Personalize your climate skincare database.</p>
@@ -168,7 +168,7 @@
 
         <p id="auth-signup-error" class="auth-error-msg" style="display:none;"></p>
 
-        <button id="auth-signup-submit-btn" class="auth-primary-btn" type="button">
+        <button id="auth-signup-submit-btn" class="auth-primary-btn" type="submit" onclick="window.handleSignup()">
           <span>Create Account & Enter</span>
           <i class="ti ti-check"></i>
         </button>
@@ -454,7 +454,10 @@
     </div>
 
     <div id="view-upcoming">
-      <p class="section-label">7-Day Climate & UV</p>
+      <div class="row-between" style="align-items: center; margin-bottom: 4px;">
+        <p class="section-label" style="margin:0;">7-Day Climate & UV</p>
+        <span class="location-mode-tag"><i class="ti ti-brand-google"></i> Google Weather API</span>
+      </div>
       <p class="serif-heading" style="margin-bottom: 12px;">Skin Climate Outlook</p>
 
       <!-- UV Heatmap Trend Bar Card -->
@@ -475,7 +478,10 @@
     <div id="view-past" style="display:none;">
       <div class="row-between" style="align-items:center; margin-bottom: 12px;">
         <div>
-          <p class="section-label">Exposure History</p>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <p class="section-label" style="margin:0;">Exposure History</p>
+            <span class="location-mode-tag" style="font-size:10px;"><i class="ti ti-brand-google"></i> Google Climate</span>
+          </div>
           <p class="serif-heading" style="margin-bottom:0;">Past Climate</p>
         </div>
         <div class="segmented small">
@@ -600,10 +606,13 @@
               <div class="row-between" style="gap:8px; align-items:center;">
                 <span class="diag-lbl">AI Skin Health Index</span>
                 <span class="diag-cv-tag"><i class="ti ti-eye-check"></i> Computer Vision</span>
+                <button id="open-evidence-btn" class="diag-evidence-chip" title="View Peer-Reviewed Clinical Evidence & Formulas">
+                  <i class="ti ti-microscope"></i> Clinical Proof
+                </button>
               </div>
               <div class="diag-score" id="diag-score">86 <span class="diag-max">/ 100</span></div>
             </div>
-            <span class="diag-grade-badge" id="diag-grade-badge">Healthy Barrier</span>
+            <span class="diag-grade-badge" id="diag-grade-badge">Optimal Barrier Health</span>
           </div>
 
           <!-- 4 Diagnostic Metric Bars with Evidence Telemetry -->
@@ -681,48 +690,93 @@
           <button class="sfeel-pill" data-val="Sensitive">⚡ Sensitive</button>
         </div>
 
-        <!-- 7-Day Past Week Photo Comparison Tracker -->
-        <div class="past-week-card">
-          <div class="row-between" style="align-items:center; margin-bottom: 12px;">
+        <!-- 7-Day Side-by-Side Skin Progression & Visual Gallery -->
+        <div class="progression-gallery-card">
+          <div class="row-between" style="align-items:flex-start; margin-bottom: 14px;">
             <div>
-              <p class="section-label" style="margin-bottom:0; letter-spacing:0.1em; color:var(--text-muted);">PAST WEEK</p>
-              <span class="compare-subtitle">7-Day Skin Progression & Glow</span>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span class="gallery-badge-tag"><i class="ti ti-calendar-stats"></i> 7-Day Journey</span>
+                <span class="compare-subtitle" style="font-weight:700; color:var(--ink); font-size:14px;">Skin Progression &amp; Barrier Shift</span>
+              </div>
+              <p class="muted-note" style="margin:2px 0 0; font-size:11.5px;">Tap any past day below to compare with Today</p>
             </div>
-            <span class="compare-badge" id="compare-score-badge">+8% Barrier Health</span>
+            <span class="compare-badge" id="compare-score-badge">+8% Barrier Recovery</span>
           </div>
 
-          <!-- 7 Daily Photo Circle Dots (Mon, Tue, Wed, Thu, Fri, Sat, Today) -->
-          <div class="past-week-dots-row" id="past-week-dots-row"></div>
+          <!-- Side-by-Side Dual Photo Comparison Gallery Grid -->
+          <div class="side-by-side-gallery">
+            <!-- Day A (Selected Baseline) -->
+            <div class="gallery-photo-card" id="gallery-card-before">
+              <div class="gallery-photo-frame" id="split-before-img">
+                <span class="gallery-photo-tag left" id="split-before-lbl">Mon (Aug 17)</span>
+                <div class="gallery-score-badge" id="gallery-before-score">Score 78</div>
+              </div>
+              <div class="gallery-card-metrics">
+                <div class="gallery-metric-row">
+                  <span>Hydration</span>
+                  <strong id="gallery-before-hyd" style="color:#1976D2;">74 AU</strong>
+                </div>
+                <div class="gallery-metric-row">
+                  <span>Redness EI</span>
+                  <strong id="gallery-before-red" style="color:#C2410C;">32%</strong>
+                </div>
+              </div>
+            </div>
 
-          <!-- Interactive Before & After / Split-Screen Comparison Box -->
-          <div class="split-compare-box" id="split-compare-box">
-            <div class="split-compare-container" id="split-container">
-              <div class="split-img-before" id="split-before-img">
-                <span class="split-tag left" id="split-before-lbl">Mon (Aug 17)</span>
+            <!-- VS Connector Pillar with Delta Arrow -->
+            <div class="gallery-vs-pillar">
+              <div class="vs-circle">VS</div>
+              <div class="vs-line"></div>
+              <div class="vs-delta-indicator" id="vs-delta-indicator">+8%</div>
+            </div>
+
+            <!-- Day B (Today / Latest Active) -->
+            <div class="gallery-photo-card active-day" id="gallery-card-after">
+              <div class="gallery-photo-frame" id="split-after-img">
+                <span class="gallery-photo-tag right" id="split-after-lbl">Today (Aug 23)</span>
+                <div class="gallery-score-badge active" id="gallery-after-score">Score 86</div>
               </div>
-              <div class="split-img-after" id="split-after-img">
-                <span class="split-tag right" id="split-after-lbl">Today (Aug 23)</span>
-              </div>
-              <input type="range" min="0" max="100" value="50" class="split-slider" id="split-slider" aria-label="Slide to compare before and after">
-              <div class="split-slider-line" id="split-slider-line">
-                <div class="split-slider-handle"><i class="ti ti-arrows-left-right"></i></div>
+              <div class="gallery-card-metrics">
+                <div class="gallery-metric-row">
+                  <span>Hydration</span>
+                  <strong id="gallery-after-hyd" style="color:#1976D2;">84 AU</strong>
+                </div>
+                <div class="gallery-metric-row">
+                  <span>Redness EI</span>
+                  <strong id="gallery-after-red" style="color:#2E7D32;">18%</strong>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Skin Progression Delta Chips -->
-          <div class="progress-deltas-row">
-            <div class="delta-chip">
-              <span class="delta-lbl">Barrier Health</span>
-              <span class="delta-val" style="color:#2E7D32;">78% ➔ 86% <small>(+8%)</small></span>
+          <!-- 7-Day Interactive Thumbnail Carousel Strip -->
+          <div class="gallery-timeline-wrap">
+            <span class="timeline-strip-label"><i class="ti ti-history"></i> Daily Check-in Timeline</span>
+            <div class="gallery-timeline-strip" id="past-week-dots-row"></div>
+          </div>
+
+          <!-- Key Progression Differential Summary Cards -->
+          <div class="progress-deltas-grid">
+            <div class="delta-stat-box">
+              <div class="delta-stat-icon" style="background:#E8F5E9; color:#2E7D32;"><i class="ti ti-shield-check"></i></div>
+              <div>
+                <span class="delta-stat-lbl">Barrier Health</span>
+                <strong class="delta-stat-val" id="delta-barrier-val" style="color:#2E7D32;">78% ➔ 86% (+8%)</strong>
+              </div>
             </div>
-            <div class="delta-chip">
-              <span class="delta-lbl">Redness / Sensitivity</span>
-              <span class="delta-val" style="color:#1976D2;">32% ➔ 18% <small>(-14%)</small></span>
+            <div class="delta-stat-box">
+              <div class="delta-stat-icon" style="background:#E3F2FD; color:#1976D2;"><i class="ti ti-droplet"></i></div>
+              <div>
+                <span class="delta-stat-lbl">Hydration Gain</span>
+                <strong class="delta-stat-val" id="delta-hyd-val" style="color:#1976D2;">74 AU ➔ 84 AU (+10)</strong>
+              </div>
             </div>
-            <div class="delta-chip">
-              <span class="delta-lbl">Hydration Level</span>
-              <span class="delta-val" style="color:#8C6A2E;">74% ➔ 84% <small>(+10%)</small></span>
+            <div class="delta-stat-box">
+              <div class="delta-stat-icon" style="background:#FFF3E0; color:#E65100;"><i class="ti ti-flame"></i></div>
+              <div>
+                <span class="delta-stat-lbl">Erythema Calmed</span>
+                <strong class="delta-stat-val" id="delta-red-val" style="color:#2E7D32;">32% ➔ 18% (-14%)</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -1099,111 +1153,223 @@
       </div>
 
       <!-- Daily Cellular Hydration (Water Tracker) -->
-      <div class="hydration-card">
-        <div class="hydration-top">
-          <div class="hydration-info">
-            <span class="hyd-lbl"><i class="ti ti-droplet"></i> Skin Barrier Hydration</span>
-            <span class="hyd-val" id="hyd-val-text">4 of 8 Glasses (1.2L / 2.4L)</span>
-          </div>
-          <div class="hydration-actions">
-            <button id="hyd-settings-btn" class="hyd-icon-btn" title="Edit Goal & Reminders"><i class="ti ti-adjustments"></i></button>
-            <button id="add-water-glass-btn" class="add-water-btn" title="Add a glass">+ Glass</button>
+    <!-- Routine Sub-Category Segmented Switcher -->
+    <div class="routine-category-segmented-bar">
+      <button class="routine-cat-btn active" id="btn-cat-skincare" data-cat="skincare">
+        <i class="ti ti-sparkles"></i> Daily Skincare
+      </button>
+      <button class="routine-cat-btn" id="btn-cat-exercise" data-cat="exercise">
+        <i class="ti ti-activity"></i> Exercise Care (Facial Yoga)
+      </button>
+    </div>
+
+    <!-- TAB 1: DAILY SKINCARE CARE -->
+    <div id="tab-skincare-care" class="routine-tab-content">
+      <!-- SPF Reapplication Timer Banner (Triggered dynamically) -->
+      <div id="spf-reapply-banner" class="spf-reapply-banner" style="display:none;">
+        <div class="spf-reapply-left">
+          <div class="spf-icon-wrap"><i class="ti ti-sun"></i></div>
+          <div class="spf-text-group">
+            <span class="spf-title">SPF Reapplication Due</span>
+            <span class="spf-subtitle" id="spf-reapply-time">Due in ~2 hrs (UV 8 Peak)</span>
           </div>
         </div>
+        <button id="spf-reapply-done" class="spf-done-btn">Reapplied ✓</button>
+      </div>
 
-        <!-- Reminder Sub-Banner -->
-        <div id="hyd-reminder-strip" class="hyd-reminder-strip">
-          <i class="ti ti-bell-ringing"></i>
-          <span id="hyd-reminder-text">Reminder: Every 2 hrs (Next due in ~1h 15m)</span>
-        </div>
-
-        <!-- Interactive Drops/Glasses Grid -->
-        <div class="water-glasses-row" id="water-glasses-row"></div>
-
-        <!-- Inline Goal & Timer Settings Drawer -->
-        <div id="hyd-settings-drawer" class="hyd-settings-drawer" style="display:none;">
-          <div class="hyd-setting-group">
-            <label class="hyd-setting-lbl">Daily Drops Target:</label>
-            <div class="hyd-goal-pills" id="hyd-goal-pills">
-              <button class="goal-pill" data-target="4">4 (1.2L)</button>
-              <button class="goal-pill" data-target="6">6 (1.8L)</button>
-              <button class="goal-pill active" data-target="8">8 (2.4L)</button>
-              <button class="goal-pill" data-target="10">10 (3.0L)</button>
-              <button class="goal-pill" data-target="12">12 (3.6L)</button>
+      <!-- Daily Hydration Target & Live Glasses Track -->
+      <div class="section-block" style="padding-bottom: 8px;">
+        <div class="hydration-card">
+          <div class="hyd-card-header">
+            <div class="hyd-header-title">
+              <i class="ti ti-droplet-filled" style="color:#0284C7;"></i>
+              <span class="serif-heading-dark" style="font-size:14px; margin:0;">Daily Hydration</span>
+            </div>
+            <div class="hyd-header-right">
+              <span class="hyd-count-text" id="hyd-val-text">4 of 8 Drops (1.2L / 2.4L)</span>
+              <button id="hyd-settings-btn" class="hyd-settings-toggle" title="Settings"><i class="ti ti-adjustments-horizontal"></i></button>
             </div>
           </div>
-          <div class="hyd-setting-group" style="margin-top: 10px;">
-            <label class="hyd-setting-lbl">Reminder Frequency:</label>
-            <div class="hyd-goal-pills" id="hyd-remind-pills">
-              <button class="remind-pill" data-interval="0">Off</button>
-              <button class="remind-pill" data-interval="60">Every 1 hr</button>
-              <button class="remind-pill active" data-interval="120">Every 2 hrs</button>
-              <button class="remind-pill" data-interval="180">Every 3 hrs</button>
+
+          <!-- Hydration Reminder Banner -->
+          <div class="hyd-reminder-strip" id="hyd-reminder-strip" style="display:none;">
+            <i class="ti ti-bell-ringing"></i>
+            <span id="hyd-reminder-text">Reminder: Every 2 hrs (Next due in ~1h 15m)</span>
+          </div>
+
+          <!-- Interactive Drops/Glasses Grid -->
+          <div class="water-glasses-row" id="water-glasses-row"></div>
+
+          <!-- Inline Goal & Timer Settings Drawer -->
+          <div id="hyd-settings-drawer" class="hyd-settings-drawer" style="display:none;">
+            <div class="hyd-setting-group">
+              <label class="hyd-setting-lbl">Daily Drops Target:</label>
+              <div class="hyd-goal-pills" id="hyd-goal-pills">
+                <button class="goal-pill" data-target="4">4 (1.2L)</button>
+                <button class="goal-pill" data-target="6">6 (1.8L)</button>
+                <button class="goal-pill active" data-target="8">8 (2.4L)</button>
+                <button class="goal-pill" data-target="10">10 (3.0L)</button>
+                <button class="goal-pill" data-target="12">12 (3.6L)</button>
+              </div>
             </div>
+            <div class="hyd-setting-group" style="margin-top: 10px;">
+              <label class="hyd-setting-lbl">Reminder Frequency:</label>
+              <div class="hyd-goal-pills" id="hyd-remind-pills">
+                <button class="remind-pill" data-interval="0">Off</button>
+                <button class="remind-pill" data-interval="60">Every 1 hr</button>
+                <button class="remind-pill active" data-interval="120">Every 2 hrs</button>
+                <button class="remind-pill" data-interval="180">Every 3 hrs</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Add Step / Pill Library when in Edit Mode -->
+      <div id="quick-add-shelf" class="quick-add-shelf" style="display:none;">
+        <p class="section-label">Quick Add Common Steps & Supplements</p>
+        <div class="quick-add-pills">
+          <button class="quick-pill" data-name="Hydrating Toner" data-target="am">+ Toner</button>
+          <button class="quick-pill" data-name="Niacinamide 10%" data-target="am">+ Niacinamide</button>
+          <button class="quick-pill" data-name="Hyaluronic Acid" data-target="am">+ Hyaluronic Acid</button>
+          <button class="quick-pill" data-name="BHA / Salicylic Acid" data-target="pm">+ BHA Exfoliant</button>
+          <button class="quick-pill" data-name="Peptide Eye Cream" data-target="pm">+ Eye Cream</button>
+          <button class="quick-pill" data-name="Omega-3 Fish Oil (Lipid Barrier)" data-target="supp">+ Omega-3</button>
+          <button class="quick-pill" data-name="Collagen Peptides + Vit C" data-target="supp">+ Collagen</button>
+          <button class="quick-pill" data-name="Zinc & Vitamin D3" data-target="supp">+ Zinc</button>
+          <button class="quick-pill" data-name="Green Tea Extract (EGCG)" data-target="supp">+ Antioxidant</button>
+        </div>
+      </div>
+
+      <div class="section-block" style="padding-top: 4px;">
+        <!-- Morning Steps -->
+        <div class="routine-section-header">
+          <p class="section-label" style="margin-bottom:0;"><i class="ti ti-sun"></i> Morning Ritual</p>
+          <span class="routine-time-badge" id="am-time-badge">AM Focus</span>
+        </div>
+        <div id="am-list" class="routine-list"></div>
+        <button id="am-add" class="add-step-btn" style="display:none;">+ Add a morning step</button>
+
+        <!-- Dietary & Nutritional Supplements Track -->
+        <div class="routine-section-header" style="margin-top:22px;">
+          <p class="section-label" style="margin-bottom:0;"><i class="ti ti-pill"></i> Skin Supplements & Nutrition</p>
+          <span class="routine-time-badge" style="background:rgba(46,125,50,0.12); color:#2E7D32;">Internal Defense</span>
+        </div>
+        <div id="supp-list" class="routine-list"></div>
+        <button id="supp-add" class="add-step-btn" style="display:none;">+ Add a food supplement</button>
+
+        <!-- Evening Steps & Skin Cycling -->
+        <div class="routine-section-header" style="margin-top:22px;">
+          <p class="section-label" style="margin-bottom:0;"><i class="ti ti-moon-stars"></i> Evening Reset</p>
+          <button id="skin-cycling-badge" class="skin-cycling-pill" title="Tap to switch cycling phase">
+            🌙 Retinol Phase (2/4) ▾
+          </button>
+        </div>
+        <div id="pm-list" class="routine-list"></div>
+        <button id="pm-add" class="add-step-btn" style="display:none;">+ Add an evening step</button>
+
+        <!-- Collapsible Layering Guide Accordion -->
+        <div class="layering-guide-card" style="margin-top:22px;">
+          <button id="toggle-layering-guide" class="guide-toggle-btn">
+            <span><i class="ti ti-info-circle"></i> Why this step order? (Dermatologist Rule)</span>
+            <i class="ti ti-chevron-down guide-chevron" id="guide-chevron"></i>
+          </button>
+          <div id="layering-guide-body" class="guide-body" style="display:none;">
+            <div class="guide-step-item"><strong>1. Cleanse:</strong> Water & surfactant base to eliminate overnight lipids.</div>
+            <div class="guide-step-item"><strong>2. Prep (Toner):</strong> Balances pH and boosts humectant penetration.</div>
+            <div class="guide-step-item"><strong>3. Treat (Serums):</strong> Thinnest water-based active molecules first.</div>
+            <div class="guide-step-item"><strong>4. Seal (Moisturizer):</strong> Lipid emollient barrier to lock moisture.</div>
+            <div class="guide-step-item"><strong>5. Protect (SPF):</strong> Non-negotiable outermost UV shield.</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Quick Add Step / Pill Library when in Edit Mode -->
-    <div id="quick-add-shelf" class="quick-add-shelf" style="display:none;">
-      <p class="section-label">Quick Add Common Steps & Supplements</p>
-      <div class="quick-add-pills">
-        <button class="quick-pill" data-name="Hydrating Toner" data-target="am">+ Toner</button>
-        <button class="quick-pill" data-name="Niacinamide 10%" data-target="am">+ Niacinamide</button>
-        <button class="quick-pill" data-name="Hyaluronic Acid" data-target="am">+ Hyaluronic Acid</button>
-        <button class="quick-pill" data-name="BHA / Salicylic Acid" data-target="pm">+ BHA Exfoliant</button>
-        <button class="quick-pill" data-name="Peptide Eye Cream" data-target="pm">+ Eye Cream</button>
-        <button class="quick-pill" data-name="Omega-3 Fish Oil (Lipid Barrier)" data-target="supp">+ Omega-3</button>
-        <button class="quick-pill" data-name="Collagen Peptides + Vit C" data-target="supp">+ Collagen</button>
-        <button class="quick-pill" data-name="Zinc & Vitamin D3" data-target="supp">+ Zinc</button>
-        <button class="quick-pill" data-name="Green Tea Extract (EGCG)" data-target="supp">+ Antioxidant</button>
-      </div>
-    </div>
-
-    <div class="section-block" style="padding-top: 4px;">
-      <!-- Morning Steps -->
-      <div class="routine-section-header">
-        <p class="section-label" style="margin-bottom:0;"><i class="ti ti-sun"></i> Morning Ritual</p>
-        <span class="routine-time-badge" id="am-time-badge">AM Focus</span>
-      </div>
-      <div id="am-list" class="routine-list"></div>
-      <button id="am-add" class="add-step-btn" style="display:none;">+ Add a morning step</button>
-
-      <!-- Dietary & Nutritional Supplements Track -->
-      <div class="routine-section-header" style="margin-top:22px;">
-        <p class="section-label" style="margin-bottom:0;"><i class="ti ti-pill"></i> Skin Supplements & Nutrition</p>
-        <span class="routine-time-badge" style="background:rgba(46,125,50,0.12); color:#2E7D32;">Internal Defense</span>
-      </div>
-      <div id="supp-list" class="routine-list"></div>
-      <button id="supp-add" class="add-step-btn" style="display:none;">+ Add a food supplement</button>
-
-      <!-- Evening Steps & Skin Cycling -->
-      <div class="routine-section-header" style="margin-top:22px;">
-        <p class="section-label" style="margin-bottom:0;"><i class="ti ti-moon-stars"></i> Evening Reset</p>
-        <button id="skin-cycling-badge" class="skin-cycling-pill" title="Tap to switch cycling phase">
-          🌙 Retinol Phase (2/4) ▾
-        </button>
-      </div>
-      <div id="pm-list" class="routine-list"></div>
-      <button id="pm-add" class="add-step-btn" style="display:none;">+ Add an evening step</button>
-
-      <!-- Collapsible Layering Guide Accordion -->
-      <div class="layering-guide-card">
-        <button id="toggle-layering-guide" class="guide-toggle-btn">
-          <span><i class="ti ti-info-circle"></i> Why this step order? (Dermatologist Rule)</span>
-          <i class="ti ti-chevron-down guide-chevron" id="guide-chevron"></i>
-        </button>
-        <div id="layering-guide-body" class="guide-body" style="display:none;">
-          <div class="guide-step-item"><strong>1. Cleanse:</strong> Water & surfactant base to eliminate overnight lipids.</div>
-          <div class="guide-step-item"><strong>2. Prep (Toner):</strong> Balances pH and boosts humectant penetration.</div>
-          <div class="guide-step-item"><strong>3. Treat (Serums):</strong> Thinnest water-based active molecules first.</div>
-          <div class="guide-step-item"><strong>4. Seal (Moisturizer):</strong> Lipid emollient barrier to lock moisture.</div>
-          <div class="guide-step-item"><strong>5. Protect (SPF):</strong> Non-negotiable outermost UV shield.</div>
+    <!-- TAB 2: EXERCISE CARE (FACIAL YOGA & SCULPTING) -->
+    <div id="tab-exercise-care" class="routine-tab-content" style="display:none;">
+      <div class="section-block" style="padding-top: 4px;">
+        <!-- Exercise Care Hero Banner -->
+        <div class="fe-catalog-hero-card">
+          <div class="fe-hero-left">
+            <div class="fe-hero-badge"><i class="ti ti-sparkles"></i> 10-Step Facial Catalog</div>
+            <h4 class="fe-hero-title">Facial Yoga & Lymphatic Sculpting</h4>
+            <p class="fe-hero-desc">Stimulate blood microcirculation, reduce fluid retention, and boost your AI Skin Health score.</p>
+          </div>
+          <button id="fe-add" class="add-step-btn small-btn" style="display:none; margin:0; padding:4px 10px; font-size:11px;">+ Add Exercise</button>
         </div>
+
+        <!-- 10-Step Facial Exercises List -->
+        <div id="facial-exercises-list" class="facial-exercises-list"></div>
       </div>
     </div>
   </section>
+
+  <!-- Guided Facial Exercise Modal -->
+  <div id="fe-modal" class="modal-overlay" style="display:none;">
+    <div class="fe-modal-card">
+      <div class="fe-modal-header">
+        <div class="fe-modal-badge" id="fe-modal-target">Jawline & Neck</div>
+        <button id="fe-modal-close" class="modal-close-btn" title="Close"><i class="ti ti-x"></i></button>
+      </div>
+
+      <div class="fe-modal-body">
+        <!-- Animated Graphical Demonstration Frame -->
+        <div class="fe-graphic-canvas-box" id="fe-graphic-canvas-box">
+          <div class="fe-graphic-topbar">
+            <span class="fe-graphic-badge"><i class="ti ti-hand-finger"></i> Interactive Motion Guide</span>
+            <div class="fe-speed-toggle">
+              <button id="fe-speed-btn" class="fe-mini-btn" title="Toggle guide speed">⚡ Normal Pace</button>
+              <button id="fe-heatmap-btn" class="fe-mini-btn active" title="Toggle lymphatic heatmap"><i class="ti ti-flame"></i> Heatmap</button>
+            </div>
+          </div>
+
+          <!-- Dynamic SVG Canvas with Finger Trajectory & Pulse -->
+          <div id="fe-graphic-container" class="fe-graphic-container"></div>
+
+          <!-- Real-Time Interactive Step Phase & Rhythm Bar -->
+          <div class="fe-phase-stepper" id="fe-phase-stepper">
+            <button class="fe-phase-pill active" data-phase="1">1. Anchor</button>
+            <button class="fe-phase-pill" data-phase="2">2. Glide</button>
+            <button class="fe-phase-pill" data-phase="3">3. Drain / Lift</button>
+          </div>
+
+          <!-- Live Dynamic Instruction Prompts -->
+          <div class="fe-live-cue-box" id="fe-live-cue-box">
+            <i class="ti ti-sparkles" style="color:var(--gold,#D4AF37);"></i>
+            <span id="fe-live-cue-text">Phase 1: Position finger pads firmly at starting zone.</span>
+          </div>
+
+          <!-- Repetition & Biometric Impact Row -->
+          <div class="fe-telemetry-row">
+            <span class="fe-rep-badge"><i class="ti ti-repeat"></i> Rep: <strong id="fe-rep-counter">1 / 10</strong></span>
+            <span class="fe-biometric-impact-pill" id="fe-modal-impact">🎯 -4% Redness Index</span>
+          </div>
+        </div>
+
+        <h3 class="fe-modal-title" id="fe-modal-title">The V-Drain Sweep</h3>
+        <p class="fe-modal-benefit" id="fe-modal-benefit">Reduces under-eye puffiness, activates lymphatic flow down neck.</p>
+
+        <!-- Timer Circle -->
+        <div class="fe-timer-box">
+          <div class="fe-timer-digits" id="fe-timer-digits">02:00</div>
+          <div class="fe-timer-controls">
+            <button id="fe-timer-toggle" class="fe-timer-btn primary"><i class="ti ti-player-play" id="fe-timer-icon"></i> <span id="fe-timer-btn-text">Start Timer</span></button>
+            <button id="fe-timer-reset" class="fe-timer-btn secondary"><i class="ti ti-rotate-clockwise"></i></button>
+          </div>
+        </div>
+
+        <!-- Step Instructions Carousel / List -->
+        <div class="fe-steps-box">
+          <div class="fe-steps-title"><i class="ti ti-list-check"></i> Technique Steps</div>
+          <ol class="fe-steps-list" id="fe-modal-steps"></ol>
+        </div>
+
+        <button id="fe-modal-complete-btn" class="fe-complete-action-btn">
+          <i class="ti ti-check"></i> Mark Exercise Complete
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- PROFILE -->
   <section id="screen-profile" class="screen" style="display:none;">
@@ -1370,6 +1536,94 @@
       </div>
     </div>
   </section>
+
+  <!-- Clinical Evidence & Scientific Proof Modal -->
+  <div id="evidence-modal" class="account-modal-overlay" style="display:none; z-index:9999;">
+    <div class="account-modal-card evidence-modal-dialog">
+      <div class="row-between" style="align-items:center; margin-bottom:12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="evidence-pill-badge"><i class="ti ti-certificate"></i> Peer-Reviewed</span>
+          <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Scientific Proof & Biophysics Engine</h3>
+        </div>
+        <button id="close-evidence-modal" class="auth-link-btn" style="font-size:20px; color:var(--ink);"><i class="ti ti-x"></i></button>
+      </div>
+
+      <div class="evidence-scroll-body">
+        <!-- Lead Study Highlight: NTU Singapore & Procter & Gamble -->
+        <div class="evidence-highlight-box">
+          <div class="evidence-box-tag">🔬 Core Reference Study (2025)</div>
+          <h4 style="margin:4px 0 6px; font-size:13px; font-weight:700; color:var(--ink);">
+            "AI-driven Remote Facial Skin Hydration and TEWL Assessment from Selfie Images: A Systematic Solution"
+          </h4>
+          <p class="muted-note" style="margin:0 0 6px; font-size:11px;">
+            <strong>Authors:</strong> Cecelia Soh, Rizhao Cai, Monalisha Paul (P&G Scientist), Dennis Sng, Alex Kot.<br>
+            <strong>Institutions:</strong> ROSE Lab, Nanyang Technological University (NTU) Singapore &amp; Procter &amp; Gamble (P&amp;G) Beauty Care R&amp;D (arXiv:2509.06282).
+          </p>
+        </div>
+
+        <!-- 4 Pillars Breakdown -->
+        <div class="evidence-section">
+          <h5 class="evidence-subhead"><i class="ti ti-droplet"></i> 1. Stratum Corneum Hydration (SH) — Corneometer® CM825 Standard</h5>
+          <p class="evidence-desc">
+            Measures water dipole capacitance in the outermost epidermal layer in <strong>Arbitrary Units (AU)</strong>. Calibrated via the Heinrich et al. (2003) multi-centre clinical trial &amp; NTU/P&amp;G standard:
+          </p>
+          <div class="formula-box">
+            $$\text{SH (AU)} = 35 + (\text{RH} \times 0.38) + (\text{Reflectance} \times 20) - (\text{VPD} \times 4.5)$$
+            <div class="formula-legend">
+              • <strong>&lt; 40 AU:</strong> Dry / Dehydrated Stratum Corneum<br>
+              • <strong>40 – 50 AU:</strong> Normal / Balanced Moisture Matrix<br>
+              • <strong>&gt; 50 AU:</strong> Optimal Cellular Hydration
+            </div>
+          </div>
+        </div>
+
+        <div class="evidence-section">
+          <h5 class="evidence-subhead"><i class="ti ti-shield-check"></i> 2. Trans-Epidermal Water Loss (TEWL) — Delfin VapoMeter® Scale</h5>
+          <p class="evidence-desc">
+            Quantifies water vapor diffusion flux through the cutaneous barrier in $\text{g}\cdot\text{m}^{-2}\cdot\text{h}^{-1}$ using Tetens atmospheric vapor pressure deficit (VPD) thermodynamics (Fluhr &amp; Elias, 2006; Klotz et al., 2022):
+          </p>
+          <div class="formula-box">
+            $$e_s(T) = 0.61078 \times \exp\left(\frac{17.27 \times T}{T + 237.3}\right) \quad \text{[kPa]}$$
+            $$\text{VPD} = e_s(T) \times (1 - \text{RH}/100)$$
+            <div class="formula-legend">
+              • <strong>&lt; 15 $\text{g}\cdot\text{m}^{-2}\cdot\text{h}^{-1}$:</strong> Healthy, Intact Stratum Corneum Barrier<br>
+              • <strong>&gt; 15 $\text{g}\cdot\text{m}^{-2}\cdot\text{h}^{-1}$:</strong> Elevated Evaporative Flux / Barrier Vulnerability
+            </div>
+          </div>
+        </div>
+
+        <div class="evidence-section">
+          <h5 class="evidence-subhead"><i class="ti ti-flame"></i> 3. Dawson Spectrophotometric Erythema Index (EI)</h5>
+          <p class="evidence-desc">
+            Isolates hemoglobin absorption ($542\text{ nm} / 577\text{ nm}$) while cancelling baseline melanin absorption to eliminate phototype bias (Dawson et al., 1980 / European Society of Contact Dermatitis):
+          </p>
+          <div class="formula-box">
+            $$\text{EI} = 100 \times \left[\log_{10}\left(\frac{1}{R_{\text{green}}}\right) - \log_{10}\left(\frac{1}{R_{\text{red}}}\right)\right]$$
+            $$\text{Melanin Index (MI)} = 100 \times \log_{10}\left(\frac{1}{R_{\text{red}}}\right)$$
+          </div>
+        </div>
+
+        <div class="evidence-section">
+          <h5 class="evidence-subhead"><i class="ti ti-sun"></i> 4. Minimal Erythema Dose (MED) Photoprotection Kinetics</h5>
+          <p class="evidence-desc">
+            Models real-time photochemical UV irradiance ($25\text{ mW/m}^2 \times \text{UV Index}$) against Fitzpatrick phototype thresholds (Type I: $200\text{ J/m}^2$, Type III: $350\text{ J/m}^2$, Type VI: $800\text{ J/m}^2$) with sunscreen film attenuation $\eta = 1 - 1/\text{SPF}$ (Diffey, 2001; WHO/CIE Guide).
+          </p>
+        </div>
+
+        <!-- Academic Citations List -->
+        <div class="evidence-citations">
+          <h6 style="margin:0 0 6px; font-size:11px; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.05em;">Published Clinical References</h6>
+          <ol style="margin:0; padding-left:16px; font-size:10.5px; color:var(--text-secondary); line-height:1.45;">
+            <li>Soh, C., Cai, R., Paul, M. (P&amp;G), Sng, D., Kot, A. (2025). <em>AI-driven Remote Facial Skin Hydration and TEWL Assessment from Selfie Images.</em> NTU &amp; P&amp;G Research.</li>
+            <li>Heinrich, U., et al. (2003). <em>Multicentre comparison of skin hydration by the capacitive method (Corneometer CM 825).</em> Int J Cosmet Sci.</li>
+            <li>Klotz, T., et al. (2022). <em>Devices measuring transepidermal water loss: A systematic review.</em> Skin Res Technol.</li>
+            <li>Dawson, J. B., et al. (1980). <em>A theoretical and experimental study of light absorption and scattering by in vivo skin.</em> Phys Med Biol.</li>
+            <li>Vierkötter, A., et al. (2010). <em>Airborne particle exposure accelerates skin aging (SALDIR study).</em> J Invest Dermatol.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- NAV -->
   <nav class="tabbar">

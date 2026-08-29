@@ -1,0 +1,76 @@
+{
+  "phone": "+919988637135",
+  "displayPhone": "+919988637135",
+  "name": "Karthik",
+  "city": "Chennai, Tamil Nadu",
+  "location": {
+    "name": "Chennai, Tamil Nadu",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "IV",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Hydrated & Glowing",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Hydrating Cleanser",
+      "done": false
+    },
+    {
+      "id": "a2",
+      "name": "Antioxidant Day Serum",
+      "done": false
+    },
+    {
+      "id": "a3",
+      "name": "Barrier Moisturizer",
+      "done": false
+    },
+    {
+      "id": "a4",
+      "name": "SPF 50+ Sunscreen",
+      "done": false
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 8,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "createdAt": "2026-08-29T16:00:40.015Z",
+  "lastLoginAt": "2026-08-29T16:00:40.015Z"
+}
