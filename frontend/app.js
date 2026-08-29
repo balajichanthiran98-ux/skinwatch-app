@@ -439,7 +439,10 @@ function resetCheckScreenForUser() {
   if (cameraContainer) cameraContainer.style.display = 'none';
   if (photoInput) photoInput.value = '';
 
-  const userPhoto = state.checkPhoto || (state.authUser && state.authUser.checkPhoto) || null;
+  const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey() : new Date().toISOString().slice(0, 10);
+  const todayScan = (state.scanHistory && state.scanHistory[todayKey]) || null;
+  const todayPhoto = todayScan ? todayScan.photo : null;
+  const userPhoto = todayPhoto || state.checkPhoto || (state.authUser && state.authUser.checkPhoto) || null;
 
   if (userPhoto) {
     if (uploadZone) {
@@ -449,7 +452,7 @@ function resetCheckScreenForUser() {
     if (uploadContent) uploadContent.style.display = 'none';
     if (photoActions) photoActions.style.display = 'flex';
     if (diagnosticResults) diagnosticResults.style.display = 'block';
-    if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${userPhoto}')`;
+    if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${todayPhoto || userPhoto}')`;
   } else {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
@@ -2932,10 +2935,22 @@ async function runBiometricScan(imageUrl) {
       const activeZone = document.querySelector('#zone-pills .zone-pill.active');
       renderZoneInsight(activeZone ? activeZone.dataset.zone : 'tzone', metrics);
 
-      // Save snapshot in history and attach to active user
+      // Save snapshot in date-wise history and attach to active user
+      const todayKey = getLocalDateKey();
+      if (!state.scanHistory) state.scanHistory = {};
+      state.scanHistory[todayKey] = {
+        photo: imgToUse,
+        metrics: metrics,
+        score: metrics.skinScore,
+        hyd: metrics.hydrationVal,
+        red: metrics.rednessVal,
+        timestamp: Date.now()
+      };
       state.checkPhoto = imgToUse;
+      saveJSON('sw_scan_history', state.scanHistory);
       saveJSON('sw_check_photo', state.checkPhoto);
       if (state.authUser) {
+        state.authUser.scanHistory = state.scanHistory;
         state.authUser.checkPhoto = state.checkPhoto;
         sessionStorage.setItem('sw_session_user', JSON.stringify(state.authUser));
         syncUserData();
@@ -2945,27 +2960,65 @@ async function runBiometricScan(imageUrl) {
   }, 1800);
 }
 
-// ---------- Past Week 7-Day Comparison Tracker ----------
-const pastWeekDays = [
-  { day: 'Mon', date: 'Aug 17', score: 78, hyd: 74, red: 32, label: 'Mon (Aug 17)', img: sampleFaceSvg },
-  { day: 'Tue', date: 'Aug 18', score: 80, hyd: 76, red: 28, label: 'Tue (Aug 18)', img: sampleFaceSvg },
-  { day: 'Wed', date: 'Aug 19', score: 81, hyd: 79, red: 26, label: 'Wed (Aug 19)', img: sampleFaceSvg },
-  { day: 'Thu', date: 'Aug 20', score: 83, hyd: 80, red: 22, label: 'Thu (Aug 20)', img: sampleFaceSvg },
-  { day: 'Fri', date: 'Aug 21', score: 84, hyd: 82, red: 20, label: 'Fri (Aug 21)', img: sampleFaceSvg },
-  { day: 'Sat', date: 'Aug 22', score: 85, hyd: 83, red: 19, label: 'Sat (Aug 22)', img: sampleFaceSvg },
-  { day: 'Today', date: 'Aug 23', score: 86, hyd: 84, red: 18, label: 'Today (Aug 23)', img: sampleFaceSvg }
-];
+// ---------- Past Week 7-Day Comparison Tracker (Date-Wise Dynamic) ----------
+function getLocalDateKey(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-let selectedCompareIndex = 0; // Baseline: Mon
+function getPast7DaysTimeline() {
+  const history = state.scanHistory || (state.authUser && state.authUser.scanHistory) || {};
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  const timeline = [];
+  for (let offset = 6; offset >= 0; offset--) {
+    const d = new Date();
+    d.setDate(d.getDate() - offset);
+    const dateKey = getLocalDateKey(d);
+    const isToday = offset === 0;
+    const isYesterday = offset === 1;
+    const dayLabel = isToday ? 'Today' : (isYesterday ? 'Yesterday' : dayNames[d.getDay()]);
+    const shortDate = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+    
+    const rec = history[dateKey];
+    
+    // Default baseline values if not scanned on that day
+    const baseScore = 78 + (6 - offset);
+    const baseHyd = 74 + (6 - offset) * 1.5;
+    const baseRed = Math.max(18, 32 - (6 - offset) * 2);
+
+    timeline.push({
+      dateKey: dateKey,
+      day: dayLabel,
+      date: shortDate,
+      label: `${dayLabel} (${shortDate})`,
+      score: rec ? (rec.score || 85) : Math.round(baseScore),
+      hyd: rec ? (rec.hyd || (rec.metrics && rec.metrics.hydrationVal) || 82) : Math.round(baseHyd),
+      red: rec ? (rec.red || (rec.metrics && rec.metrics.rednessVal) || 20) : Math.round(baseRed),
+      img: (rec && rec.photo) ? rec.photo : sampleFaceSvg,
+      hasUserPhoto: !!(rec && rec.photo)
+    });
+  }
+  return timeline;
+}
+
+let selectedCompareIndex = 0; // Default compare with earliest day
 
 function renderPastWeekComparison() {
   const dotsRow = document.getElementById('past-week-dots-row');
   if (!dotsRow) return;
   dotsRow.innerHTML = '';
 
+  const pastWeekDays = getPast7DaysTimeline();
+  if (selectedCompareIndex >= pastWeekDays.length) {
+    selectedCompareIndex = 0;
+  }
+
   const todayItem = pastWeekDays[pastWeekDays.length - 1];
   const activeItem = pastWeekDays[selectedCompareIndex];
-  const userPhoto = state.checkPhoto || (state.authUser && state.authUser.checkPhoto) || null;
 
   // 1. Render 7-Day Interactive Timeline Strip Cards
   pastWeekDays.forEach((item, i) => {
@@ -2976,7 +3029,7 @@ function renderPastWeekComparison() {
     dotBtn.className = `timeline-day-card ${isToday ? 'today-pill' : ''} ${isSelected && !isToday ? 'selected-pill' : ''}`;
     dotBtn.title = `${item.day} (${item.date}) · Score ${item.score}`;
     dotBtn.innerHTML = `
-      <div class="timeline-thumb" style="background-image: url('${isToday && userPhoto ? userPhoto : item.img}');"></div>
+      <div class="timeline-thumb" style="background-image: url('${item.img}');"></div>
       <span class="timeline-day-title">${item.day}</span>
       <span class="timeline-score-pill">${item.score}</span>
     `;
@@ -2996,7 +3049,7 @@ function renderPastWeekComparison() {
   const splitAfterLbl = document.getElementById('split-after-lbl');
 
   if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${activeItem.img}')`;
-  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${userPhoto || todayItem.img}')`;
+  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${todayItem.img}')`;
   if (splitBeforeLbl) splitBeforeLbl.textContent = `${activeItem.day} (${activeItem.date})`;
   if (splitAfterLbl) splitAfterLbl.textContent = `Today (${todayItem.date})`;
 
@@ -3842,6 +3895,8 @@ function checkAuthState() {
     if (user.waterGlasses != null) state.waterGlasses = user.waterGlasses;
     if (user.waterTarget != null) state.waterTarget = user.waterTarget;
     if (user.skinCyclePhase != null) state.skinCyclePhase = user.skinCyclePhase;
+    if (user.scanHistory) state.scanHistory = user.scanHistory;
+    else state.scanHistory = loadJSON('sw_scan_history', {}) || {};
     if (user.checkPhoto) state.checkPhoto = user.checkPhoto;
     else state.checkPhoto = null;
     state.lastScanMetrics = null;
@@ -4031,7 +4086,8 @@ function syncUserData() {
       waterGlasses: state.waterGlasses,
       waterTarget: state.waterTarget,
       skinCyclePhase: state.skinCyclePhase,
-      checkPhoto: state.checkPhoto
+      checkPhoto: state.checkPhoto,
+      scanHistory: state.scanHistory
     }
   }).catch(() => {});
 }
