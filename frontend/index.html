@@ -319,32 +319,76 @@
       <button id="dismiss-alert" aria-label="Dismiss"><i class="ti ti-x"></i></button>
     </div>
 
-    <div class="hero">
-      <p class="eyebrow" id="hero-city">Trichy, Tamil Nadu</p>
-      <p class="hero-datetime" id="hero-datetime">Sun 23 Aug</p>
-      <div class="hero-temp-row">
-        <p class="hero-temp" id="hero-temp">31°</p>
-        <div class="hero-tewl-badge" id="hero-tewl-badge" title="Trans-Epidermal Water Loss Risk">
-          <i class="ti ti-droplet-half-2"></i>
-          <span id="hero-tewl-text">TEWL: Balanced</span>
+    <div class="hero theme-night" id="hero-weather-card">
+      <div class="hero-atmosphere-glow"></div>
+      <div class="hero-top-row">
+        <div class="hero-location-wrap">
+          <i class="ti ti-map-pin hero-pin-icon"></i>
+          <span class="eyebrow" id="hero-city">Trichy, Tamil Nadu</span>
+        </div>
+        <span class="hero-live-pill"><span class="live-dot"></span> LIVE CLIMATE</span>
+      </div>
+      <p class="hero-datetime" id="hero-datetime">Sun 30 Aug, 11:00 pm</p>
+      
+      <div class="hero-main-display">
+        <div class="hero-weather-icon-wrap" id="hero-weather-icon-wrap">
+          <i class="ti ti-moon-stars hero-animated-icon" id="hero-condition-icon"></i>
+        </div>
+        <div class="hero-temp-block">
+          <div class="hero-temp-row">
+            <span class="hero-temp" id="hero-temp">28°</span>
+            <div class="hero-tewl-badge" id="hero-tewl-badge" title="Trans-Epidermal Water Loss Risk" onclick="window.showClimateDetail('tewl')">
+              <i class="ti ti-droplet-half-2"></i>
+              <span id="hero-tewl-text">TEWL: Balanced</span>
+            </div>
+          </div>
+          <p class="hero-cond" id="hero-cond">Warm & Sunny</p>
         </div>
       </div>
-      <p class="hero-cond" id="hero-cond">Warm & Sunny</p>
-      <div class="hero-stats">
-        <span id="stat-hum">68% humidity</span>
-        <span id="stat-uv">UV 8</span>
-        <span id="stat-aqi">AQI 72</span>
-        <span id="stat-wind">Wind 14 km/h</span>
+
+      <!-- Colorful Interactive Micro-Stat Chips -->
+      <div class="hero-stats-grid">
+        <button class="hero-stat-chip chip-humidity" id="chip-humidity" type="button" onclick="window.showClimateDetail('humidity')" title="Tap for Skin Hydration Details">
+          <div class="stat-icon-circle"><i class="ti ti-droplet"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Humidity</span>
+            <span class="stat-val" id="stat-hum">82%</span>
+          </div>
+        </button>
+
+        <button class="hero-stat-chip chip-uv" id="chip-uv" type="button" onclick="window.showClimateDetail('uv')" title="Tap for UV & Photoaging Guide">
+          <div class="stat-icon-circle"><i class="ti ti-sun"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">UV Index</span>
+            <span class="stat-val" id="stat-uv">UV 0 · Safe</span>
+          </div>
+        </button>
+
+        <button class="hero-stat-chip chip-aqi" id="chip-aqi" type="button" onclick="window.showClimateDetail('aqi')" title="Tap for Pollution & Pore Defense">
+          <div class="stat-icon-circle"><i class="ti ti-shield-check"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Air Quality</span>
+            <span class="stat-val" id="stat-aqi">AQI 64 · Good</span>
+          </div>
+        </button>
+
+        <button class="hero-stat-chip chip-wind" id="chip-wind" type="button" onclick="window.showClimateDetail('wind')" title="Tap for Wind Chill & Barrier Advice">
+          <div class="stat-icon-circle"><i class="ti ti-wind"></i></div>
+          <div class="stat-info">
+            <span class="stat-label">Wind</span>
+            <span class="stat-val" id="stat-wind">5 km/h</span>
+          </div>
+        </button>
       </div>
     </div>
 
     <!-- Hourly forecast strip -->
     <div class="hourly-forecast-strip" id="hourly-forecast-strip">
-      <div class="hour-item"><span class="hour-time">Now</span><span class="hour-temp" id="hour-now">--°</span></div>
-      <div class="hour-item"><span class="hour-time" id="hour-1-time">+1h</span><span class="hour-temp" id="hour-1-temp">--°</span></div>
-      <div class="hour-item"><span class="hour-time" id="hour-2-time">+2h</span><span class="hour-temp" id="hour-2-temp">--°</span></div>
-      <div class="hour-item"><span class="hour-time" id="hour-3-time">+3h</span><span class="hour-temp" id="hour-3-temp">--°</span></div>
-      <div class="hour-item"><span class="hour-time" id="hour-4-time">+4h</span><span class="hour-temp" id="hour-4-temp">--°</span></div>
+      <div class="hour-item active-hour" onclick="window.selectHour(0)"><span class="hour-time">Now</span><i class="ti ti-moon hour-icon" id="hour-0-icon"></i><span class="hour-temp" id="hour-now">--°</span></div>
+      <div class="hour-item" onclick="window.selectHour(1)"><span class="hour-time" id="hour-1-time">+1h</span><i class="ti ti-cloud-moon hour-icon" id="hour-1-icon"></i><span class="hour-temp" id="hour-1-temp">--°</span></div>
+      <div class="hour-item" onclick="window.selectHour(2)"><span class="hour-time" id="hour-2-time">+2h</span><i class="ti ti-cloud-moon hour-icon" id="hour-2-icon"></i><span class="hour-temp" id="hour-2-temp">--°</span></div>
+      <div class="hour-item" onclick="window.selectHour(3)"><span class="hour-time" id="hour-3-time">+3h</span><i class="ti ti-cloud-moon hour-icon" id="hour-3-icon"></i><span class="hour-temp" id="hour-3-temp">--°</span></div>
+      <div class="hour-item" onclick="window.selectHour(4)"><span class="hour-time" id="hour-4-time">+4h</span><i class="ti ti-cloud-moon hour-icon" id="hour-4-icon"></i><span class="hour-temp" id="hour-4-temp">--°</span></div>
     </div>
 
     <!-- Location Search & Quick Travel Mode Chips -->
@@ -1621,6 +1665,48 @@
             <li>Vierkötter, A., et al. (2010). <em>Airborne particle exposure accelerates skin aging (SALDIR study).</em> J Invest Dermatol.</li>
           </ol>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Climate Metric Detail Modal -->
+  <div id="modal-climate-detail" class="modal-overlay" style="display:none;" onclick="if(event.target === this) window.closeClimateDetail()">
+    <div class="modal-card climate-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="climate-modal-icon-badge" id="climate-modal-badge"><i class="ti ti-droplet"></i></div>
+          <div>
+            <h3 id="climate-modal-title" class="serif-heading" style="margin:0; font-size:18px;">Stratum Hydration</h3>
+            <p id="climate-modal-subtitle" class="muted-note" style="margin:0; font-size:11px;">Real-time moisture & climate analysis</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" type="button" onclick="window.closeClimateDetail()"><i class="ti ti-x"></i></button>
+      </div>
+
+      <div class="climate-modal-body">
+        <div class="climate-metric-hero-box" id="climate-metric-hero-box">
+          <span class="climate-big-val" id="climate-modal-val">82%</span>
+          <span class="climate-status-tag" id="climate-modal-status">High Humidity · Sebum Risk</span>
+        </div>
+
+        <div class="climate-impact-box">
+          <h4 class="climate-box-label"><i class="ti ti-dna-2"></i> Skin Barrier Impact</h4>
+          <p id="climate-modal-impact" class="climate-box-text">High ambient humidity (>75%) increases natural sebum secretion and occludes pores while maintaining high outer stratum hydration.</p>
+        </div>
+
+        <div class="climate-action-box">
+          <h4 class="climate-box-label"><i class="ti ti-sparkles"></i> Personalized Dermatological Action</h4>
+          <p id="climate-modal-action" class="climate-box-text">Switch to a lightweight gel-cream containing Niacinamide to balance sebum flow without stripping the lipid barrier.</p>
+        </div>
+
+        <div class="climate-quick-stats-row" id="climate-modal-stats-row"></div>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 18px;">
+        <button class="auth-primary-btn" type="button" onclick="window.closeClimateDetail()">
+          <span>Got It · Optimize Routine</span>
+          <i class="ti ti-check"></i>
+        </button>
       </div>
     </div>
   </div>

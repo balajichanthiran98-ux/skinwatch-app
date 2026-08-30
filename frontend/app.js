@@ -964,6 +964,7 @@ if (mapAqiToggleBtn) {
 function renderHourlyForecast(currentTemp) {
   const now = new Date();
   const currentHour = now.getHours();
+  const isNight = currentHour >= 18 || currentHour < 6;
   const base = currentTemp != null ? Math.round(currentTemp) : (state.weather?.temperature ? Math.round(state.weather.temperature) : 28);
   const hourlyTemps = (state.weather?.hourlyTemps && state.weather.hourlyTemps.length >= 5) 
     ? state.weather.hourlyTemps 
@@ -971,20 +972,174 @@ function renderHourlyForecast(currentTemp) {
 
   const hourNowElem = document.getElementById('hour-now');
   if (hourNowElem) hourNowElem.textContent = `${hourlyTemps[0]}°`;
+  const icon0 = document.getElementById('hour-0-icon');
+  if (icon0) icon0.className = isNight ? 'ti ti-moon-stars hour-icon' : 'ti ti-sun hour-icon';
 
   for (let i = 1; i <= 4; i++) {
     const nextHour = (currentHour + i) % 24;
     const period = nextHour >= 12 ? 'PM' : 'AM';
     const displayHour = nextHour % 12 === 0 ? 12 : nextHour % 12;
+    const isUpcomingNight = nextHour >= 18 || nextHour < 6;
 
     const timeElem = document.getElementById(`hour-${i}-time`);
     const tempElem = document.getElementById(`hour-${i}-temp`);
+    const iconElem = document.getElementById(`hour-${i}-icon`);
 
     if (timeElem) timeElem.textContent = `${displayHour}${period}`;
     const tVal = hourlyTemps[i] != null ? hourlyTemps[i] : Math.max(16, base - i);
     if (tempElem) tempElem.textContent = `${tVal}°`;
+    if (iconElem) {
+      iconElem.className = isUpcomingNight ? 'ti ti-cloud-moon hour-icon' : 'ti ti-cloud-sun hour-icon';
+    }
   }
 }
+
+window.selectHour = function(index) {
+  document.querySelectorAll('.hour-item').forEach((item, idx) => {
+    if (idx === index) item.classList.add('active-hour');
+    else item.classList.remove('active-hour');
+  });
+  const now = new Date();
+  const targetHour = (now.getHours() + index) % 24;
+  const period = targetHour >= 12 ? 'PM' : 'AM';
+  const displayHour = targetHour % 12 === 0 ? 12 : targetHour % 12;
+  const label = index === 0 ? 'Current Hour (Now)' : `Forecast for ${displayHour} ${period}`;
+  showToast(`Skin protection forecast: ${label}`);
+};
+
+// Interactive Climate Metric Modal
+window.showClimateDetail = function(metricKey) {
+  const modal = document.getElementById('modal-climate-detail');
+  if (!modal) return;
+
+  const w = state.weather || { temperature: 28, condition: 'Partly Cloudy', humidity: 82, uv: 0, wind: 5 };
+  const aqi = state.airQuality || { aqi: 64, category: 'Good' };
+
+  const badge = document.getElementById('climate-modal-badge');
+  const title = document.getElementById('climate-modal-title');
+  const subtitle = document.getElementById('climate-modal-subtitle');
+  const val = document.getElementById('climate-modal-val');
+  const status = document.getElementById('climate-modal-status');
+  const impact = document.getElementById('climate-modal-impact');
+  const action = document.getElementById('climate-modal-action');
+  const statsRow = document.getElementById('climate-modal-stats-row');
+
+  if (metricKey === 'humidity') {
+    if (badge) badge.innerHTML = '<i class="ti ti-droplet"></i>';
+    if (badge) badge.style.color = '#0284C7';
+    if (title) title.textContent = 'Stratum Corneum Hydration';
+    if (subtitle) subtitle.textContent = 'Ambient Relative Humidity & Sebum Kinetics';
+    if (val) val.textContent = `${w.humidity}%`;
+    if (status) {
+      status.textContent = w.humidity > 75 ? 'High Humidity · Elevated Sebum' : (w.humidity < 35 ? 'Low Humidity · Dry Air' : 'Optimal Hydration Zone');
+      status.style.color = '#0284C7';
+    }
+    if (impact) impact.textContent = w.humidity > 75 
+      ? 'Ambient humidity above 75% inhibits sweat evaporation, expands pore volume, and amplifies sebum flux by up to 22%.' 
+      : 'Moderate ambient moisture supports stratum corneum NMF (Natural Moisturizing Factor) lipid packing.';
+    if (action) action.textContent = w.humidity > 75 
+      ? 'Use an oil-free, water-gel moisturizer with Hyaluronic Acid and 2-5% Niacinamide to balance sebum.' 
+      : 'Apply a ceramide barrier cream on damp skin to seal in hydration.';
+    if (statsRow) statsRow.innerHTML = `
+      <div class="climate-mini-stat"><span class="num">${w.humidity}%</span><span class="lbl">Humidity</span></div>
+      <div class="climate-mini-stat"><span class="num">${w.temperature}°C</span><span class="lbl">Air Temp</span></div>
+      <div class="climate-mini-stat"><span class="num">${w.humidity > 75 ? 'Muggy' : 'Balanced'}</span><span class="lbl">Skin Feel</span></div>
+    `;
+  } else if (metricKey === 'uv') {
+    const uvMeta = getUvMeta(w.uv);
+    if (badge) badge.innerHTML = '<i class="ti ti-sun"></i>';
+    if (badge) badge.style.color = uvMeta.color;
+    if (title) title.textContent = 'Solar UV Radiation';
+    if (subtitle) subtitle.textContent = 'Photodamage, Melanin & Collagen Aging Risk';
+    if (val) val.textContent = `UV ${w.uv != null ? w.uv : 0}`;
+    if (status) {
+      status.textContent = `${uvMeta.label} Risk Level`;
+      status.style.color = uvMeta.color;
+    }
+    if (impact) impact.textContent = w.uv >= 8 
+      ? 'Severe UV exposure. UVA penetrates deep dermis breaking collagen bonds; UVB causes DNA thymine dimers and erythema.' 
+      : (w.uv >= 3 ? 'Moderate UV rays penetrate cloud cover, inducing oxidative free-radical stress on cell membranes.' : 'Minimal solar radiation (night / early morning). Zero photoaging risk currently.');
+    if (action) action.textContent = w.uv >= 6 
+      ? 'Apply broad-spectrum SPF 50+ PA++++ generously. Reapply every 2 hours if outdoors.' 
+      : (w.uv >= 3 ? 'SPF 30 is recommended for daytime errands. Evening routine can incorporate retinoids or peptides.' : 'Safe for active AHA/BHA exfoliation or restorative night retinoids.');
+    if (statsRow) statsRow.innerHTML = `
+      <div class="climate-mini-stat"><span class="num">${w.uv != null ? w.uv : 0}</span><span class="lbl">UV Index</span></div>
+      <div class="climate-mini-stat"><span class="num">${uvMeta.label}</span><span class="lbl">Tier</span></div>
+      <div class="climate-mini-stat"><span class="num">${w.uv >= 6 ? 'SPF 50+' : 'SPF 30'}</span><span class="lbl">Min SPF</span></div>
+    `;
+  } else if (metricKey === 'aqi') {
+    if (badge) badge.innerHTML = '<i class="ti ti-shield-check"></i>';
+    if (badge) badge.style.color = '#16A34A';
+    if (title) title.textContent = 'Air Quality & Micro-Pollution';
+    if (subtitle) subtitle.textContent = 'PM2.5, Ozone (O₃) & Barrier Stress';
+    if (val) val.textContent = `AQI ${aqi.aqi != null ? aqi.aqi : 64}`;
+    if (status) {
+      status.textContent = aqi.category || 'Good Atmospheric Purity';
+      status.style.color = '#16A34A';
+    }
+    if (impact) impact.textContent = aqi.aqi > 100 
+      ? 'Particulate matter (PM2.5) penetrates micro-pores (<20 µm), triggering lipid peroxidation and dark spots.' 
+      : 'Clean atmospheric conditions. Low free-radical particulate burden on facial epidermal layers.';
+    if (action) action.textContent = aqi.aqi > 100 
+      ? 'Double cleanse with a gentle micellar oil followed by a foaming wash. Apply Vitamin C antioxidant serum.' 
+      : 'Standard daily antioxidant barrier shield is sufficient to maintain cutaneous defense.';
+    if (statsRow) statsRow.innerHTML = `
+      <div class="climate-mini-stat"><span class="num">${aqi.aqi != null ? aqi.aqi : 64}</span><span class="lbl">AQI Score</span></div>
+      <div class="climate-mini-stat"><span class="num">PM2.5</span><span class="lbl">Micro-Pores</span></div>
+      <div class="climate-mini-stat"><span class="num">Pure</span><span class="lbl">Air Status</span></div>
+    `;
+  } else if (metricKey === 'wind') {
+    if (badge) badge.innerHTML = '<i class="ti ti-wind"></i>';
+    if (badge) badge.style.color = '#4F46E5';
+    if (title) title.textContent = 'Wind Velocity & Convective Evaporation';
+    if (subtitle) subtitle.textContent = 'Cutaneous Chill & Moisture Stripping Flux';
+    if (val) val.textContent = `${Math.round(w.wind || 5)} km/h`;
+    if (status) {
+      status.textContent = w.wind > 20 ? 'Breezy · Accelerated TEWL' : 'Gentle Breeze · Stable Moisture';
+      status.style.color = '#4F46E5';
+    }
+    if (impact) impact.textContent = w.wind > 20 
+      ? 'High wind velocity accelerates convective boundary-layer evaporation from skin surface, leading to windburn.' 
+      : 'Gentle air velocity maintains standard thermodynamic balance and natural skin moisture equilibrium.';
+    if (action) action.textContent = w.wind > 20 
+      ? 'Apply an occlusive squalane or shea-butter barrier balm before prolonged outdoor exposure.' 
+      : 'Standard daily moisturizing routine is sufficient.';
+    if (statsRow) statsRow.innerHTML = `
+      <div class="climate-mini-stat"><span class="num">${Math.round(w.wind || 5)} km/h</span><span class="lbl">Velocity</span></div>
+      <div class="climate-mini-stat"><span class="num">${w.wind > 20 ? 'Moderate' : 'Low'}</span><span class="lbl">Wind Stress</span></div>
+      <div class="climate-mini-stat"><span class="num">Safe</span><span class="lbl">Skin Flux</span></div>
+    `;
+  } else {
+    // TEWL
+    if (badge) badge.innerHTML = '<i class="ti ti-droplet-half-2"></i>';
+    if (badge) badge.style.color = 'var(--gold, #8A6A2F)';
+    if (title) title.textContent = 'Trans-Epidermal Water Loss (TEWL)';
+    if (subtitle) subtitle.textContent = 'Delfin VapoMeter® Cutaneous Evaporation Scale';
+    if (val) val.textContent = w.tewlRisk || 'Balanced Flux';
+    if (status) {
+      status.textContent = 'Healthy Epidermal Moisture Barrier';
+      status.style.color = 'var(--gold, #8A6A2F)';
+    }
+    if (impact) impact.textContent = 'TEWL quantifies water vapor diffusion through the stratum corneum in g/m²/h based on ambient vapor pressure deficit (VPD).';
+    if (action) action.textContent = 'Maintain stratum corneum integrity with balanced ceramides (NP, AP, EOP), fatty acids, and cholesterol at a 3:1:1 physiological ratio.';
+    if (statsRow) statsRow.innerHTML = `
+      <div class="climate-mini-stat"><span class="num">&lt; 15</span><span class="lbl">g/m²/h</span></div>
+      <div class="climate-mini-stat"><span class="num">CM825</span><span class="lbl">Standard</span></div>
+      <div class="climate-mini-stat"><span class="num">Optimal</span><span class="lbl">Integrity</span></div>
+    `;
+  }
+
+  modal.style.display = 'flex';
+  modal.classList.add('open');
+};
+
+window.closeClimateDetail = function() {
+  const modal = document.getElementById('modal-climate-detail');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('open');
+  }
+};
 
 // ---------- Home ----------
 async function loadWeatherAndAQI() {
@@ -1001,7 +1156,7 @@ async function loadWeatherAndAQI() {
     if (!state.weather) {
       state.weather = {
         temperature: 28,
-        condition: 'Cloudy',
+        condition: 'Partly Cloudy',
         humidity: 82,
         uv: 0,
         wind: 14,
@@ -1036,7 +1191,7 @@ async function loadWeatherAndAQI() {
       }).catch(() => {});
     }
   } catch (err) {
-    console.error('Error loading weather/AQI:', err);
+    console.error('Failed to load weather/AQI', err);
     state.weather = state.weather || { temperature: 28, condition: 'Cloudy', humidity: 82, uv: 0, wind: 14, hourlyTemps: [28, 27, 27, 26, 26] };
     state.airQuality = state.airQuality || { aqi: 64, category: 'Good air quality' };
     renderHome();
@@ -1062,9 +1217,42 @@ function updateDateTime() {
 
 function renderHome() {
   updateDateTime();
-  const w = state.weather || { temperature: 28, condition: 'Cloudy', humidity: 82, uv: 0, wind: 14, hourlyTemps: [28, 27, 27, 26, 26] };
+  const w = state.weather || { temperature: 28, condition: 'Partly Cloudy', humidity: 82, uv: 0, wind: 14, hourlyTemps: [28, 27, 27, 26, 26] };
   const aqi = state.airQuality || { aqi: 64, category: 'Good air quality' };
   const locName = state.location?.name || 'Trichy, Tamil Nadu';
+
+  const heroCard = document.getElementById('hero-weather-card');
+  const now = new Date();
+  const currentHour = now.getHours();
+  const isNight = currentHour >= 18 || currentHour < 6;
+  const condLower = String(w.condition || '').toLowerCase();
+
+  // Dynamic atmospheric theme
+  if (heroCard) {
+    if (isNight) {
+      heroCard.className = 'hero theme-night';
+    } else if (condLower.includes('rain') || condLower.includes('shower')) {
+      heroCard.className = 'hero theme-rain';
+    } else if (condLower.includes('cloud') || condLower.includes('overcast')) {
+      heroCard.className = 'hero theme-cloudy';
+    } else {
+      heroCard.className = 'hero theme-day-sunny';
+    }
+  }
+
+  // Dynamic animated weather icon
+  const condIcon = document.getElementById('hero-condition-icon');
+  if (condIcon) {
+    if (isNight) {
+      condIcon.className = condLower.includes('cloud') ? 'ti ti-cloud-moon hero-animated-icon' : 'ti ti-moon-stars hero-animated-icon';
+    } else if (condLower.includes('rain')) {
+      condIcon.className = 'ti ti-cloud-rain hero-animated-icon';
+    } else if (condLower.includes('cloud')) {
+      condIcon.className = 'ti ti-cloud-sun hero-animated-icon';
+    } else {
+      condIcon.className = 'ti ti-sun-high hero-animated-icon';
+    }
+  }
 
   const heroCity = document.getElementById('hero-city');
   const profLoc = document.getElementById('profile-location');
@@ -1074,21 +1262,25 @@ function renderHome() {
   const heroTemp = document.getElementById('hero-temp');
   if (heroTemp) heroTemp.textContent = Math.round(w.temperature) + '°';
   const heroCond = document.getElementById('hero-cond');
-  if (heroCond) heroCond.textContent = w.condition || 'Warm & Sunny';
+  if (heroCond) heroCond.textContent = w.condition || (isNight ? 'Clear Night' : 'Warm & Sunny');
+
+  // Format stat chips
   const statHum = document.getElementById('stat-hum');
-  if (statHum) statHum.textContent = w.humidity + '% humidity';
+  if (statHum) statHum.textContent = `${w.humidity}% · ${getSkinFeel(w.humidity)}`;
   const statUv = document.getElementById('stat-uv');
-  if (statUv) statUv.textContent = 'UV ' + (w.uv != null ? w.uv : 0);
+  const uvMeta = getUvMeta(w.uv);
+  if (statUv) statUv.textContent = `UV ${w.uv != null ? w.uv : 0} · ${uvMeta.label}`;
   const statAqi = document.getElementById('stat-aqi');
-  if (statAqi) statAqi.textContent = 'AQI ' + (aqi.aqi != null ? aqi.aqi : 64);
+  const aqiCat = aqi.category ? aqi.category.replace(' air quality', '') : (aqi.aqi > 100 ? 'Unhealthy' : 'Good');
+  if (statAqi) statAqi.textContent = `AQI ${aqi.aqi != null ? aqi.aqi : 64} · ${aqiCat}`;
   const statWind = document.getElementById('stat-wind');
-  if (statWind) statWind.textContent = 'Wind ' + Math.round(w.wind || 10) + ' km/h';
+  if (statWind) statWind.textContent = `${Math.round(w.wind || 10)} km/h · ${w.wind > 20 ? 'Breezy' : 'Calm'}`;
 
   // Update TEWL (Trans-Epidermal Water Loss) badge
   const tewlBadge = document.getElementById('hero-tewl-badge');
   const tewlText = document.getElementById('hero-tewl-text');
   if (tewlBadge && tewlText) {
-    const risk = w.tewlRisk || (w.humidity < 35 ? 'Severe Loss' : (w.humidity > 75 ? 'Sebum Risk' : 'Balanced'));
+    const risk = w.tewlRisk || (w.humidity < 35 ? 'Severe Loss' : (w.humidity > 75 ? 'High Humidity' : 'Balanced'));
     tewlText.textContent = `TEWL: ${risk}`;
     tewlBadge.className = 'hero-tewl-badge';
     if (w.tewlLevel === 'severe') tewlBadge.classList.add('tewl-severe');
