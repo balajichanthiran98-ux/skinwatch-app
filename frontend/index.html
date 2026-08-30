@@ -319,40 +319,38 @@
       <button id="dismiss-alert" aria-label="Dismiss"><i class="ti ti-x"></i></button>
     </div>
 
-    <div class="hero theme-night" id="hero-weather-card">
-      <div class="hero-atmosphere-glow"></div>
+    <div class="hero" id="hero-weather-card">
       <div class="hero-top-row">
         <div class="hero-location-wrap">
           <i class="ti ti-map-pin hero-pin-icon"></i>
           <span class="eyebrow" id="hero-city">Trichy, Tamil Nadu</span>
         </div>
-        <span class="hero-live-pill"><span class="live-dot"></span> LIVE CLIMATE</span>
+        <span class="hero-live-pill"><span class="live-dot"></span> Live Climate</span>
       </div>
       <p class="hero-datetime" id="hero-datetime">Sun 30 Aug, 11:00 pm</p>
       
-      <div class="hero-main-display">
-        <div class="hero-weather-icon-wrap" id="hero-weather-icon-wrap">
-          <i class="ti ti-moon-stars hero-animated-icon" id="hero-condition-icon"></i>
-        </div>
-        <div class="hero-temp-block">
-          <div class="hero-temp-row">
-            <span class="hero-temp" id="hero-temp">28°</span>
-            <div class="hero-tewl-badge" id="hero-tewl-badge" title="Trans-Epidermal Water Loss Risk" onclick="window.showClimateDetail('tewl')">
-              <i class="ti ti-droplet-half-2"></i>
-              <span id="hero-tewl-text">TEWL: Balanced</span>
-            </div>
+      <!-- Clean, Centered Luxury Temperature & Condition Presentation -->
+      <div class="hero-center-box">
+        <div class="hero-temp-row">
+          <span class="hero-temp" id="hero-temp">28°</span>
+          <div class="hero-weather-badge">
+            <i class="ti ti-moon-stars" id="hero-condition-icon"></i>
+            <span id="hero-cond">Partly Cloudy</span>
           </div>
-          <p class="hero-cond" id="hero-cond">Warm & Sunny</p>
+        </div>
+        <div class="hero-tewl-badge" id="hero-tewl-badge" title="Trans-Epidermal Water Loss Risk" onclick="window.showClimateDetail('tewl')">
+          <i class="ti ti-droplet-half-2"></i>
+          <span id="hero-tewl-text">TEWL: Balanced</span>
         </div>
       </div>
 
-      <!-- Colorful Interactive Micro-Stat Chips -->
+      <!-- Pastel Luxury Glassmorphic Stat Chips -->
       <div class="hero-stats-grid">
         <button class="hero-stat-chip chip-humidity" id="chip-humidity" type="button" onclick="window.showClimateDetail('humidity')" title="Tap for Skin Hydration Details">
           <div class="stat-icon-circle"><i class="ti ti-droplet"></i></div>
           <div class="stat-info">
             <span class="stat-label">Humidity</span>
-            <span class="stat-val" id="stat-hum">82%</span>
+            <span class="stat-val" id="stat-hum">82% · Dewy</span>
           </div>
         </button>
 
@@ -360,7 +358,7 @@
           <div class="stat-icon-circle"><i class="ti ti-sun"></i></div>
           <div class="stat-info">
             <span class="stat-label">UV Index</span>
-            <span class="stat-val" id="stat-uv">UV 0 · Safe</span>
+            <span class="stat-val" id="stat-uv">UV 0 · Low</span>
           </div>
         </button>
 
@@ -368,7 +366,7 @@
           <div class="stat-icon-circle"><i class="ti ti-shield-check"></i></div>
           <div class="stat-info">
             <span class="stat-label">Air Quality</span>
-            <span class="stat-val" id="stat-aqi">AQI 64 · Good</span>
+            <span class="stat-val" id="stat-aqi">AQI 65 · Good</span>
           </div>
         </button>
 
@@ -376,7 +374,7 @@
           <div class="stat-icon-circle"><i class="ti ti-wind"></i></div>
           <div class="stat-info">
             <span class="stat-label">Wind</span>
-            <span class="stat-val" id="stat-wind">5 km/h</span>
+            <span class="stat-val" id="stat-wind">12 km/h · Calm</span>
           </div>
         </button>
       </div>

@@ -1227,30 +1227,22 @@ function renderHome() {
   const isNight = currentHour >= 18 || currentHour < 6;
   const condLower = String(w.condition || '').toLowerCase();
 
-  // Dynamic atmospheric theme
+  // Set clean luxury hero card
   if (heroCard) {
-    if (isNight) {
-      heroCard.className = 'hero theme-night';
-    } else if (condLower.includes('rain') || condLower.includes('shower')) {
-      heroCard.className = 'hero theme-rain';
-    } else if (condLower.includes('cloud') || condLower.includes('overcast')) {
-      heroCard.className = 'hero theme-cloudy';
-    } else {
-      heroCard.className = 'hero theme-day-sunny';
-    }
+    heroCard.className = 'hero';
   }
 
-  // Dynamic animated weather icon
+  // Dynamic clean weather icon
   const condIcon = document.getElementById('hero-condition-icon');
   if (condIcon) {
     if (isNight) {
-      condIcon.className = condLower.includes('cloud') ? 'ti ti-cloud-moon hero-animated-icon' : 'ti ti-moon-stars hero-animated-icon';
+      condIcon.className = condLower.includes('cloud') ? 'ti ti-cloud-moon' : 'ti ti-moon-stars';
     } else if (condLower.includes('rain')) {
-      condIcon.className = 'ti ti-cloud-rain hero-animated-icon';
+      condIcon.className = 'ti ti-cloud-rain';
     } else if (condLower.includes('cloud')) {
-      condIcon.className = 'ti ti-cloud-sun hero-animated-icon';
+      condIcon.className = 'ti ti-cloud-sun';
     } else {
-      condIcon.className = 'ti ti-sun-high hero-animated-icon';
+      condIcon.className = 'ti ti-sun';
     }
   }
 
