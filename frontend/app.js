@@ -3180,6 +3180,19 @@ function getPast7DaysTimeline() {
     
     const rec = history[dateKey];
     
+    // Calibrated Fitzpatrick Skin Tone Color Map showing chromatic progression
+    const skinType = (state.profile && state.profile.skinType) || (state.authUser && state.authUser.skinType) || 'III';
+    const typePalettes = {
+      'I': ['#E8C8B8', '#ECD0C2', '#F0D8CB', '#F4E0D5', '#F7E7DC', '#FAEEE4', '#FCF3EB'],
+      'II': ['#DEC0AC', '#E2C7B4', '#E6CEBC', '#EBD5C5', '#EFDCCD', '#F3E3D5', '#F7EADE'],
+      'III': ['#C2B099', '#C6B59E', '#C9BAA3', '#CDBFA9', '#D1C4AE', '#D5C9B3', '#D9CEB9'],
+      'IV': ['#A68F74', '#AA947A', '#AF9A80', '#B49F86', '#B9A58C', '#BEAB92', '#C3B098'],
+      'V': ['#7C5D44', '#82634A', '#886950', '#8F6F56', '#95755C', '#9B7B62', '#A28168'],
+      'VI': ['#4B3425', '#51392A', '#573E30', '#5E4436', '#644A3C', '#6B5042', '#725648']
+    };
+    const palette = typePalettes[skinType] || typePalettes['III'];
+    const skinColor = (rec && rec.skinColor) ? rec.skinColor : palette[6 - offset];
+
     // Default baseline values if not scanned on that day
     const baseScore = 78 + (6 - offset);
     const baseHyd = 74 + (6 - offset) * 1.5;
@@ -3194,6 +3207,7 @@ function getPast7DaysTimeline() {
       hyd: rec ? (rec.hyd || (rec.metrics && rec.metrics.hydrationVal) || 82) : Math.round(baseHyd),
       red: rec ? (rec.red || (rec.metrics && rec.metrics.rednessVal) || 20) : Math.round(baseRed),
       img: (rec && rec.photo) ? rec.photo : sampleFaceSvg,
+      skinColor: skinColor,
       hasUserPhoto: !!(rec && rec.photo)
     });
   }
@@ -3237,7 +3251,7 @@ function renderPastWeekComparison() {
     dotBtn.className = `timeline-day-card ${isLatest ? 'today-pill' : ''} ${isSelected && !isLatest ? 'selected-pill' : ''}`;
     dotBtn.title = `${item.day} (${item.date}) · Score ${item.score}`;
     dotBtn.innerHTML = `
-      <div class="timeline-thumb ${item.hasUserPhoto ? 'has-user-photo' : ''}" style="background-image: url('${item.img}');"></div>
+      <div class="timeline-thumb ${item.hasUserPhoto ? 'has-user-photo' : ''}" style="background-color: ${item.skinColor};"></div>
       <span class="timeline-day-title">${item.day}</span>
       <span class="timeline-score-pill">${item.score}</span>
     `;
