@@ -545,7 +545,7 @@ async function handleLogin() {
     if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
     showToast(`Welcome back, ${userData.name}!`);
     checkAuthState();
-    try { refreshWeather(); } catch {}
+    try { useCurrentLocation(false); } catch {}
   };
 
   try {
@@ -3875,27 +3875,43 @@ async function searchCity(query) {
   }
 }
 
-async function useCurrentLocation() {
+async function useCurrentLocation(silent = false) {
   const btns = [document.getElementById('locate-me'), document.getElementById('home-locate-me')].filter(Boolean);
-  btns.forEach(b => b.disabled = true);
-  setLocationStatus('Detecting your location...');
+  if (!silent) {
+    btns.forEach(b => b.disabled = true);
+    setLocationStatus('Detecting live location...');
+  }
+
+  const applyDetectedLocation = async (lat, lon, name) => {
+    state.location = {
+      lat,
+      lon,
+      name: name || `${lat.toFixed(2)}, ${lon.toFixed(2)}`
+    };
+    saveJSON('sw_location', state.location);
+    if (state.profile) state.profile.city = state.location.name;
+
+    // Persist to user session & cloud database
+    if (state.authUser) {
+      state.authUser.location = state.location;
+      state.authUser.city = state.location.name;
+      sessionStorage.setItem('sw_session_user', JSON.stringify(state.authUser));
+      try { syncUserData(); } catch {}
+    }
+
+    setLocationStatus(`Location detected: ${state.location.name}`);
+    renderProfile();
+    renderHome();
+    loadWeatherAndAQI();
+    loadForecast();
+  };
 
   const tryIpFallback = async () => {
     try {
-      setLocationStatus('Detecting location via network...');
+      if (!silent) setLocationStatus('Detecting location via network...');
       const ipLoc = await apiGet('/api/ip-location');
       if (ipLoc && ipLoc.lat != null && ipLoc.lon != null) {
-        state.location = {
-          lat: ipLoc.lat,
-          lon: ipLoc.lon,
-          name: ipLoc.name
-        };
-        saveJSON('sw_location', state.location);
-        setLocationStatus(`Detected location: ${ipLoc.name}`);
-        renderProfile();
-        renderHome();
-        loadWeatherAndAQI();
-        loadForecast();
+        await applyDetectedLocation(ipLoc.lat, ipLoc.lon, ipLoc.name);
         return true;
       }
     } catch (e) {
@@ -3906,7 +3922,7 @@ async function useCurrentLocation() {
 
   if (!navigator.geolocation) {
     const ok = await tryIpFallback();
-    if (!ok) setLocationStatus('Location unavailable. Please search your city manually.', true);
+    if (!ok && !silent) setLocationStatus('Location unavailable. Please search your city manually.', true);
     btns.forEach(b => b.disabled = false);
     return;
   }
@@ -3915,33 +3931,23 @@ async function useCurrentLocation() {
     async (pos) => {
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
+      let placeName = '';
       try {
         const rev = await apiGet(`/api/reverse-geocode?lat=${lat}&lon=${lon}`);
-        state.location = {
-          lat,
-          lon,
-          name: rev.name || `${lat.toFixed(2)}, ${lon.toFixed(2)}`
-        };
-      } catch {
-        state.location = { lat, lon, name: 'Current Location' };
-      }
-      saveJSON('sw_location', state.location);
-      setLocationStatus(`Location detected: ${state.location.name}`);
-      renderProfile();
-      renderHome();
-      loadWeatherAndAQI();
-      loadForecast();
+        placeName = rev.name;
+      } catch {}
+      await applyDetectedLocation(lat, lon, placeName || `${lat.toFixed(2)}, ${lon.toFixed(2)}`);
       btns.forEach(b => b.disabled = false);
     },
     async (err) => {
-      console.warn('Browser GPS unavailable, trying IP fallback:', err.message);
+      console.warn('Browser GPS unavailable, falling back to network IP:', err.message);
       const ok = await tryIpFallback();
-      if (!ok) {
+      if (!ok && !silent) {
         setLocationStatus('Could not detect location. Please type your city name above.', true);
       }
       btns.forEach(b => b.disabled = false);
     },
-    { timeout: 7000, enableHighAccuracy: true }
+    { timeout: 6000, enableHighAccuracy: true, maximumAge: 300000 }
   );
 }
 
@@ -4106,6 +4112,11 @@ function checkAuthState() {
     renderRoutineAll();
     loadWeatherAndAQI();
     loadForecast();
+
+    // Auto-detect live location if not set or default
+    if (!state.location || state.location.name === 'Trichy, Tamil Nadu' || !state.location.lat) {
+      try { useCurrentLocation(true); } catch {}
+    }
     return true;
   } catch (err) {
     console.error('Session parse error:', err);
@@ -4154,6 +4165,8 @@ async function handleUserLogin() {
       // Save session
       sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
       checkAuthState();
+      // Auto-detect live location immediately upon login
+      try { useCurrentLocation(false); } catch {}
     } else {
       showAuthError(errEl, res?.error || 'Invalid mobile number or password.');
     }
@@ -4218,6 +4231,8 @@ async function handleUserRegistration() {
     if (res && res.success && res.user) {
       sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
       checkAuthState();
+      // Auto-detect live location immediately upon account creation
+      try { useCurrentLocation(false); } catch {}
     } else {
       showAuthError(errEl, res?.error || 'Registration failed. An account may already exist.');
     }
