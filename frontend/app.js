@@ -3315,6 +3315,66 @@ function renderPastWeekComparison() {
     deltaRed.textContent = `${activeItem.red}% ➔ ${targetRightItem.red}% (${redDiff <= 0 ? '' : '+'}${redDiff}%)`;
     deltaRed.style.color = redDiff <= 0 ? '#2E7D32' : '#C2410C';
   }
+
+  // 4. Update Dedicated Visual Skin Progression Trajectory Card (Below Photos)
+  const progLblStart = document.getElementById('prog-lbl-start');
+  const progLblEnd = document.getElementById('prog-lbl-end');
+  const progRatePill = document.getElementById('progression-rate-pill');
+  const progValBeforeScore = document.getElementById('prog-val-before-score');
+  const progValAfterScore = document.getElementById('prog-val-after-score');
+  const progDeltaScore = document.getElementById('prog-delta-score');
+  const progBarBarrier = document.getElementById('prog-bar-barrier');
+
+  const progValBeforeHyd = document.getElementById('prog-val-before-hyd');
+  const progValAfterHyd = document.getElementById('prog-val-after-hyd');
+  const progDeltaHyd = document.getElementById('prog-delta-hyd');
+  const progBarHyd = document.getElementById('prog-bar-hyd');
+
+  const progValBeforeRed = document.getElementById('prog-val-before-red');
+  const progValAfterRed = document.getElementById('prog-val-after-red');
+  const progDeltaRed = document.getElementById('prog-delta-red');
+  const progBarRed = document.getElementById('prog-bar-red');
+  const progNoteText = document.getElementById('progression-note-text');
+
+  if (progLblStart) progLblStart.textContent = `${activeItem.day} (${activeItem.date})`;
+  if (progLblEnd) progLblEnd.textContent = `${targetRightItem.day} (${targetRightItem.date})`;
+
+  if (progRatePill) {
+    progRatePill.textContent = scoreDiff >= 0 ? `+${scoreDiff}% Recovery` : `${scoreDiff}% Barrier Shift`;
+    progRatePill.className = `progression-rate-pill ${scoreDiff >= 0 ? 'good' : 'warn'}`;
+  }
+
+  if (progValBeforeScore) progValBeforeScore.textContent = `${activeItem.score}%`;
+  if (progValAfterScore) progValAfterScore.textContent = `${targetRightItem.score}%`;
+  if (progDeltaScore) {
+    progDeltaScore.textContent = `${scoreDiff >= 0 ? '+' : ''}${scoreDiff}%`;
+    progDeltaScore.className = `prog-delta-tag ${scoreDiff >= 0 ? 'good' : 'warn'}`;
+  }
+  if (progBarBarrier) progBarBarrier.style.width = `${Math.min(100, Math.max(10, targetRightItem.score))}%`;
+
+  if (progValBeforeHyd) progValBeforeHyd.textContent = `${activeItem.hyd} AU`;
+  if (progValAfterHyd) progValAfterHyd.textContent = `${targetRightItem.hyd} AU`;
+  if (progDeltaHyd) {
+    progDeltaHyd.textContent = `${hydDiff >= 0 ? '+' : ''}${hydDiff} AU`;
+    progDeltaHyd.className = `prog-delta-tag ${hydDiff >= 0 ? 'good' : 'warn'}`;
+  }
+  if (progBarHyd) progBarHyd.style.width = `${Math.min(100, Math.max(10, targetRightItem.hyd))}%`;
+
+  if (progValBeforeRed) progValBeforeRed.textContent = `${activeItem.red}%`;
+  if (progValAfterRed) progValAfterRed.textContent = `${targetRightItem.red}%`;
+  if (progDeltaRed) {
+    progDeltaRed.textContent = `${redDiff <= 0 ? '' : '+'}${redDiff}% (${redDiff <= 0 ? 'Calmer' : 'Elevated'})`;
+    progDeltaRed.className = `prog-delta-tag ${redDiff <= 0 ? 'good' : 'warn'}`;
+  }
+  if (progBarRed) progBarRed.style.width = `${Math.min(100, Math.max(8, targetRightItem.red))}%`;
+
+  if (progNoteText) {
+    if (scoreDiff >= 0) {
+      progNoteText.textContent = `Skin barrier has fortified by +${scoreDiff}% from ${activeItem.day} to ${targetRightItem.day}. Stratum corneum moisture levels are thriving with effective TEWL resistance.`;
+    } else {
+      progNoteText.textContent = `Minor barrier shift observed (${scoreDiff}%). Consider reinforcing ceramide moisturizer and antioxidant serum under current environmental stressors.`;
+    }
+  }
 }
 
 // Split Slider Drag Controller

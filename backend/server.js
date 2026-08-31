@@ -30,7 +30,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
 // ---- simple in-memory cache, 2-minute TTL for fast real-time updates ----
 const cache = new Map();
