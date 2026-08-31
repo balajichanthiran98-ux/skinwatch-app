@@ -1462,6 +1462,10 @@ body {
   background-position: center;
   border: 1px solid var(--border);
 }
+.timeline-thumb.has-user-photo {
+  border: 1.5px solid var(--gold);
+  box-shadow: 0 0 6px rgba(138, 106, 47, 0.35);
+}
 
 .timeline-day-title {
   font-size: 10px;

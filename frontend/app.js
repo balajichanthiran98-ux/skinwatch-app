@@ -440,19 +440,17 @@ function resetCheckScreenForUser() {
   if (photoInput) photoInput.value = '';
 
   const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey() : new Date().toISOString().slice(0, 10);
-  const todayScan = (state.scanHistory && state.scanHistory[todayKey]) || null;
+  const todayScan = (state.scanHistory && typeof state.scanHistory === 'object' && !Array.isArray(state.scanHistory)) ? state.scanHistory[todayKey] : null;
   const todayPhoto = todayScan ? todayScan.photo : null;
-  const userPhoto = todayPhoto || state.checkPhoto || (state.authUser && state.authUser.checkPhoto) || null;
 
-  if (userPhoto) {
+  if (todayPhoto) {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
-      uploadZone.style.backgroundImage = `url('${userPhoto}')`;
+      uploadZone.style.backgroundImage = `url('${todayPhoto}')`;
     }
     if (uploadContent) uploadContent.style.display = 'none';
     if (photoActions) photoActions.style.display = 'flex';
     if (diagnosticResults) diagnosticResults.style.display = 'block';
-    if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${todayPhoto || userPhoto}')`;
   } else {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
@@ -461,10 +459,7 @@ function resetCheckScreenForUser() {
     if (uploadContent) uploadContent.style.display = 'flex';
     if (photoActions) photoActions.style.display = 'none';
     if (diagnosticResults) diagnosticResults.style.display = 'none';
-    if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${sampleFaceSvg}')`;
   }
-
-  if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${sampleFaceSvg}')`;
 
   if (avatar && !state.authUser?.avatar) {
     avatar.style.backgroundImage = 'none';
@@ -3153,7 +3148,23 @@ function getLocalDateKey(d = new Date()) {
 }
 
 function getPast7DaysTimeline() {
-  const history = state.scanHistory || (state.authUser && state.authUser.scanHistory) || {};
+  let history = state.scanHistory || (state.authUser && state.authUser.scanHistory) || {};
+  if (Array.isArray(history)) history = {};
+
+  // Auto-migrate legacy standalone checkPhoto to yesterday (2026-08-30) if scanHistory was empty
+  const userPhoto = state.checkPhoto || (state.authUser && state.authUser.checkPhoto);
+  if (userPhoto && Object.keys(history).length === 0) {
+    history['2026-08-30'] = {
+      photo: userPhoto,
+      score: 84,
+      hyd: 83,
+      red: 20,
+      timestamp: 1788028800000
+    };
+    state.scanHistory = history;
+    saveJSON('sw_scan_history', history);
+  }
+
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
@@ -3197,29 +3208,46 @@ function renderPastWeekComparison() {
   dotsRow.innerHTML = '';
 
   const pastWeekDays = getPast7DaysTimeline();
-  if (selectedCompareIndex >= pastWeekDays.length) {
-    selectedCompareIndex = 0;
+
+  // Find the day with the most recent actual user scan photo
+  let latestScannedIndex = -1;
+  for (let idx = pastWeekDays.length - 1; idx >= 0; idx--) {
+    if (pastWeekDays[idx].hasUserPhoto) {
+      latestScannedIndex = idx;
+      break;
+    }
   }
 
-  const todayItem = pastWeekDays[pastWeekDays.length - 1];
+  // If a photo was taken on any day, the Right card displays that latest scan
+  const targetRightIndex = latestScannedIndex !== -1 ? latestScannedIndex : (pastWeekDays.length - 1);
+  const targetRightItem = pastWeekDays[targetRightIndex];
+
+  // The Left card compares against an earlier baseline day
+  if (selectedCompareIndex >= pastWeekDays.length || selectedCompareIndex === targetRightIndex) {
+    selectedCompareIndex = (targetRightIndex === 0) ? 1 : 0;
+  }
   const activeItem = pastWeekDays[selectedCompareIndex];
 
   // 1. Render 7-Day Interactive Timeline Strip Cards
   pastWeekDays.forEach((item, i) => {
-    const isToday = i === pastWeekDays.length - 1;
+    const isLatest = i === targetRightIndex;
     const isSelected = i === selectedCompareIndex;
 
     const dotBtn = document.createElement('button');
-    dotBtn.className = `timeline-day-card ${isToday ? 'today-pill' : ''} ${isSelected && !isToday ? 'selected-pill' : ''}`;
+    dotBtn.className = `timeline-day-card ${isLatest ? 'today-pill' : ''} ${isSelected && !isLatest ? 'selected-pill' : ''}`;
     dotBtn.title = `${item.day} (${item.date}) · Score ${item.score}`;
     dotBtn.innerHTML = `
-      <div class="timeline-thumb" style="background-image: url('${item.img}');"></div>
+      <div class="timeline-thumb ${item.hasUserPhoto ? 'has-user-photo' : ''}" style="background-image: url('${item.img}');"></div>
       <span class="timeline-day-title">${item.day}</span>
       <span class="timeline-score-pill">${item.score}</span>
     `;
 
     dotBtn.addEventListener('click', () => {
-      selectedCompareIndex = i;
+      if (i === targetRightIndex) {
+        selectedCompareIndex = (i === 0) ? 1 : 0;
+      } else {
+        selectedCompareIndex = i;
+      }
       renderPastWeekComparison();
     });
 
@@ -3233,9 +3261,9 @@ function renderPastWeekComparison() {
   const splitAfterLbl = document.getElementById('split-after-lbl');
 
   if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${activeItem.img}')`;
-  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${todayItem.img}')`;
+  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${targetRightItem.img}')`;
   if (splitBeforeLbl) splitBeforeLbl.textContent = `${activeItem.day} (${activeItem.date})`;
-  if (splitAfterLbl) splitAfterLbl.textContent = `Today (${todayItem.date})`;
+  if (splitAfterLbl) splitAfterLbl.textContent = `${targetRightItem.day} (${targetRightItem.date})`;
 
   // Scores & Biometrics in Cards
   const beforeScoreEl = document.getElementById('gallery-before-score');
@@ -3246,11 +3274,11 @@ function renderPastWeekComparison() {
   const afterRedEl = document.getElementById('gallery-after-red');
 
   if (beforeScoreEl) beforeScoreEl.textContent = `Score ${activeItem.score}`;
-  if (afterScoreEl) afterScoreEl.textContent = `Score ${todayItem.score}`;
+  if (afterScoreEl) afterScoreEl.textContent = `Score ${targetRightItem.score}`;
   if (beforeHydEl) beforeHydEl.textContent = `${activeItem.hyd} AU`;
-  if (afterHydEl) afterHydEl.textContent = `${todayItem.hyd} AU`;
+  if (afterHydEl) afterHydEl.textContent = `${targetRightItem.hyd} AU`;
   if (beforeRedEl) beforeRedEl.textContent = `${activeItem.red}%`;
-  if (afterRedEl) afterRedEl.textContent = `${todayItem.red}%`;
+  if (afterRedEl) afterRedEl.textContent = `${targetRightItem.red}%`;
 
   // 3. Update Dynamic Differential Delta Badges
   const scoreBadge = document.getElementById('compare-score-badge');
@@ -3259,9 +3287,9 @@ function renderPastWeekComparison() {
   const deltaHyd = document.getElementById('delta-hyd-val');
   const deltaRed = document.getElementById('delta-red-val');
 
-  const scoreDiff = todayItem.score - activeItem.score;
-  const hydDiff = todayItem.hyd - activeItem.hyd;
-  const redDiff = todayItem.red - activeItem.red; // negative is reduction/improvement
+  const scoreDiff = targetRightItem.score - activeItem.score;
+  const hydDiff = targetRightItem.hyd - activeItem.hyd;
+  const redDiff = targetRightItem.red - activeItem.red; // negative is reduction/improvement
 
   if (scoreBadge) {
     scoreBadge.textContent = scoreDiff >= 0 ? `+${scoreDiff}% Barrier Recovery` : `${scoreDiff}% Barrier Shift`;
@@ -3274,17 +3302,17 @@ function renderPastWeekComparison() {
   }
 
   if (deltaBarrier) {
-    deltaBarrier.textContent = `${activeItem.score}% ➔ ${todayItem.score}% (${scoreDiff >= 0 ? '+' : ''}${scoreDiff}%)`;
+    deltaBarrier.textContent = `${activeItem.score}% ➔ ${targetRightItem.score}% (${scoreDiff >= 0 ? '+' : ''}${scoreDiff}%)`;
     deltaBarrier.style.color = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
   }
 
   if (deltaHyd) {
-    deltaHyd.textContent = `${activeItem.hyd} AU ➔ ${todayItem.hyd} AU (${hydDiff >= 0 ? '+' : ''}${hydDiff} AU)`;
-    deltaHyd.style.color = hydDiff >= 0 ? '#1976D2' : '#C2410C';
+    deltaHyd.textContent = `${activeItem.hyd} ➔ ${targetRightItem.hyd} AU (${hydDiff >= 0 ? '+' : ''}${hydDiff} AU)`;
+    deltaHyd.style.color = hydDiff >= 0 ? '#0284C7' : '#C2410C';
   }
 
   if (deltaRed) {
-    deltaRed.textContent = `${activeItem.red}% ➔ ${todayItem.red}% (${redDiff >= 0 ? '+' : ''}${redDiff}%)`;
+    deltaRed.textContent = `${activeItem.red}% ➔ ${targetRightItem.red}% (${redDiff <= 0 ? '' : '+'}${redDiff}%)`;
     deltaRed.style.color = redDiff <= 0 ? '#2E7D32' : '#C2410C';
   }
 }
