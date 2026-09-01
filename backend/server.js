@@ -197,15 +197,25 @@ app.get('/api/weather', async (req, res) => {
       const curr = data.current || {};
       const isDay = curr.is_day ?? 1;
 
-      let currentHour = 12;
-      if (curr.time) {
-        currentHour = new Date(curr.time).getHours();
+      // Find closest hour index in Open-Meteo hourly array
+      let currentHourIndex = 0;
+      if (data.hourly?.time && Array.isArray(data.hourly.time)) {
+        const nowMs = Date.now();
+        let closestDist = Infinity;
+        data.hourly.time.forEach((tStr, idx) => {
+          const tMs = new Date(tStr).getTime();
+          const dist = Math.abs(tMs - nowMs);
+          if (dist < closestDist) {
+            closestDist = dist;
+            currentHourIndex = idx;
+          }
+        });
       } else {
-        currentHour = new Date().getHours();
+        currentHourIndex = new Date().getHours();
       }
 
       const hourlyUvs = data.hourly?.uv_index || [];
-      const currentUv = hourlyUvs[currentHour] ?? (isDay === 0 ? 0 : 7.5);
+      const currentUv = hourlyUvs[currentHourIndex] ?? (isDay === 0 ? 0 : 7.5);
       const maxUvToday = Math.max(...hourlyUvs.slice(0, 24), 0);
 
       const hourlyTemps = [];
@@ -215,14 +225,16 @@ app.get('/api/weather', async (req, res) => {
       const isDayArr = data.hourly?.is_day || [];
 
       for (let i = 0; i < 5; i++) {
-        const hIdx = (currentHour + i) % 24;
-        const hTemp = Math.round(tempArr[hIdx] ?? curr.temperature_2m ?? 30);
-        const hIsDay = isDayArr[hIdx] != null ? isDayArr[hIdx] : (hIdx >= 6 && hIdx < 18 ? 1 : 0);
-        const hCode = codeArr[hIdx] != null ? codeArr[hIdx] : curr.weather_code;
+        const idx = currentHourIndex + i;
+        const hTime = data.hourly?.time ? new Date(data.hourly.time[idx]) : new Date(Date.now() + i * 3600000);
+        const hHour = hTime.getHours();
+        const hTemp = Math.round(tempArr[idx] ?? curr.temperature_2m ?? 28);
+        const hIsDay = isDayArr[idx] != null ? isDayArr[idx] : (hHour >= 6 && hHour < 18 ? 1 : 0);
+        const hCode = codeArr[idx] != null ? codeArr[idx] : curr.weather_code;
         const hCond = wmoToDescription(hCode, hIsDay);
         hourlyTemps.push(hTemp);
         hourlyForecast.push({
-          hour: hIdx,
+          hour: hHour,
           temp: hTemp,
           isDay: hIsDay,
           condition: hCond,
@@ -264,6 +276,13 @@ app.get('/api/weather', async (req, res) => {
   // Resilient Fallback
   const fallbackMetrics = calculateSkinClimateMetrics(28, 75, 23, 12);
   const currentFallbackHour = new Date().getHours();
+  const fallbackConditions = [
+    'Mostly Cloudy',
+    'Partly Cloudy Night',
+    'Clear Night',
+    'Clear Night',
+    'Mist / Haze'
+  ];
   const fallback = {
     temperature: 28,
     humidity: 75,
@@ -276,16 +295,16 @@ app.get('/api/weather', async (req, res) => {
     tewlLevel: fallbackMetrics.tewlLevel,
     barrierAdvice: fallbackMetrics.barrierAdvice,
     windStress: fallbackMetrics.windStress,
-    condition: 'Partly Cloudy Night',
-    hourlyTemps: [28, 27, 27, 26, 26],
+    condition: currentFallbackHour >= 18 || currentFallbackHour < 6 ? 'Mostly Cloudy' : 'Partly Cloudy',
+    hourlyTemps: [28, 27, 26, 26, 25],
     hourlyForecast: [0, 1, 2, 3, 4].map(offset => {
       const h = (currentFallbackHour + offset) % 24;
       const hIsDay = h >= 6 && h < 18 ? 1 : 0;
       return {
         hour: h,
-        temp: 28 - Math.min(offset, 2),
+        temp: 28 - Math.min(offset, 3),
         isDay: hIsDay,
-        condition: hIsDay === 0 ? 'Partly Cloudy Night' : 'Partly Cloudy'
+        condition: hIsDay === 0 ? fallbackConditions[offset % fallbackConditions.length] : 'Partly Cloudy'
       };
     })
   };

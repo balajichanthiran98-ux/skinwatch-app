@@ -971,11 +971,11 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   const svgWrap = (paths, color = 'currentColor') =>
     `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;">${paths}</svg>`;
 
-  // 1. Thunderstorm / Lightning / Severe Convective
+  // 1. Thunderstorm / Lightning
   if (norm.includes('thunder') || norm.includes('storm') || norm.includes('lightning') || norm.includes('squall')) {
     const color = '#7C3AED';
     return {
-      svg: svgWrap('<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path d="m13 12-3 5h4l-3 5"/>', color),
+      svg: svgWrap('<path d="M17.5 16H9a6 6 0 1 1 5.75-8h1.75a4 4 0 1 1 1 7.87"/><path d="m13 11-4 6h4l-2 5" stroke="#7C3AED"/>', color),
       iconClass: 'ti ti-cloud-storm',
       color,
       ariaLabel: 'Thunderstorm with lightning',
@@ -987,7 +987,7 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   if (norm.includes('snow') || norm.includes('sleet') || norm.includes('blizzard') || norm.includes('ice') || norm.includes('frost') || norm.includes('flurr')) {
     const color = '#0284C7';
     return {
-      svg: svgWrap('<path d="m10 20-1.25-2.5L6 18"/><path d="M10 4 8.75 6.5 6 6"/><path d="m14 20 1.25-2.5L18 18"/><path d="m14 4 1.25 2.5L18 6"/><path d="m17 21-3-6h-4l-3 6"/><path d="m17 3-3 6h-4L7 3"/><path d="M2 12h20"/><path d="m20 10-2.5 1.25L18 14"/><path d="m4 10 2.5 1.25L6 14"/><path d="m20 14-2.5-1.25L18 10"/><path d="m4 14 2.5-1.25L6 10"/>', color),
+      svg: svgWrap('<path d="M12 2v20"/><path d="m17 7-5 5-5-5"/><path d="m17 17-5-5-5 5"/><path d="M2 12h20"/><path d="m7 7 5 5 5-5"/><path d="m7 17 5-5 5 5"/>', color),
       iconClass: 'ti ti-snowflake',
       color,
       ariaLabel: 'Snow and sleet',
@@ -999,7 +999,7 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   if (norm.includes('heavy rain') || norm.includes('shower') || norm.includes('torrential') || norm.includes('downpour')) {
     const color = '#2563EB';
     return {
-      svg: svgWrap('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>', color),
+      svg: svgWrap('<path d="M17.5 16H9a6 6 0 1 1 5.75-8h1.75a4 4 0 1 1 1 7.87"/><path d="M8 18v3"/><path d="M12 18v3"/><path d="M16 18v3"/>', color),
       iconClass: 'ti ti-cloud-rain',
       color,
       ariaLabel: 'Heavy rain showers',
@@ -1011,7 +1011,7 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   if (norm.includes('drizzle') || norm.includes('light rain') || norm.includes('rain') || norm.includes('sprinkle')) {
     const color = '#0284C7';
     return {
-      svg: svgWrap('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="m8 19-1 2"/><path d="m12 19-1 2"/><path d="m16 19-1 2"/>', color),
+      svg: svgWrap('<path d="M17.5 16H9a6 6 0 1 1 5.75-8h1.75a4 4 0 1 1 1 7.87"/><path d="m8 19-1 2"/><path d="m12 19-1 2"/><path d="m16 19-1 2"/>', color),
       iconClass: 'ti ti-cloud-drizzle',
       color,
       ariaLabel: isNight ? 'Night rain drizzle' : 'Light rain drizzle',
@@ -1023,7 +1023,7 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   if (norm.includes('fog') || norm.includes('mist') || norm.includes('haze') || norm.includes('smoke') || norm.includes('dust')) {
     const color = '#64748B';
     return {
-      svg: svgWrap('<path d="M4 14h16"/><path d="M4 10h16"/><path d="M4 18h16"/><path d="M4 6h16"/>', color),
+      svg: svgWrap('<path d="M4 14h16"/><path d="M6 10h12"/><path d="M4 18h16"/><path d="M8 6h8"/>', color),
       iconClass: 'ti ti-mist',
       color,
       ariaLabel: 'Fog / Mist / Atmospheric haze',
@@ -1044,10 +1044,10 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   }
 
   // 7. Mostly Cloudy / Overcast / Dense Cloud Cover
-  if (norm.includes('mostly cloudy') || norm.includes('overcast') || (norm.includes('cloudy') && !norm.includes('partly') && !norm.includes('mostly sunny'))) {
+  if (norm.includes('mostly cloudy') || norm.includes('overcast') || (norm.includes('cloud') && !norm.includes('partly') && !norm.includes('sun') && !norm.includes('moon'))) {
     const color = '#64748B';
     return {
-      svg: svgWrap('<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>', color),
+      svg: svgWrap('<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M8 12a3.5 3.5 0 0 1 6.5-1.5"/>', color),
       iconClass: 'ti ti-clouds',
       color,
       ariaLabel: 'Mostly cloudy / Overcast sky',
@@ -1056,11 +1056,11 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   }
 
   // 8. Partly Cloudy / Scattered Clouds / Mostly Sunny / Fair
-  if (norm.includes('partly') || norm.includes('scattered') || norm.includes('broken') || norm.includes('few clouds') || (norm.includes('cloud') && norm.includes('sun'))) {
+  if (norm.includes('partly') || norm.includes('scattered') || norm.includes('broken') || norm.includes('few clouds')) {
     if (isNight) {
       const color = '#818CF8';
       return {
-        svg: svgWrap('<path d="M10.188 8.5A6 6 0 0 1 16 4a8 8 0 0 0-6 8 6 6 0 0 0 4.367 5.75"/><path d="M17 21H7a5 5 0 0 1-1-9.9 5 5 0 0 1 9.9 1H17a3 3 0 0 1 0 6Z"/>', color),
+        svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M17 9a4 4 0 0 0-4-4 4.5 4.5 0 0 0-.8.07A6 6 0 0 1 19 11.8" stroke="#818CF8"/><path d="M17.5 19H9a5 5 0 1 1 1.5-9.76 5 5 0 0 1 7 4.76 3.5 3.5 0 0 1 0 5z" stroke="#64748B"/></svg>`,
         iconClass: 'ti ti-cloud-moon',
         color,
         ariaLabel: 'Partly cloudy night sky',
@@ -1069,7 +1069,7 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
     } else {
       const color = '#D97706';
       return {
-        svg: svgWrap('<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/>', color),
+        svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M12 2v2" stroke="#EAB308"/><path d="m4.93 4.93 1.41 1.41" stroke="#EAB308"/><path d="M20 12h2" stroke="#EAB308"/><path d="M15.95 12.65A4 4 0 0 0 12 8c-.6 0-1.16.13-1.67.36" stroke="#EAB308"/><path d="M17.5 19H9a5 5 0 1 1 1.5-9.76 5 5 0 0 1 7 4.76 3.5 3.5 0 0 1 0 5z" stroke="#D97706"/></svg>`,
         iconClass: 'ti ti-cloud-sun',
         color,
         ariaLabel: 'Partly cloudy daytime sky',
@@ -1083,7 +1083,7 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
     if (isNight) {
       const color = '#818CF8';
       return {
-        svg: svgWrap('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/>', color),
+        svg: svgWrap('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>', color),
         iconClass: 'ti ti-moon-stars',
         color,
         ariaLabel: 'Clear night sky',
@@ -1105,10 +1105,10 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   if (isNight) {
     const color = '#818CF8';
     return {
-      svg: svgWrap('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/>', color),
+      svg: svgWrap('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>', color),
       iconClass: 'ti ti-moon-stars',
       color,
-      ariaLabel: 'Night condition',
+      ariaLabel: 'Clear night sky',
       emoji: '🌙'
     };
   } else {
@@ -1128,7 +1128,7 @@ function renderHourlyForecast(currentTemp) {
   const currentHour = now.getHours();
   const isNowNight = currentHour >= 18 || currentHour < 6;
   const base = currentTemp != null ? Math.round(currentTemp) : (state.weather?.temperature ? Math.round(state.weather.temperature) : 28);
-  const mainCondition = state.weather?.condition || (isNowNight ? 'Clear Night' : 'Partly Cloudy');
+  const mainCondition = state.weather?.condition || (isNowNight ? 'Mostly Cloudy' : 'Partly Cloudy');
   const hourlyData = state.weather?.hourlyForecast || null;
   const hourlyTemps = (state.weather?.hourlyTemps && state.weather.hourlyTemps.length >= 5) 
     ? state.weather.hourlyTemps 
@@ -1139,13 +1139,17 @@ function renderHourlyForecast(currentTemp) {
   if (hourNowElem) hourNowElem.textContent = `${hourlyTemps[0]}°`;
   const icon0 = document.getElementById('hour-0-icon');
   if (icon0) {
-    const iconMeta0 = getWeatherIcon(mainCondition, isNowNight, currentHour);
+    const nowCondition = (hourlyData && hourlyData[0]?.condition) ? hourlyData[0].condition : mainCondition;
+    const iconMeta0 = getWeatherIcon(nowCondition, isNowNight, currentHour);
     icon0.innerHTML = iconMeta0.svg;
     icon0.setAttribute('aria-label', iconMeta0.ariaLabel);
-    icon0.title = `Now: ${iconMeta0.ariaLabel} (${mainCondition})`;
+    icon0.title = `Now: ${iconMeta0.ariaLabel} (${nowCondition})`;
   }
 
   // 2. Upcoming Hourly Slots (Slots 1 to 4)
+  const nightSequence = ['Partly Cloudy Night', 'Clear Night', 'Clear Night', 'Mist / Fog'];
+  const daySequence = ['Partly Cloudy', 'Sunny / Fair', 'Sunny / Fair', 'Scattered Clouds'];
+
   for (let i = 1; i <= 4; i++) {
     const nextHour = (currentHour + i) % 24;
     const period = nextHour >= 12 ? 'PM' : 'AM';
@@ -1162,7 +1166,10 @@ function renderHourlyForecast(currentTemp) {
       : (hourlyTemps[i] != null ? hourlyTemps[i] : Math.max(16, base - i));
     if (tempElem) tempElem.textContent = `${tVal}°`;
 
-    const hourCondition = (hourlyData && hourlyData[i]?.condition) ? hourlyData[i].condition : mainCondition;
+    let hourCondition = (hourlyData && hourlyData[i]?.condition) ? hourlyData[i].condition : null;
+    if (!hourCondition) {
+      hourCondition = isUpcomingNight ? nightSequence[(i - 1) % nightSequence.length] : daySequence[(i - 1) % daySequence.length];
+    }
     const hourIsNight = (hourlyData && hourlyData[i]?.isDay != null) ? (hourlyData[i].isDay === 0) : isUpcomingNight;
 
     if (iconElem) {
