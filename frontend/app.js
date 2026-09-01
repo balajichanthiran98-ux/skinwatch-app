@@ -958,20 +958,26 @@ if (mapAqiToggleBtn) {
 
 /**
  * Weather Condition-to-Icon Matrix Resolver
- * Maps condition strings and time of day (Day vs. Night) to corresponding Tabler icon classes and color palettes.
+ * Maps condition strings and time of day (Day vs. Night) to corresponding SVGs, Tabler icon classes, and color palettes.
  * @param {string} condition - Weather condition description (e.g. 'Mostly Cloudy', 'Clear', 'Light Rain')
  * @param {boolean} isNight - True if the slot falls during nighttime (6:00 PM - 6:00 AM)
  * @param {number|string} [time] - Optional hour index or timestamp
- * @returns {{ iconClass: string, color: string, ariaLabel: string, emoji: string }}
+ * @returns {{ svg: string, iconClass: string, color: string, ariaLabel: string, emoji: string }}
  */
 function getWeatherIcon(condition = '', isNight = false, time = null) {
   const norm = String(condition || '').toLowerCase().trim();
 
+  // SVG Helper
+  const svgWrap = (paths, color = 'currentColor') =>
+    `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;">${paths}</svg>`;
+
   // 1. Thunderstorm / Lightning / Severe Convective
   if (norm.includes('thunder') || norm.includes('storm') || norm.includes('lightning') || norm.includes('squall')) {
+    const color = '#7C3AED';
     return {
+      svg: svgWrap('<path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"/><path d="m13 12-3 5h4l-3 5"/>', color),
       iconClass: 'ti ti-cloud-storm',
-      color: '#7C3AED',
+      color,
       ariaLabel: 'Thunderstorm with lightning',
       emoji: '⛈️'
     };
@@ -979,19 +985,23 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
 
   // 2. Snow / Sleet / Blizzard / Freezing Rain
   if (norm.includes('snow') || norm.includes('sleet') || norm.includes('blizzard') || norm.includes('ice') || norm.includes('frost') || norm.includes('flurr')) {
+    const color = '#0284C7';
     return {
+      svg: svgWrap('<path d="m10 20-1.25-2.5L6 18"/><path d="M10 4 8.75 6.5 6 6"/><path d="m14 20 1.25-2.5L18 18"/><path d="m14 4 1.25 2.5L18 6"/><path d="m17 21-3-6h-4l-3 6"/><path d="m17 3-3 6h-4L7 3"/><path d="M2 12h20"/><path d="m20 10-2.5 1.25L18 14"/><path d="m4 10 2.5 1.25L6 14"/><path d="m20 14-2.5-1.25L18 10"/><path d="m4 14 2.5-1.25L6 10"/>', color),
       iconClass: 'ti ti-snowflake',
-      color: '#0284C7',
-      ariaLabel: 'Snow / Sleet condition',
+      color,
+      ariaLabel: 'Snow and sleet',
       emoji: '❄️'
     };
   }
 
   // 3. Heavy Rain / Showers / Downpour
   if (norm.includes('heavy rain') || norm.includes('shower') || norm.includes('torrential') || norm.includes('downpour')) {
+    const color = '#2563EB';
     return {
+      svg: svgWrap('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>', color),
       iconClass: 'ti ti-cloud-rain',
-      color: '#2563EB',
+      color,
       ariaLabel: 'Heavy rain showers',
       emoji: '🌧️'
     };
@@ -999,19 +1009,23 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
 
   // 4. Drizzle / Light Rain / Patchy Rain
   if (norm.includes('drizzle') || norm.includes('light rain') || norm.includes('rain') || norm.includes('sprinkle')) {
+    const color = '#0284C7';
     return {
+      svg: svgWrap('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="m8 19-1 2"/><path d="m12 19-1 2"/><path d="m16 19-1 2"/>', color),
       iconClass: 'ti ti-cloud-drizzle',
-      color: '#0284C7',
-      ariaLabel: isNight ? 'Light rain drizzle at night' : 'Light rain drizzle',
+      color,
+      ariaLabel: isNight ? 'Night rain drizzle' : 'Light rain drizzle',
       emoji: '🌦️'
     };
   }
 
   // 5. Fog / Mist / Haze / Smoke / Dust
   if (norm.includes('fog') || norm.includes('mist') || norm.includes('haze') || norm.includes('smoke') || norm.includes('dust')) {
+    const color = '#64748B';
     return {
+      svg: svgWrap('<path d="M4 14h16"/><path d="M4 10h16"/><path d="M4 18h16"/><path d="M4 6h16"/>', color),
       iconClass: 'ti ti-mist',
-      color: '#64748B',
+      color,
       ariaLabel: 'Fog / Mist / Atmospheric haze',
       emoji: '🌫️'
     };
@@ -1019,19 +1033,23 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
 
   // 6. Windy / Breezy / Gale
   if (norm.includes('wind') || norm.includes('breeze') || norm.includes('gale') || norm.includes('gust')) {
+    const color = '#0D9488';
     return {
+      svg: svgWrap('<path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>', color),
       iconClass: 'ti ti-wind',
-      color: '#0D9488',
-      ariaLabel: 'Windy / Breezy atmospheric conditions',
+      color,
+      ariaLabel: 'Windy / Breezy conditions',
       emoji: '💨'
     };
   }
 
   // 7. Mostly Cloudy / Overcast / Dense Cloud Cover
   if (norm.includes('mostly cloudy') || norm.includes('overcast') || (norm.includes('cloudy') && !norm.includes('partly') && !norm.includes('mostly sunny'))) {
+    const color = '#64748B';
     return {
+      svg: svgWrap('<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>', color),
       iconClass: 'ti ti-clouds',
-      color: '#64748B',
+      color,
       ariaLabel: 'Mostly cloudy / Overcast sky',
       emoji: '☁️'
     };
@@ -1040,16 +1058,20 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   // 8. Partly Cloudy / Scattered Clouds / Mostly Sunny / Fair
   if (norm.includes('partly') || norm.includes('scattered') || norm.includes('broken') || norm.includes('few clouds') || (norm.includes('cloud') && norm.includes('sun'))) {
     if (isNight) {
+      const color = '#818CF8';
       return {
+        svg: svgWrap('<path d="M10.188 8.5A6 6 0 0 1 16 4a8 8 0 0 0-6 8 6 6 0 0 0 4.367 5.75"/><path d="M17 21H7a5 5 0 0 1-1-9.9 5 5 0 0 1 9.9 1H17a3 3 0 0 1 0 6Z"/>', color),
         iconClass: 'ti ti-cloud-moon',
-        color: '#818CF8',
+        color,
         ariaLabel: 'Partly cloudy night sky',
         emoji: '☁️🌙'
       };
     } else {
+      const color = '#D97706';
       return {
+        svg: svgWrap('<path d="M12 2v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="M15.947 12.65a4 4 0 0 0-5.925-4.128"/><path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/>', color),
         iconClass: 'ti ti-cloud-sun',
-        color: '#D97706',
+        color,
         ariaLabel: 'Partly cloudy daytime sky',
         emoji: '⛅'
       };
@@ -1059,16 +1081,20 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   // 9. Clear / Sunny / Bright
   if (norm.includes('clear') || norm.includes('sun') || norm.includes('fair') || norm.includes('bright')) {
     if (isNight) {
+      const color = '#818CF8';
       return {
+        svg: svgWrap('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/>', color),
         iconClass: 'ti ti-moon-stars',
-        color: '#818CF8',
+        color,
         ariaLabel: 'Clear night sky',
         emoji: '🌙'
       };
     } else {
+      const color = '#EAB308';
       return {
+        svg: svgWrap('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>', color),
         iconClass: 'ti ti-sun',
-        color: '#EAB308',
+        color,
         ariaLabel: 'Clear sunny sky',
         emoji: '☀️'
       };
@@ -1077,16 +1103,20 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
 
   // 10. Fallback based on time of day
   if (isNight) {
+    const color = '#818CF8';
     return {
+      svg: svgWrap('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/>', color),
       iconClass: 'ti ti-moon-stars',
-      color: '#818CF8',
+      color,
       ariaLabel: 'Night condition',
       emoji: '🌙'
     };
   } else {
+    const color = '#EAB308';
     return {
+      svg: svgWrap('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>', color),
       iconClass: 'ti ti-sun',
-      color: '#EAB308',
+      color,
       ariaLabel: 'Day condition',
       emoji: '☀️'
     };
@@ -1110,8 +1140,7 @@ function renderHourlyForecast(currentTemp) {
   const icon0 = document.getElementById('hour-0-icon');
   if (icon0) {
     const iconMeta0 = getWeatherIcon(mainCondition, isNowNight, currentHour);
-    icon0.className = `${iconMeta0.iconClass} hour-icon`;
-    icon0.style.color = iconMeta0.color;
+    icon0.innerHTML = iconMeta0.svg;
     icon0.setAttribute('aria-label', iconMeta0.ariaLabel);
     icon0.title = `Now: ${iconMeta0.ariaLabel} (${mainCondition})`;
   }
@@ -1138,8 +1167,7 @@ function renderHourlyForecast(currentTemp) {
 
     if (iconElem) {
       const iconMeta = getWeatherIcon(hourCondition, hourIsNight, nextHour);
-      iconElem.className = `${iconMeta.iconClass} hour-icon`;
-      iconElem.style.color = iconMeta.color;
+      iconElem.innerHTML = iconMeta.svg;
       iconElem.setAttribute('aria-label', iconMeta.ariaLabel);
       iconElem.title = `${displayHour} ${period}: ${iconMeta.ariaLabel} (${hourCondition})`;
     }
