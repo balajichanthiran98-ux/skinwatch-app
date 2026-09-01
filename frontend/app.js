@@ -958,7 +958,7 @@ if (mapAqiToggleBtn) {
 
 /**
  * Weather Condition-to-Icon Matrix Resolver
- * Maps condition strings and time of day (Day vs. Night) to corresponding SVGs, Tabler icon classes, and color palettes.
+ * Generates rich Apple/Google-style duo-tone filled gradient SVGs for weather conditions.
  * @param {string} condition - Weather condition description (e.g. 'Mostly Cloudy', 'Clear', 'Light Rain')
  * @param {boolean} isNight - True if the slot falls during nighttime (6:00 PM - 6:00 AM)
  * @param {number|string} [time] - Optional hour index or timestamp
@@ -967,114 +967,194 @@ if (mapAqiToggleBtn) {
 function getWeatherIcon(condition = '', isNight = false, time = null) {
   const norm = String(condition || '').toLowerCase().trim();
 
-  // SVG Helper
-  const svgWrap = (paths, color = 'currentColor') =>
-    `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;">${paths}</svg>`;
-
   // 1. Thunderstorm / Lightning
   if (norm.includes('thunder') || norm.includes('storm') || norm.includes('lightning') || norm.includes('squall')) {
     const color = '#7C3AED';
-    return {
-      svg: svgWrap('<path d="M17.5 16H9a6 6 0 1 1 5.75-8h1.75a4 4 0 1 1 1 7.87"/><path d="m13 11-4 6h4l-2 5" stroke="#7C3AED"/>', color),
-      iconClass: 'ti ti-cloud-storm',
-      color,
-      ariaLabel: 'Thunderstorm with lightning',
-      emoji: '⛈️'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="stormCloud" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#94A3B8"/>
+          <stop offset="100%" stop-color="#475569"/>
+        </linearGradient>
+        <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FDE047"/>
+          <stop offset="100%" stop-color="#F59E0B"/>
+        </linearGradient>
+      </defs>
+      <path d="M22 19H9.5C6.5 19 4 16.5 4 13.5C4 10.7 6.1 8.4 8.8 8.1C9.6 4.6 12.8 2 16.5 2C20.6 2 24 5.4 24 9.5C25.7 9.8 27 11.2 27 13C27 16.3 24.8 19 22 19Z" fill="url(#stormCloud)" stroke="#334155" stroke-width="1"/>
+      <polygon points="16,16 12,23 16,23 14,29 20,21 16,21" fill="url(#boltGrad)" stroke="#D97706" stroke-width="0.75"/>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-cloud-storm', color, ariaLabel: 'Thunderstorm with lightning', emoji: '⛈️' };
   }
 
   // 2. Snow / Sleet / Blizzard / Freezing Rain
   if (norm.includes('snow') || norm.includes('sleet') || norm.includes('blizzard') || norm.includes('ice') || norm.includes('frost') || norm.includes('flurr')) {
     const color = '#0284C7';
-    return {
-      svg: svgWrap('<path d="M12 2v20"/><path d="m17 7-5 5-5-5"/><path d="m17 17-5-5-5 5"/><path d="M2 12h20"/><path d="m7 7 5 5 5-5"/><path d="m7 17 5-5 5 5"/>', color),
-      iconClass: 'ti ti-snowflake',
-      color,
-      ariaLabel: 'Snow and sleet',
-      emoji: '❄️'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="snowCloud" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#FFFFFF"/>
+          <stop offset="100%" stop-color="#E0F2FE"/>
+        </linearGradient>
+      </defs>
+      <path d="M22 19H9.5C6.5 19 4 16.5 4 13.5C4 10.7 6.1 8.4 8.8 8.1C9.6 4.6 12.8 2 16.5 2C20.6 2 24 5.4 24 9.5C25.7 9.8 27 11.2 27 13C27 16.3 24.8 19 22 19Z" fill="url(#snowCloud)" stroke="#7DD3FC" stroke-width="1"/>
+      <g stroke="#0284C7" stroke-width="1.5" stroke-linecap="round">
+        <path d="M10 23v4M8 25h4M8.6 23.6l2.8 2.8M8.6 26.4l2.8-2.8"/>
+        <path d="M19 23v4M17 25h4M17.6 23.6l2.8 2.8M17.6 26.4l2.8-2.8"/>
+      </g>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-snowflake', color, ariaLabel: 'Snow and sleet', emoji: '❄️' };
   }
 
   // 3. Heavy Rain / Showers / Downpour
   if (norm.includes('heavy rain') || norm.includes('shower') || norm.includes('torrential') || norm.includes('downpour')) {
     const color = '#2563EB';
-    return {
-      svg: svgWrap('<path d="M17.5 16H9a6 6 0 1 1 5.75-8h1.75a4 4 0 1 1 1 7.87"/><path d="M8 18v3"/><path d="M12 18v3"/><path d="M16 18v3"/>', color),
-      iconClass: 'ti ti-cloud-rain',
-      color,
-      ariaLabel: 'Heavy rain showers',
-      emoji: '🌧️'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="rainCloud" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#E2E8F0"/>
+          <stop offset="100%" stop-color="#94A3B8"/>
+        </linearGradient>
+      </defs>
+      <path d="M22 20H9.5C6.5 20 4 17.5 4 14.5C4 11.7 6.1 9.4 8.8 9.1C9.6 5.6 12.8 3 16.5 3C20.6 3 24 6.4 24 10.5C25.7 10.8 27 12.2 27 14C27 17.3 24.8 20 22 20Z" fill="url(#rainCloud)" stroke="#64748B" stroke-width="1"/>
+      <g stroke="#0284C7" stroke-width="2" stroke-linecap="round">
+        <line x1="9" y1="23" x2="7" y2="28"/>
+        <line x1="15" y1="23" x2="13" y2="28"/>
+        <line x1="21" y1="23" x2="19" y2="28"/>
+      </g>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-cloud-rain', color, ariaLabel: 'Heavy rain showers', emoji: '🌧️' };
   }
 
   // 4. Drizzle / Light Rain / Patchy Rain
   if (norm.includes('drizzle') || norm.includes('light rain') || norm.includes('rain') || norm.includes('sprinkle')) {
     const color = '#0284C7';
-    return {
-      svg: svgWrap('<path d="M17.5 16H9a6 6 0 1 1 5.75-8h1.75a4 4 0 1 1 1 7.87"/><path d="m8 19-1 2"/><path d="m12 19-1 2"/><path d="m16 19-1 2"/>', color),
-      iconClass: 'ti ti-cloud-drizzle',
-      color,
-      ariaLabel: isNight ? 'Night rain drizzle' : 'Light rain drizzle',
-      emoji: '🌦️'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="drizCloud" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#F1F5F9"/>
+          <stop offset="100%" stop-color="#CBD5E1"/>
+        </linearGradient>
+      </defs>
+      <path d="M22 20H9.5C6.5 20 4 17.5 4 14.5C4 11.7 6.1 9.4 8.8 9.1C9.6 5.6 12.8 3 16.5 3C20.6 3 24 6.4 24 10.5C25.7 10.8 27 12.2 27 14C27 17.3 24.8 20 22 20Z" fill="url(#drizCloud)" stroke="#94A3B8" stroke-width="1"/>
+      <g stroke="#38BDF8" stroke-width="1.8" stroke-linecap="round">
+        <line x1="10" y1="23" x2="9" y2="26"/>
+        <line x1="16" y1="23" x2="15" y2="26"/>
+        <line x1="22" y1="23" x2="21" y2="26"/>
+      </g>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-cloud-drizzle', color, ariaLabel: isNight ? 'Night rain drizzle' : 'Light rain drizzle', emoji: '🌦️' };
   }
 
   // 5. Fog / Mist / Haze / Smoke / Dust
   if (norm.includes('fog') || norm.includes('mist') || norm.includes('haze') || norm.includes('smoke') || norm.includes('dust')) {
     const color = '#64748B';
-    return {
-      svg: svgWrap('<path d="M4 14h16"/><path d="M6 10h12"/><path d="M4 18h16"/><path d="M8 6h8"/>', color),
-      iconClass: 'ti ti-mist',
-      color,
-      ariaLabel: 'Fog / Mist / Atmospheric haze',
-      emoji: '🌫️'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="mistGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#94A3B8" stop-opacity="0.3"/>
+          <stop offset="50%" stop-color="#64748B"/>
+          <stop offset="100%" stop-color="#94A3B8" stop-opacity="0.3"/>
+        </linearGradient>
+      </defs>
+      <g stroke="url(#mistGrad)" stroke-width="2.5" stroke-linecap="round">
+        <line x1="5" y1="8" x2="27" y2="8"/>
+        <line x1="8" y1="14" x2="24" y2="14"/>
+        <line x1="4" y1="20" x2="28" y2="20"/>
+        <line x1="9" y1="26" x2="23" y2="26"/>
+      </g>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-mist', color, ariaLabel: 'Fog / Mist / Atmospheric haze', emoji: '🌫️' };
   }
 
   // 6. Windy / Breezy / Gale
   if (norm.includes('wind') || norm.includes('breeze') || norm.includes('gale') || norm.includes('gust')) {
     const color = '#0D9488';
-    return {
-      svg: svgWrap('<path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>', color),
-      iconClass: 'ti ti-wind',
-      color,
-      ariaLabel: 'Windy / Breezy conditions',
-      emoji: '💨'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="windGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#14B8A6"/>
+          <stop offset="100%" stop-color="#0D9488"/>
+        </linearGradient>
+      </defs>
+      <path d="M4 11H22C24.2 11 26 9.2 26 7C26 4.8 24.2 3 22 3C19.8 3 18 4.8 18 7" stroke="url(#windGrad)" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M4 17H25C27.2 17 29 18.8 29 21C29 23.2 27.2 25 25 25C22.8 25 21 23.2 21 21" stroke="url(#windGrad)" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M4 23H15" stroke="url(#windGrad)" stroke-width="2.4" stroke-linecap="round"/>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-wind', color, ariaLabel: 'Windy / Breezy conditions', emoji: '💨' };
   }
 
   // 7. Mostly Cloudy / Overcast / Dense Cloud Cover
   if (norm.includes('mostly cloudy') || norm.includes('overcast') || (norm.includes('cloud') && !norm.includes('partly') && !norm.includes('sun') && !norm.includes('moon'))) {
     const color = '#64748B';
-    return {
-      svg: svgWrap('<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="M8 12a3.5 3.5 0 0 1 6.5-1.5"/>', color),
-      iconClass: 'ti ti-clouds',
-      color,
-      ariaLabel: 'Mostly cloudy / Overcast sky',
-      emoji: '☁️'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="cloudBack" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#CBD5E1"/>
+          <stop offset="100%" stop-color="#94A3B8"/>
+        </linearGradient>
+        <linearGradient id="cloudFront" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="#FFFFFF"/>
+          <stop offset="100%" stop-color="#E2E8F0"/>
+        </linearGradient>
+        <filter id="ovShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#64748B" flood-opacity="0.25"/>
+        </filter>
+      </defs>
+      <path d="M25 18H16C13.8 18 12 16.2 12 14C12 11.9 13.5 10.2 15.5 10C16.1 7.7 18.2 6 20.8 6C23.7 6 26.1 8.4 26.1 11.3C27.3 11.6 28.2 12.7 28.2 14C28.2 16.2 26.8 18 25 18Z" fill="url(#cloudBack)" opacity="0.85"/>
+      <path d="M20 25H8.5C5.8 25 3.5 22.8 3.5 20C3.5 17.5 5.3 15.4 7.8 15.1C8.5 12 11.4 9.6 14.8 9.6C18.4 9.6 21.4 12.5 21.4 16.1C23 16.4 24.2 17.7 24.2 19.3C24.2 22.4 22.3 25 20 25Z" fill="url(#cloudFront)" stroke="#94A3B8" stroke-width="1" filter="url(#ovShadow)"/>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-clouds', color, ariaLabel: 'Mostly cloudy / Overcast sky', emoji: '☁️' };
   }
 
   // 8. Partly Cloudy / Scattered Clouds / Mostly Sunny / Fair
   if (norm.includes('partly') || norm.includes('scattered') || norm.includes('broken') || norm.includes('few clouds')) {
     if (isNight) {
       const color = '#818CF8';
-      return {
-        svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M17 9a4 4 0 0 0-4-4 4.5 4.5 0 0 0-.8.07A6 6 0 0 1 19 11.8" stroke="#818CF8"/><path d="M17.5 19H9a5 5 0 1 1 1.5-9.76 5 5 0 0 1 7 4.76 3.5 3.5 0 0 1 0 5z" stroke="#64748B"/></svg>`,
-        iconClass: 'ti ti-cloud-moon',
-        color,
-        ariaLabel: 'Partly cloudy night sky',
-        emoji: '☁️🌙'
-      };
+      const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+        <defs>
+          <linearGradient id="moonPart" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#A5B4FC"/>
+            <stop offset="100%" stop-color="#6366F1"/>
+          </linearGradient>
+          <linearGradient id="cNight" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#E2E8F0"/>
+            <stop offset="100%" stop-color="#94A3B8"/>
+          </linearGradient>
+          <filter id="cNightSh" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#475569" flood-opacity="0.25"/>
+          </filter>
+        </defs>
+        <path d="M22 6.5C20.8 6.5 19.7 7 19 7.8C19.8 9.3 19.8 11.2 18.8 12.7C19.8 13.5 21 14 22.3 14C23.5 14 24.6 13.5 25.5 12.8C24.5 8.9 22.5 6.5 22 6.5Z" fill="url(#moonPart)"/>
+        <circle cx="25" cy="6" r="0.9" fill="#FDE047"/>
+        <path d="M22 25H9.5C6.5 25 4 22.5 4 19.5C4 16.7 6.1 14.4 8.8 14.1C9.6 10.6 12.8 8 16.5 8C20.6 8 24 11.4 24 15.5C25.7 15.8 27 17.2 27 19C27 22.3 24.8 25 22 25Z" fill="url(#cNight)" stroke="#64748B" stroke-width="1" filter="url(#cNightSh)"/>
+      </svg>`;
+      return { svg, iconClass: 'ti ti-cloud-moon', color, ariaLabel: 'Partly cloudy night sky', emoji: '☁️🌙' };
     } else {
       const color = '#D97706';
-      return {
-        svg: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M12 2v2" stroke="#EAB308"/><path d="m4.93 4.93 1.41 1.41" stroke="#EAB308"/><path d="M20 12h2" stroke="#EAB308"/><path d="M15.95 12.65A4 4 0 0 0 12 8c-.6 0-1.16.13-1.67.36" stroke="#EAB308"/><path d="M17.5 19H9a5 5 0 1 1 1.5-9.76 5 5 0 0 1 7 4.76 3.5 3.5 0 0 1 0 5z" stroke="#D97706"/></svg>`,
-        iconClass: 'ti ti-cloud-sun',
-        color,
-        ariaLabel: 'Partly cloudy daytime sky',
-        emoji: '⛅'
-      };
+      const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+        <defs>
+          <linearGradient id="sunPart" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FDE047"/>
+            <stop offset="100%" stop-color="#F59E0B"/>
+          </linearGradient>
+          <linearGradient id="cDay" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#FFFFFF"/>
+            <stop offset="100%" stop-color="#CBD5E1"/>
+          </linearGradient>
+          <filter id="cDaySh" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#64748B" flood-opacity="0.25"/>
+          </filter>
+        </defs>
+        <circle cx="21" cy="11" r="5.5" fill="url(#sunPart)"/>
+        <g stroke="#F59E0B" stroke-width="1.6" stroke-linecap="round" opacity="0.8">
+          <line x1="21" y1="2" x2="21" y2="4"/>
+          <line x1="28" y1="11" x2="30" y2="11"/>
+          <line x1="26" y1="6" x2="27.5" y2="4.5"/>
+        </g>
+        <path d="M22 25H9.5C6.5 25 4 22.5 4 19.5C4 16.7 6.1 14.4 8.8 14.1C9.6 10.6 12.8 8 16.5 8C20.6 8 24 11.4 24 15.5C25.7 15.8 27 17.2 27 19C27 22.3 24.8 25 22 25Z" fill="url(#cDay)" stroke="#94A3B8" stroke-width="1" filter="url(#cDaySh)"/>
+      </svg>`;
+      return { svg, iconClass: 'ti ti-cloud-sun', color, ariaLabel: 'Partly cloudy daytime sky', emoji: '⛅' };
     }
   }
 
@@ -1082,44 +1162,94 @@ function getWeatherIcon(condition = '', isNight = false, time = null) {
   if (norm.includes('clear') || norm.includes('sun') || norm.includes('fair') || norm.includes('bright')) {
     if (isNight) {
       const color = '#818CF8';
-      return {
-        svg: svgWrap('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>', color),
-        iconClass: 'ti ti-moon-stars',
-        color,
-        ariaLabel: 'Clear night sky',
-        emoji: '🌙'
-      };
+      const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+        <defs>
+          <linearGradient id="clearMoonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#A5B4FC"/>
+            <stop offset="60%" stop-color="#6366F1"/>
+            <stop offset="100%" stop-color="#4F46E5"/>
+          </linearGradient>
+          <filter id="moonGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#6366F1" flood-opacity="0.35"/>
+          </filter>
+        </defs>
+        <path d="M22.5 17.5C22.5 22.194 18.694 26 14 26C10.5 26 7.5 23.8 6.3 20.7C7.2 21.2 8.3 21.5 9.5 21.5C14.747 21.5 19 17.247 19 12C19 9.3 17.9 6.9 16.1 5.2C20 6.2 22.5 10.4 22.5 17.5Z" fill="url(#clearMoonGrad)" filter="url(#moonGlow)"/>
+        <circle cx="24" cy="7" r="1.2" fill="#FDE047"/>
+        <circle cx="27" cy="13" r="0.9" fill="#FDE047" opacity="0.8"/>
+      </svg>`;
+      return { svg, iconClass: 'ti ti-moon-stars', color, ariaLabel: 'Clear night sky', emoji: '🌙' };
     } else {
       const color = '#EAB308';
-      return {
-        svg: svgWrap('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>', color),
-        iconClass: 'ti ti-sun',
-        color,
-        ariaLabel: 'Clear sunny sky',
-        emoji: '☀️'
-      };
+      const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+        <defs>
+          <radialGradient id="sunClearGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FDE047"/>
+            <stop offset="100%" stop-color="#F59E0B"/>
+          </radialGradient>
+          <filter id="sunGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#F59E0B" flood-opacity="0.35"/>
+          </filter>
+        </defs>
+        <g stroke="#F59E0B" stroke-width="2.2" stroke-linecap="round" opacity="0.85">
+          <line x1="16" y1="3" x2="16" y2="6"/>
+          <line x1="16" y1="26" x2="16" y2="29"/>
+          <line x1="3" y1="16" x2="6" y2="16"/>
+          <line x1="26" y1="16" x2="29" y2="16"/>
+          <line x1="6.8" y1="6.8" x2="8.9" y2="8.9"/>
+          <line x1="23.1" y1="23.1" x2="25.2" y2="25.2"/>
+          <line x1="6.8" y1="25.2" x2="8.9" y2="23.1"/>
+          <line x1="23.1" y1="8.9" x2="25.2" y2="6.8"/>
+        </g>
+        <circle cx="16" cy="16" r="7.5" fill="url(#sunClearGrad)" filter="url(#sunGlow)"/>
+      </svg>`;
+      return { svg, iconClass: 'ti ti-sun', color, ariaLabel: 'Clear sunny sky', emoji: '☀️' };
     }
   }
 
   // 10. Fallback based on time of day
   if (isNight) {
     const color = '#818CF8';
-    return {
-      svg: svgWrap('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>', color),
-      iconClass: 'ti ti-moon-stars',
-      color,
-      ariaLabel: 'Clear night sky',
-      emoji: '🌙'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <linearGradient id="fbMoonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#A5B4FC"/>
+          <stop offset="60%" stop-color="#6366F1"/>
+          <stop offset="100%" stop-color="#4F46E5"/>
+        </linearGradient>
+        <filter id="fbMoonGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#6366F1" flood-opacity="0.35"/>
+        </filter>
+      </defs>
+      <path d="M22.5 17.5C22.5 22.194 18.694 26 14 26C10.5 26 7.5 23.8 6.3 20.7C7.2 21.2 8.3 21.5 9.5 21.5C14.747 21.5 19 17.247 19 12C19 9.3 17.9 6.9 16.1 5.2C20 6.2 22.5 10.4 22.5 17.5Z" fill="url(#fbMoonGrad)" filter="url(#fbMoonGlow)"/>
+      <circle cx="24" cy="7" r="1.2" fill="#FDE047"/>
+      <circle cx="27" cy="13" r="0.9" fill="#FDE047" opacity="0.8"/>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-moon-stars', color, ariaLabel: 'Clear night sky', emoji: '🌙' };
   } else {
     const color = '#EAB308';
-    return {
-      svg: svgWrap('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>', color),
-      iconClass: 'ti ti-sun',
-      color,
-      ariaLabel: 'Day condition',
-      emoji: '☀️'
-    };
+    const svg = `<svg width="26" height="26" viewBox="0 0 32 32" fill="none" style="display:block;">
+      <defs>
+        <radialGradient id="fbSunGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#FDE047"/>
+          <stop offset="100%" stop-color="#F59E0B"/>
+        </radialGradient>
+        <filter id="fbSunGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#F59E0B" flood-opacity="0.35"/>
+        </filter>
+      </defs>
+      <g stroke="#F59E0B" stroke-width="2.2" stroke-linecap="round" opacity="0.85">
+        <line x1="16" y1="3" x2="16" y2="6"/>
+        <line x1="16" y1="26" x2="16" y2="29"/>
+        <line x1="3" y1="16" x2="6" y2="16"/>
+        <line x1="26" y1="16" x2="29" y2="16"/>
+        <line x1="6.8" y1="6.8" x2="8.9" y2="8.9"/>
+        <line x1="23.1" y1="23.1" x2="25.2" y2="25.2"/>
+        <line x1="6.8" y1="25.2" x2="8.9" y2="23.1"/>
+        <line x1="23.1" y1="8.9" x2="25.2" y2="6.8"/>
+      </g>
+      <circle cx="16" cy="16" r="7.5" fill="url(#fbSunGrad)" filter="url(#fbSunGlow)"/>
+    </svg>`;
+    return { svg, iconClass: 'ti ti-sun', color, ariaLabel: 'Clear sunny sky', emoji: '☀️' };
   }
 }
 
