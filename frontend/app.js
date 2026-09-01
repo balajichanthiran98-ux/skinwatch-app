@@ -3638,17 +3638,17 @@ function renderPastWeekComparison() {
   }
 
   if (deltaBarrier) {
-    deltaBarrier.textContent = `${activeItem.score}% ➔ ${targetRightItem.score}% (${scoreDiff >= 0 ? '+' : ''}${scoreDiff}%)`;
+    deltaBarrier.textContent = `${activeItem.score}% → ${targetRightItem.score}% (${scoreDiff >= 0 ? '+' : ''}${scoreDiff}%)`;
     deltaBarrier.style.color = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
   }
 
   if (deltaHyd) {
-    deltaHyd.textContent = `${activeItem.hyd} ➔ ${targetRightItem.hyd} AU (${hydDiff >= 0 ? '+' : ''}${hydDiff} AU)`;
+    deltaHyd.textContent = `${activeItem.hyd} → ${targetRightItem.hyd} AU (${hydDiff >= 0 ? '+' : ''}${hydDiff})`;
     deltaHyd.style.color = hydDiff >= 0 ? '#0284C7' : '#C2410C';
   }
 
   if (deltaRed) {
-    deltaRed.textContent = `${activeItem.red}% ➔ ${targetRightItem.red}% (${redDiff <= 0 ? '' : '+'}${redDiff}%)`;
+    deltaRed.textContent = `${activeItem.red}% → ${targetRightItem.red}% (${redDiff <= 0 ? '' : '+'}${redDiff}%)`;
     deltaRed.style.color = redDiff <= 0 ? '#2E7D32' : '#C2410C';
   }
 }
