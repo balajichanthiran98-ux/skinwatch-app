@@ -956,20 +956,167 @@ if (mapAqiToggleBtn) {
   mapAqiToggleBtn.addEventListener('click', toggleAqiHeatmap);
 }
 
+/**
+ * Weather Condition-to-Icon Matrix Resolver
+ * Maps condition strings and time of day (Day vs. Night) to corresponding Tabler icon classes and color palettes.
+ * @param {string} condition - Weather condition description (e.g. 'Mostly Cloudy', 'Clear', 'Light Rain')
+ * @param {boolean} isNight - True if the slot falls during nighttime (6:00 PM - 6:00 AM)
+ * @param {number|string} [time] - Optional hour index or timestamp
+ * @returns {{ iconClass: string, color: string, ariaLabel: string, emoji: string }}
+ */
+function getWeatherIcon(condition = '', isNight = false, time = null) {
+  const norm = String(condition || '').toLowerCase().trim();
+
+  // 1. Thunderstorm / Lightning / Severe Convective
+  if (norm.includes('thunder') || norm.includes('storm') || norm.includes('lightning') || norm.includes('squall')) {
+    return {
+      iconClass: 'ti ti-cloud-storm',
+      color: '#7C3AED',
+      ariaLabel: 'Thunderstorm with lightning',
+      emoji: '⛈️'
+    };
+  }
+
+  // 2. Snow / Sleet / Blizzard / Freezing Rain
+  if (norm.includes('snow') || norm.includes('sleet') || norm.includes('blizzard') || norm.includes('ice') || norm.includes('frost') || norm.includes('flurr')) {
+    return {
+      iconClass: 'ti ti-snowflake',
+      color: '#0284C7',
+      ariaLabel: 'Snow / Sleet condition',
+      emoji: '❄️'
+    };
+  }
+
+  // 3. Heavy Rain / Showers / Downpour
+  if (norm.includes('heavy rain') || norm.includes('shower') || norm.includes('torrential') || norm.includes('downpour')) {
+    return {
+      iconClass: 'ti ti-cloud-rain',
+      color: '#2563EB',
+      ariaLabel: 'Heavy rain showers',
+      emoji: '🌧️'
+    };
+  }
+
+  // 4. Drizzle / Light Rain / Patchy Rain
+  if (norm.includes('drizzle') || norm.includes('light rain') || norm.includes('rain') || norm.includes('sprinkle')) {
+    return {
+      iconClass: 'ti ti-cloud-drizzle',
+      color: '#0284C7',
+      ariaLabel: isNight ? 'Light rain drizzle at night' : 'Light rain drizzle',
+      emoji: '🌦️'
+    };
+  }
+
+  // 5. Fog / Mist / Haze / Smoke / Dust
+  if (norm.includes('fog') || norm.includes('mist') || norm.includes('haze') || norm.includes('smoke') || norm.includes('dust')) {
+    return {
+      iconClass: 'ti ti-mist',
+      color: '#64748B',
+      ariaLabel: 'Fog / Mist / Atmospheric haze',
+      emoji: '🌫️'
+    };
+  }
+
+  // 6. Windy / Breezy / Gale
+  if (norm.includes('wind') || norm.includes('breeze') || norm.includes('gale') || norm.includes('gust')) {
+    return {
+      iconClass: 'ti ti-wind',
+      color: '#0D9488',
+      ariaLabel: 'Windy / Breezy atmospheric conditions',
+      emoji: '💨'
+    };
+  }
+
+  // 7. Mostly Cloudy / Overcast / Dense Cloud Cover
+  if (norm.includes('mostly cloudy') || norm.includes('overcast') || (norm.includes('cloudy') && !norm.includes('partly') && !norm.includes('mostly sunny'))) {
+    return {
+      iconClass: 'ti ti-clouds',
+      color: '#64748B',
+      ariaLabel: 'Mostly cloudy / Overcast sky',
+      emoji: '☁️'
+    };
+  }
+
+  // 8. Partly Cloudy / Scattered Clouds / Mostly Sunny / Fair
+  if (norm.includes('partly') || norm.includes('scattered') || norm.includes('broken') || norm.includes('few clouds') || (norm.includes('cloud') && norm.includes('sun'))) {
+    if (isNight) {
+      return {
+        iconClass: 'ti ti-cloud-moon',
+        color: '#818CF8',
+        ariaLabel: 'Partly cloudy night sky',
+        emoji: '☁️🌙'
+      };
+    } else {
+      return {
+        iconClass: 'ti ti-cloud-sun',
+        color: '#D97706',
+        ariaLabel: 'Partly cloudy daytime sky',
+        emoji: '⛅'
+      };
+    }
+  }
+
+  // 9. Clear / Sunny / Bright
+  if (norm.includes('clear') || norm.includes('sun') || norm.includes('fair') || norm.includes('bright')) {
+    if (isNight) {
+      return {
+        iconClass: 'ti ti-moon-stars',
+        color: '#818CF8',
+        ariaLabel: 'Clear night sky',
+        emoji: '🌙'
+      };
+    } else {
+      return {
+        iconClass: 'ti ti-sun',
+        color: '#EAB308',
+        ariaLabel: 'Clear sunny sky',
+        emoji: '☀️'
+      };
+    }
+  }
+
+  // 10. Fallback based on time of day
+  if (isNight) {
+    return {
+      iconClass: 'ti ti-moon-stars',
+      color: '#818CF8',
+      ariaLabel: 'Night condition',
+      emoji: '🌙'
+    };
+  } else {
+    return {
+      iconClass: 'ti ti-sun',
+      color: '#EAB308',
+      ariaLabel: 'Day condition',
+      emoji: '☀️'
+    };
+  }
+}
+
 function renderHourlyForecast(currentTemp) {
   const now = new Date();
   const currentHour = now.getHours();
-  const isNight = currentHour >= 18 || currentHour < 6;
+  const isNowNight = currentHour >= 18 || currentHour < 6;
   const base = currentTemp != null ? Math.round(currentTemp) : (state.weather?.temperature ? Math.round(state.weather.temperature) : 28);
+  const mainCondition = state.weather?.condition || (isNowNight ? 'Clear Night' : 'Partly Cloudy');
+  const hourlyData = state.weather?.hourlyForecast || null;
   const hourlyTemps = (state.weather?.hourlyTemps && state.weather.hourlyTemps.length >= 5) 
     ? state.weather.hourlyTemps 
     : [base, Math.max(16, base - 1), Math.max(16, base - 1), Math.max(16, base - 2), Math.max(16, base - 2)];
 
+  // 1. Current Hour (Slot 0: Now)
   const hourNowElem = document.getElementById('hour-now');
   if (hourNowElem) hourNowElem.textContent = `${hourlyTemps[0]}°`;
   const icon0 = document.getElementById('hour-0-icon');
-  if (icon0) icon0.className = isNight ? 'ti ti-moon-stars hour-icon' : 'ti ti-sun hour-icon';
+  if (icon0) {
+    const iconMeta0 = getWeatherIcon(mainCondition, isNowNight, currentHour);
+    icon0.className = `${iconMeta0.iconClass} hour-icon`;
+    icon0.style.color = iconMeta0.color;
+    icon0.setAttribute('aria-label', iconMeta0.ariaLabel);
+    icon0.title = `Now: ${iconMeta0.ariaLabel} (${mainCondition})`;
+  }
 
+  // 2. Upcoming Hourly Slots (Slots 1 to 4)
   for (let i = 1; i <= 4; i++) {
     const nextHour = (currentHour + i) % 24;
     const period = nextHour >= 12 ? 'PM' : 'AM';
@@ -981,10 +1128,20 @@ function renderHourlyForecast(currentTemp) {
     const iconElem = document.getElementById(`hour-${i}-icon`);
 
     if (timeElem) timeElem.textContent = `${displayHour}${period}`;
-    const tVal = hourlyTemps[i] != null ? hourlyTemps[i] : Math.max(16, base - i);
+    const tVal = (hourlyData && hourlyData[i]?.temp != null) 
+      ? hourlyData[i].temp 
+      : (hourlyTemps[i] != null ? hourlyTemps[i] : Math.max(16, base - i));
     if (tempElem) tempElem.textContent = `${tVal}°`;
+
+    const hourCondition = (hourlyData && hourlyData[i]?.condition) ? hourlyData[i].condition : mainCondition;
+    const hourIsNight = (hourlyData && hourlyData[i]?.isDay != null) ? (hourlyData[i].isDay === 0) : isUpcomingNight;
+
     if (iconElem) {
-      iconElem.className = isUpcomingNight ? 'ti ti-cloud-moon hour-icon' : 'ti ti-cloud-sun hour-icon';
+      const iconMeta = getWeatherIcon(hourCondition, hourIsNight, nextHour);
+      iconElem.className = `${iconMeta.iconClass} hour-icon`;
+      iconElem.style.color = iconMeta.color;
+      iconElem.setAttribute('aria-label', iconMeta.ariaLabel);
+      iconElem.title = `${displayHour} ${period}: ${iconMeta.ariaLabel} (${hourCondition})`;
     }
   }
 }

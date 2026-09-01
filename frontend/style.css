@@ -317,20 +317,29 @@ body {
 .hour-item.active-hour {
   background: #FFFFFF;
   border-color: var(--gold);
-  box-shadow: 0 1px 6px rgba(138, 106, 47, 0.12);
+  box-shadow: 0 2px 8px rgba(138, 106, 47, 0.14);
 }
 .hour-item .hour-time {
   font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 .hour-item.active-hour .hour-time {
   color: var(--gold);
 }
 .hour-item .hour-icon {
-  font-size: 13px;
-  color: var(--gold);
-  margin: 1px 0;
+  font-size: 19px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 3px 0;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.hour-item:hover .hour-icon {
+  transform: scale(1.18);
 }
 .hour-item .hour-temp {
   font-family: 'Fraunces', serif;

@@ -168,7 +168,17 @@ app.get('/api/weather', async (req, res) => {
           wind,
           condition: raw.weatherCondition?.description?.text ?? (isDay === 0 ? 'Clear Night' : 'Sunny / Fair'),
           iconUri: raw.weatherCondition?.iconBaseUri ? `${raw.weatherCondition.iconBaseUri}.png` : null,
-          hourlyTemps: [temp, temp - 1, temp - 1, temp - 2, temp - 2]
+          hourlyTemps: [temp, temp - 1, temp - 1, temp - 2, temp - 2],
+          hourlyForecast: [0, 1, 2, 3, 4].map(offset => {
+            const h = (hour + offset) % 24;
+            const hIsDay = h >= 6 && h < 18 ? 1 : 0;
+            return {
+              hour: h,
+              temp: temp - Math.min(offset, 2),
+              isDay: hIsDay,
+              condition: raw.weatherCondition?.description?.text ?? (hIsDay === 0 ? 'Clear Night' : 'Sunny / Fair')
+            };
+          })
         };
         setCached(key, normalized);
         return res.json({ ...normalized, _cache: 'google' });
@@ -180,7 +190,7 @@ app.get('/api/weather', async (req, res) => {
 
   // 2. Open-Meteo High-Resolution Meteorological Engine
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,uv_index&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${Number(lat).toFixed(4)}&longitude=${Number(lon).toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,dew_point_2m,is_day,weather_code,wind_speed_10m&hourly=temperature_2m,uv_index,weather_code,is_day&timezone=auto`;
     const r = await fetchWithTimeout(url, {}, 3500);
     if (r.ok) {
       const data = await r.json();
@@ -199,10 +209,25 @@ app.get('/api/weather', async (req, res) => {
       const maxUvToday = Math.max(...hourlyUvs.slice(0, 24), 0);
 
       const hourlyTemps = [];
+      const hourlyForecast = [];
       const tempArr = data.hourly?.temperature_2m || [];
+      const codeArr = data.hourly?.weather_code || [];
+      const isDayArr = data.hourly?.is_day || [];
+
       for (let i = 0; i < 5; i++) {
         const hIdx = (currentHour + i) % 24;
-        hourlyTemps.push(Math.round(tempArr[hIdx] ?? curr.temperature_2m ?? 30));
+        const hTemp = Math.round(tempArr[hIdx] ?? curr.temperature_2m ?? 30);
+        const hIsDay = isDayArr[hIdx] != null ? isDayArr[hIdx] : (hIdx >= 6 && hIdx < 18 ? 1 : 0);
+        const hCode = codeArr[hIdx] != null ? codeArr[hIdx] : curr.weather_code;
+        const hCond = wmoToDescription(hCode, hIsDay);
+        hourlyTemps.push(hTemp);
+        hourlyForecast.push({
+          hour: hIdx,
+          temp: hTemp,
+          isDay: hIsDay,
+          condition: hCond,
+          weatherCode: hCode
+        });
       }
 
       const temp = Math.round(curr.temperature_2m ?? 30);
@@ -225,7 +250,8 @@ app.get('/api/weather', async (req, res) => {
         isDay,
         wind,
         condition: wmoToDescription(curr.weather_code, isDay),
-        hourlyTemps
+        hourlyTemps,
+        hourlyForecast
       };
 
       setCached(key, normalized);
@@ -237,6 +263,7 @@ app.get('/api/weather', async (req, res) => {
 
   // Resilient Fallback
   const fallbackMetrics = calculateSkinClimateMetrics(28, 75, 23, 12);
+  const currentFallbackHour = new Date().getHours();
   const fallback = {
     temperature: 28,
     humidity: 75,
@@ -250,7 +277,17 @@ app.get('/api/weather', async (req, res) => {
     barrierAdvice: fallbackMetrics.barrierAdvice,
     windStress: fallbackMetrics.windStress,
     condition: 'Partly Cloudy Night',
-    hourlyTemps: [28, 27, 27, 26, 26]
+    hourlyTemps: [28, 27, 27, 26, 26],
+    hourlyForecast: [0, 1, 2, 3, 4].map(offset => {
+      const h = (currentFallbackHour + offset) % 24;
+      const hIsDay = h >= 6 && h < 18 ? 1 : 0;
+      return {
+        hour: h,
+        temp: 28 - Math.min(offset, 2),
+        isDay: hIsDay,
+        condition: hIsDay === 0 ? 'Partly Cloudy Night' : 'Partly Cloudy'
+      };
+    })
   };
   setCached(key, fallback);
   return res.json({ ...fallback, _cache: 'fallback' });
