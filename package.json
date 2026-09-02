@@ -9,6 +9,9 @@
     "dev": "node backend/server.js"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2"
@@ -16,7 +19,13 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": ["skincare", "climate", "uv", "weather", "beauty-tech"],
+  "keywords": [
+    "skincare",
+    "climate",
+    "uv",
+    "weather",
+    "beauty-tech"
+  ],
   "author": "Balaji",
   "license": "ISC"
 }

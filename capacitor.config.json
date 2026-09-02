@@ -1,0 +1,8 @@
+{
+  "appId": "com.skinwatch.app",
+  "appName": "SkinWatch",
+  "webDir": "frontend",
+  "server": {
+    "androidScheme": "https"
+  }
+}
