@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#D4AF37">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SkinWatch">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
-<title>SkinWatch</title>
+<title>SkinWatch - Climate Skincare & Routine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
@@ -17,10 +20,10 @@
 <link rel="stylesheet" href="style.css?v=4.0">
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (const registration of registrations) {
-        registration.update();
-      }
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then((reg) => console.log('✓ SkinWatch PWA Service Worker Registered', reg.scope))
+        .catch((err) => console.log('Service Worker registration failed:', err));
     });
   }
 </script>
@@ -313,6 +316,21 @@
 
   <!-- HOME -->
   <section id="screen-home" class="screen">
+    <!-- Native PWA Install Prompt Banner -->
+    <div id="pwa-install-banner" class="pwa-install-banner" style="display:none;">
+      <div class="pwa-install-left">
+        <div class="pwa-app-icon"><i class="ti ti-droplet-half-2"></i></div>
+        <div class="pwa-text-wrap">
+          <strong class="pwa-app-name">Install SkinWatch App</strong>
+          <span class="pwa-app-sub">Add to Home Screen for instant offline access</span>
+        </div>
+      </div>
+      <div class="pwa-install-actions">
+        <button id="pwa-install-btn" class="pwa-btn-install" type="button"><i class="ti ti-download"></i> Install</button>
+        <button id="pwa-dismiss-btn" class="pwa-btn-dismiss" type="button" aria-label="Dismiss"><i class="ti ti-x"></i></button>
+      </div>
+    </div>
+
     <div id="alert-banner" class="alert-banner" style="display:none;">
       <i class="ti ti-alert-triangle"></i>
       <p id="alert-text"></p>

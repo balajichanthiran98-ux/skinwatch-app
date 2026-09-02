@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAF7F2"/>
+      <stop offset="100%" stop-color="#EDE4D3"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="50%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#B45309"/>
+    </linearGradient>
+    <linearGradient id="waterGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#8A6A2F" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  
+  <!-- App Background Rounded Rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" stroke="#D4AF37" stroke-width="6"/>
+  
+  <!-- Outer Gold Shield Ring -->
+  <path d="M256 90 C330 90 390 120 390 200 C390 310 256 410 256 410 C256 410 122 310 122 200 C122 120 182 90 256 90 Z" 
+        fill="none" stroke="url(#goldGrad)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" filter="url(#dropShadow)"/>
+
+  <!-- Core Water Droplet -->
+  <path d="M256 140 C256 140 330 230 330 280 C330 320 297 354 256 354 C215 354 182 320 182 280 C182 230 256 140 256 140 Z" 
+        fill="url(#waterGrad)"/>
+        
+  <!-- Droplet Glow / Highlight -->
+  <ellipse cx="232" cy="255" rx="18" ry="32" transform="rotate(-30 232 255)" fill="#FFFFFF" opacity="0.5"/>
+  
+  <!-- Sparkle Stars -->
+  <circle cx="360" cy="140" r="10" fill="#F59E0B"/>
+  <circle cx="150" cy="320" r="7" fill="#F59E0B"/>
+</svg>

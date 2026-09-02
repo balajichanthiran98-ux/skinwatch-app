@@ -71,6 +71,98 @@ body {
 .config-warning code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 4px; }
 
 /* Home */
+.pwa-install-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(135deg, #FAF4E6 0%, #F5E8CC 100%);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 10px 14px;
+}
+
+.pwa-install-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pwa-app-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #D4AF37, #8C6A2E);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(140, 106, 46, 0.25);
+}
+
+.pwa-text-wrap {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pwa-app-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-app-sub {
+  font-size: 10px;
+  color: #8C6A2E;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pwa-install-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pwa-btn-install {
+  background: linear-gradient(135deg, #D4AF37, #8C6A2E);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 14px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(140, 106, 46, 0.2);
+  transition: all 0.2s ease;
+}
+
+.pwa-btn-install:hover {
+  transform: scale(1.04);
+}
+
+.pwa-btn-dismiss {
+  background: none;
+  border: none;
+  color: #8C6A2E;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
 .alert-banner {
   display: flex; align-items: center; gap: 10px;
   background: var(--gold-tint); padding: 10px 16px;

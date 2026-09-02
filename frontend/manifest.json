@@ -1,12 +1,14 @@
 {
-  "name": "SkinWatch - Climate Skincare",
+  "name": "SkinWatch - Climate-Aware Skincare",
   "short_name": "SkinWatch",
-  "description": "Climate-Aware Skincare Intelligence & Routine Tracking",
-  "start_url": "/",
+  "description": "Real-Time Climate Dermatology, Biometric AI Skin Scans & Routine Intelligence",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#FBF8F2",
+  "background_color": "#FAF7F2",
   "theme_color": "#D4AF37",
   "orientation": "portrait",
+  "categories": ["health", "lifestyle", "medical"],
   "icons": [
     {
       "src": "icon-192.png",
@@ -19,6 +21,11 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ]
 }

@@ -5361,3 +5361,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// ---------- PWA Install Prompt Controller ----------
+let deferredPwaPrompt = null;
+const pwaInstallBanner = document.getElementById('pwa-install-banner');
+const pwaInstallBtn = document.getElementById('pwa-install-btn');
+const pwaDismissBtn = document.getElementById('pwa-dismiss-btn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPwaPrompt = e;
+  const isDismissed = sessionStorage.getItem('sw_pwa_dismissed');
+  if (pwaInstallBanner && !isDismissed) {
+    pwaInstallBanner.style.display = 'flex';
+  }
+});
+
+if (pwaInstallBtn) {
+  pwaInstallBtn.addEventListener('click', async () => {
+    if (deferredPwaPrompt) {
+      deferredPwaPrompt.prompt();
+      const { outcome } = await deferredPwaPrompt.userChoice;
+      console.log('PWA Install Outcome:', outcome);
+      deferredPwaPrompt = null;
+    }
+    if (pwaInstallBanner) pwaInstallBanner.style.display = 'none';
+  });
+}
+
+if (pwaDismissBtn) {
+  pwaDismissBtn.addEventListener('click', () => {
+    if (pwaInstallBanner) pwaInstallBanner.style.display = 'none';
+    sessionStorage.setItem('sw_pwa_dismissed', 'true');
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  console.log('✓ SkinWatch successfully installed as PWA!');
+  if (pwaInstallBanner) pwaInstallBanner.style.display = 'none';
+});
+
