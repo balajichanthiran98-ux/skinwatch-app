@@ -1410,25 +1410,32 @@
 
   <!-- PROFILE -->
   <section id="screen-profile" class="screen" style="display:none;">
-    <div class="tinted-header" style="text-align:center; padding-bottom: 16px;">
-      <div class="avatar" id="avatar">
-        <i class="ti ti-user"></i>
-      </div>
-      <button id="photo-btn" class="avatar-edit-btn" aria-label="Change photo"><i class="ti ti-camera"></i></button>
-      <input id="avatar-input" type="file" accept="image/*" style="display:none;">
-      <p class="serif-heading-dark" id="profile-name" style="margin-bottom:2px;">Your name</p>
-      <p class="eyebrow-dark" id="profile-location">Location not set</p>
-      <div class="profile-phone-badge" id="profile-phone-badge">
-        <i class="ti ti-phone-check"></i>
-        <span id="profile-phone-text">+91 98765 43210</span>
-        <span class="verified-tag">Verified</span>
+    <!-- Glassmorphic Profile Hero Card -->
+    <div class="profile-hero-card">
+      <div class="profile-avatar-wrap">
+        <div class="avatar" id="avatar">
+          <i class="ti ti-user"></i>
+        </div>
+        <button id="photo-btn" class="avatar-edit-btn" aria-label="Change photo"><i class="ti ti-camera"></i></button>
+        <input id="avatar-input" type="file" accept="image/*" style="display:none;">
       </div>
 
-      <!-- Skin Health Quotient Hero Banner -->
+      <h2 class="serif-heading-dark profile-title" id="profile-name">User Profile</h2>
+      
+      <div class="profile-meta-row">
+        <span class="profile-meta-pill"><i class="ti ti-map-pin"></i> <span id="profile-location">Location not set</span></span>
+        <div class="profile-phone-badge" id="profile-phone-badge">
+          <i class="ti ti-phone-check"></i>
+          <span id="profile-phone-text">+91 98765 43210</span>
+          <span class="verified-tag">Verified</span>
+        </div>
+      </div>
+
+      <!-- Climate Resilience Score Card -->
       <div class="resilience-score-card">
         <div class="resilience-top">
           <div class="resilience-left">
-            <span class="resilience-lbl"><i class="ti ti-shield-check"></i> Climate Resilience Score</span>
+            <span class="resilience-lbl"><i class="ti ti-shield-check"></i> Climate Defense Score</span>
             <span class="resilience-val" id="resilience-val">88% (High Protection)</span>
           </div>
           <span class="resilience-persona" id="resilience-persona">Sun-Aware & Balanced</span>
@@ -1439,122 +1446,155 @@
       </div>
     </div>
 
-    <div class="section-block">
-      <!-- Fitzpatrick Phototype -->
-      <p class="section-label"><i class="ti ti-sun"></i> Fitzpatrick Phototype (Sun Sensitivity)</p>
-      <div class="pill-group" id="phototype-pills">
-        <button class="pill" data-value="Type I-II">Type I–II (Fair · High Burn Risk)</button>
-        <button class="pill active" data-value="Type III-IV">Type III–IV (Medium · Moderate Tan)</button>
-        <button class="pill" data-value="Type V-VI">Type V–VI (Deep · Pigmentation Risk)</button>
+    <div class="section-block profile-content-block">
+      <!-- 1. Phototype & Skin Type Card -->
+      <div class="profile-section-card">
+        <div class="profile-card-header">
+          <span class="profile-card-title"><i class="ti ti-dna"></i> Skin Type & Phototype</span>
+        </div>
+        
+        <p class="section-sublabel"><i class="ti ti-sun"></i> Fitzpatrick Phototype (UV Sensitivity)</p>
+        <div class="pill-group" id="phototype-pills">
+          <button class="pill" data-value="Type I-II"><span class="photo-dot" style="background:#FDE0D0;"></span> Type I–II (Fair · High Burn Risk)</button>
+          <button class="pill active" data-value="Type III-IV"><span class="photo-dot" style="background:#D8BC9E;"></span> Type III–IV (Medium · Moderate Tan)</button>
+          <button class="pill" data-value="Type V-VI"><span class="photo-dot" style="background:#8C6239;"></span> Type V–VI (Deep · Pigmentation Risk)</button>
+        </div>
+
+        <p class="section-sublabel" style="margin-top:10px;"><i class="ti ti-droplet-half-2"></i> Skin Barrier Type</p>
+        <div class="pill-group" id="skin-type-pills">
+          <button class="pill" data-value="Normal">🌱 Normal</button>
+          <button class="pill" data-value="Oily">✨ Oily</button>
+          <button class="pill" data-value="Dry">🌵 Dry</button>
+          <button class="pill" data-value="Sensitive">⚡ Sensitive</button>
+          <button class="pill" data-value="Combination">⚖️ Combination</button>
+        </div>
       </div>
 
-      <!-- Skin Type -->
-      <p class="section-label">Skin Type</p>
-      <div class="pill-group" id="skin-type-pills">
-        <button class="pill" data-value="Normal">Normal</button>
-        <button class="pill" data-value="Oily">Oily</button>
-        <button class="pill" data-value="Dry">Dry</button>
-        <button class="pill" data-value="Sensitive">Sensitive</button>
-        <button class="pill" data-value="Combination">Combination</button>
+      <!-- 2. Skin Concerns Card -->
+      <div class="profile-section-card">
+        <div class="profile-card-header">
+          <span class="profile-card-title"><i class="ti ti-target"></i> Primary Skin Concerns</span>
+        </div>
+        <p class="profile-card-desc">Select all active skin concerns to tune clinical routines.</p>
+        <div class="pill-group" id="skin-concern-pills">
+          <button class="cpill" data-value="Acne">⚡ Acne & Blemishes</button>
+          <button class="cpill" data-value="Dryness">🌵 Dehydration / Flaking</button>
+          <button class="cpill" data-value="Sensitivity">🛡️ Sensitive Barrier</button>
+          <button class="cpill" data-value="Pigmentation">☀️ Dark Spots & Sun Damage</button>
+          <button class="cpill" data-value="Redness">🔴 Erythema & Flushing</button>
+          <button class="cpill" data-value="Fine Lines">⏳ Fine Lines & Elasticity</button>
+        </div>
       </div>
 
-      <!-- Skin Concerns -->
-      <p class="section-label">Skin Concerns</p>
-      <div class="pill-group" id="skin-concern-pills">
-        <button class="cpill" data-value="Acne">Acne</button>
-        <button class="cpill" data-value="Dryness">Dryness</button>
-        <button class="cpill" data-value="Sensitivity">Sensitivity</button>
-        <button class="cpill" data-value="Pigmentation">Pigmentation</button>
-        <button class="cpill" data-value="Redness">Redness</button>
-        <button class="cpill" data-value="Fine Lines">Fine Lines</button>
-      </div>
-
-      <!-- Active Tolerance -->
-      <p class="section-label"><i class="ti ti-flask"></i> Active Ingredient Tolerance</p>
-      <div class="tolerance-section">
-        <div class="tolerance-row">
-          <span class="tolerance-lbl">Retinoids:</span>
-          <div class="pill-group-mini" id="retinoid-tolerance-pills">
-            <button class="tpill active" data-value="Beginner">Beginner (0.1%)</button>
-            <button class="tpill" data-value="Adapted">Adapted (0.5%+)</button>
-            <button class="tpill" data-value="Sensitive">Sensitive (Bakuchiol)</button>
+      <!-- 3. Active Ingredient Tolerance Card -->
+      <div class="profile-section-card">
+        <div class="profile-card-header">
+          <span class="profile-card-title"><i class="ti ti-flask"></i> Active Ingredient Tolerance</span>
+        </div>
+        <div class="tolerance-section">
+          <div class="tolerance-row">
+            <span class="tolerance-lbl"><i class="ti ti-bolt"></i> Retinoids & Vitamin A:</span>
+            <div class="pill-group-mini" id="retinoid-tolerance-pills">
+              <button class="tpill active" data-value="Beginner">Beginner (0.1%)</button>
+              <button class="tpill" data-value="Adapted">Adapted (0.5%+)</button>
+              <button class="tpill" data-value="Sensitive">Sensitive (Bakuchiol)</button>
+            </div>
+          </div>
+          <div class="tolerance-row" style="margin-top:12px;">
+            <span class="tolerance-lbl"><i class="ti ti-lemon"></i> Vitamin C & Antioxidants:</span>
+            <div class="pill-group-mini" id="vitc-tolerance-pills">
+              <button class="tpill active" data-value="Pure C">Pure L-Ascorbic</button>
+              <button class="tpill" data-value="Gentle">Gentle Ester</button>
+              <button class="tpill" data-value="Niacinamide">Niacinamide Alt</button>
+            </div>
           </div>
         </div>
-        <div class="tolerance-row" style="margin-top:8px;">
-          <span class="tolerance-lbl">Vitamin C:</span>
-          <div class="pill-group-mini" id="vitc-tolerance-pills">
-            <button class="tpill active" data-value="Pure C">Pure L-Ascorbic</button>
-            <button class="tpill" data-value="Gentle">Gentle Ester</button>
-            <button class="tpill" data-value="Niacinamide">Niacinamide Alt</button>
+      </div>
+
+      <!-- 4. Lifestyle & Environment Card -->
+      <div class="profile-section-card">
+        <div class="profile-card-header">
+          <span class="profile-card-title"><i class="ti ti-leaf"></i> Lifestyle & Daily Environment</span>
+        </div>
+        <div class="pill-group" id="lifestyle-pills">
+          <button class="lpill active" data-value="AC Office">❄️ AC Office (Dry Air)</button>
+          <button class="lpill active" data-value="Blue Light">🖥️ Screen Blue Light</button>
+          <button class="lpill" data-value="Outdoor Commute">🏃 Outdoor Commute</button>
+          <button class="lpill active" data-value="Sleep 7h">😴 7+ Hrs Sleep</button>
+          <button class="lpill" data-value="Frequent Travel">✈️ Frequent Travel</button>
+        </div>
+      </div>
+
+      <!-- 5. Milestones & Lifetime Stats Card -->
+      <div class="profile-section-card">
+        <div class="profile-card-header">
+          <span class="profile-card-title"><i class="ti ti-chart-bar"></i> Skincare Milestones & Stats</span>
+        </div>
+        <div class="profile-stats-grid">
+          <div class="profile-stat-card">
+            <div class="stat-icon-wrap" style="background:#E0F2FE; color:#0284C7;"><i class="ti ti-droplet"></i></div>
+            <span class="stat-num" id="stat-water">18.6L</span>
+            <span class="stat-lbl">Hydration Logged</span>
+          </div>
+          <div class="profile-stat-card">
+            <div class="stat-icon-wrap" style="background:#FEF3C7; color:#D97706;"><i class="ti ti-sun"></i></div>
+            <span class="stat-num" id="stat-spf">34 Days</span>
+            <span class="stat-lbl">SPF Applied</span>
+          </div>
+          <div class="profile-stat-card">
+            <div class="stat-icon-wrap" style="background:#FEE2E2; color:#DC2626;"><i class="ti ti-flame"></i></div>
+            <span class="stat-num" id="stat-streak">7 Days</span>
+            <span class="stat-lbl">Top Streak</span>
+          </div>
+          <div class="profile-stat-card">
+            <div class="stat-icon-wrap" style="background:#DCFCE7; color:#16A34A;"><i class="ti ti-shield-check"></i></div>
+            <span class="stat-num" id="stat-barrier">92%</span>
+            <span class="stat-lbl">Barrier Health</span>
           </div>
         </div>
-      </div>
 
-      <!-- Lifestyle Factors -->
-      <p class="section-label" style="margin-top:18px;"><i class="ti ti-activity"></i> Lifestyle & Environment</p>
-      <div class="pill-group" id="lifestyle-pills">
-        <button class="lpill active" data-value="AC Office">❄️ AC Office (Dry Air)</button>
-        <button class="lpill active" data-value="Blue Light">🖥️ Screen Blue Light</button>
-        <button class="lpill" data-value="Outdoor Commute">🏃 Outdoor Commute</button>
-        <button class="lpill active" data-value="Sleep 7h">😴 7+ Hrs Sleep</button>
-        <button class="lpill" data-value="Frequent Travel">✈️ Frequent Travel</button>
-      </div>
-
-      <!-- Milestones & Lifetime Stats -->
-      <p class="section-label" style="margin-top:18px;"><i class="ti ti-trophy"></i> Skincare Milestones & Stats</p>
-      <div class="profile-stats-grid">
-        <div class="profile-stat-card">
-          <i class="ti ti-droplet"></i>
-          <span class="stat-num" id="stat-water">18.6L</span>
-          <span class="stat-lbl">Hydration Logged</span>
-        </div>
-        <div class="profile-stat-card">
-          <i class="ti ti-sun"></i>
-          <span class="stat-num" id="stat-spf">34 Days</span>
-          <span class="stat-lbl">SPF Applied</span>
-        </div>
-        <div class="profile-stat-card">
-          <i class="ti ti-flame"></i>
-          <span class="stat-num" id="stat-streak">7 Days</span>
-          <span class="stat-lbl">Top Streak</span>
-        </div>
-        <div class="profile-stat-card">
-          <i class="ti ti-shield"></i>
-          <span class="stat-num" id="stat-barrier">92%</span>
-          <span class="stat-lbl">Barrier Health</span>
+        <p class="section-sublabel" style="margin-top:14px;"><i class="ti ti-award"></i> Earned Badges</p>
+        <div class="badges-row">
+          <div class="badge-chip"><i class="ti ti-shield-check"></i> Barrier Guardian</div>
+          <div class="badge-chip"><i class="ti ti-sun"></i> UV Shield Pro</div>
+          <div class="badge-chip"><i class="ti ti-droplet"></i> Hydration Master</div>
+          <div class="badge-chip"><i class="ti ti-sparkles"></i> 7-Day Consistency</div>
         </div>
       </div>
 
-      <!-- Earned Badges -->
-      <div class="badges-row">
-        <div class="badge-chip"><i class="ti ti-shield-check"></i> Barrier Guardian</div>
-        <div class="badge-chip"><i class="ti ti-sun"></i> UV Shield Pro</div>
-        <div class="badge-chip"><i class="ti ti-droplet"></i> Hydration Master</div>
-        <div class="badge-chip"><i class="ti ti-sparkles"></i> 7-Day Consistency</div>
+      <!-- 6. Allergies & Avoided Ingredients Card -->
+      <div class="profile-section-card">
+        <div class="profile-card-header">
+          <span class="profile-card-title"><i class="ti ti-ban"></i> Ingredients to Avoid</span>
+        </div>
+        <p class="profile-card-desc">SkinWatch automatically flags matching ingredients across your scans.</p>
+        <div id="allergy-tags" class="allergy-tags"></div>
+        <div class="allergy-input-wrap">
+          <input id="allergy-input" type="text" placeholder="Type ingredient and press Enter (e.g. Fragrance, Alcohol)...">
+        </div>
       </div>
 
-      <!-- Allergies / Ingredients to avoid -->
-      <p class="section-label" style="margin-top:18px;">Ingredients to avoid</p>
-      <div id="allergy-tags" class="allergy-tags"></div>
-      <input id="allergy-input" type="text" placeholder="Type an ingredient and press Enter (e.g. Fragrance, Denatured Alcohol)">
-
-      <!-- Location Search -->
-      <p class="section-label" style="margin-top:18px;">Location</p>
-      <div class="location-row">
-        <input id="loc-search" type="text" placeholder="Search a city (e.g. Trichy, Chennai)">
-        <button id="loc-search-btn" title="Search city" aria-label="Search city"><i class="ti ti-search"></i></button>
-        <button id="locate-me" title="Auto-detect location" aria-label="Use current location"><i class="ti ti-current-location"></i></button>
+      <!-- 7. Default Location Anchor Card -->
+      <div class="profile-section-card">
+        <div class="profile-card-header">
+          <span class="profile-card-title"><i class="ti ti-map-pin"></i> Default Location & Weather Hub</span>
+        </div>
+        <div class="location-row">
+          <input id="loc-search" type="text" placeholder="Search a city (e.g. Trichy, Chennai, London)...">
+          <button id="loc-search-btn" title="Search city" aria-label="Search city"><i class="ti ti-search"></i></button>
+          <button id="locate-me" title="Auto-detect location" aria-label="Use current location"><i class="ti ti-current-location"></i></button>
+        </div>
+        <p id="location-status" class="muted-note" style="margin: 6px 0 0; min-height: 14px;"></p>
       </div>
-      <p id="location-status" class="muted-note" style="margin: 6px 0 16px; min-height: 14px;"></p>
 
-      <!-- Export & Management Action Buttons -->
-      <div class="profile-actions-row" style="margin-top: 20px; display:flex; flex-direction:column; gap:8px;">
+      <!-- 8. Profile Actions & Security -->
+      <div class="profile-actions-row">
         <button id="export-profile-btn" class="profile-action-btn primary"><i class="ti ti-download"></i> Export Skincare Summary</button>
-        <div style="display:flex; gap:8px;">
-          <button id="switch-account-btn" class="profile-action-btn secondary" style="flex:1;"><i class="ti ti-users"></i> Switch Account</button>
-          <button id="sign-out-btn" class="profile-action-btn danger" style="flex:1;"><i class="ti ti-logout"></i> Sign Out</button>
+        <div class="profile-btn-split">
+          <button id="switch-account-btn" class="profile-action-btn secondary"><i class="ti ti-users"></i> Switch Account</button>
+          <button id="sign-out-btn" class="profile-action-btn danger"><i class="ti ti-logout"></i> Sign Out</button>
         </div>
-        <button id="reset-profile-btn" class="auth-link-btn" style="text-align:center; margin-top:4px;">Reset All Local Data</button>
+        <button id="reset-profile-btn" class="auth-link-btn" style="text-align:center; margin-top:6px;">Reset All Local Data</button>
       </div>
 
       <!-- Account Switcher Drawer Modal -->
