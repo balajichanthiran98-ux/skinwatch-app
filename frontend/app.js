@@ -972,6 +972,35 @@ function initOrUpdateMap(lat, lon) {
       if (aqiLayerEnabled) {
         homeMapAqiLayer.addTo(homeMapInstance);
       }
+
+      // Interactive Map Click: Tap anywhere to pin your exact location
+      homeMapInstance.on('click', async (e) => {
+        const clickLat = e.latlng.lat;
+        const clickLon = e.latlng.lng;
+        setLocationStatus('Locating selected point on map...');
+        let name = '';
+        try {
+          const rev = await apiGet(`/api/reverse-geocode?lat=${clickLat}&lon=${clickLon}`);
+          if (rev && rev.name && !/^\d+\.\d+,\s*\d+\.\d+$/.test(rev.name)) {
+            name = rev.name;
+          }
+        } catch {}
+        if (!name) {
+          try {
+            const bdcRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${clickLat}&longitude=${clickLon}&localityLanguage=en`);
+            if (bdcRes.ok) {
+              const bdcData = await bdcRes.json();
+              const parts = [
+                bdcData.locality || bdcData.city || bdcData.localityInfo?.administrative?.[3]?.name,
+                bdcData.principalSubdivision || bdcData.localityInfo?.administrative?.[1]?.name,
+                bdcData.countryName
+              ].filter(Boolean);
+              if (parts.length > 0) name = parts.join(', ');
+            }
+          } catch {}
+        }
+        await applyDetectedLocation(clickLat, clickLon, name || `${clickLat.toFixed(2)}, ${clickLon.toFixed(2)}`);
+      });
     } else {
       homeMapInstance.setView([lat, lon], 12);
     }
