@@ -606,7 +606,6 @@ async function handleLogin() {
     if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
     showToast(`Welcome back, ${userData.name}!`);
     checkAuthState();
-    try { useCurrentLocation(false); } catch {}
   };
 
   try {
@@ -4383,7 +4382,7 @@ async function useCurrentLocation(silent = false) {
       }
       btns.forEach(b => b.disabled = false);
     },
-    { timeout: 6000, enableHighAccuracy: true, maximumAge: 300000 }
+    { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
   );
 }
 
@@ -4519,7 +4518,7 @@ function checkAuthState() {
     if (user.pmSteps) state.pmSteps = user.pmSteps;
     if (user.suppSteps) state.suppSteps = user.suppSteps;
     if (user.waterGlasses != null) state.waterGlasses = user.waterGlasses;
-    if (user.waterTarget != null) state.waterTarget = user.waterTarget;
+    if (user.waterTarget != null) user.waterTarget = user.waterTarget;
     if (user.skinCyclePhase != null) state.skinCyclePhase = user.skinCyclePhase;
     if (user.scanHistory) state.scanHistory = user.scanHistory;
     else state.scanHistory = loadJSON('sw_scan_history', {}) || {};
@@ -4549,8 +4548,8 @@ function checkAuthState() {
     loadWeatherAndAQI();
     loadForecast();
 
-    // Auto-detect live location if not set or default
-    if (!state.location || state.location.name === 'Trichy, Tamil Nadu' || !state.location.lat) {
+    // Auto-detect live location only if none exists at all
+    if (!state.location || !state.location.lat) {
       try { useCurrentLocation(true); } catch {}
     }
     return true;
@@ -4601,8 +4600,6 @@ async function handleUserLogin() {
       // Save session
       sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
       checkAuthState();
-      // Auto-detect live location immediately upon login
-      try { useCurrentLocation(false); } catch {}
     } else {
       showAuthError(errEl, res?.error || 'Invalid mobile number or password.');
     }

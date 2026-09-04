@@ -1,5 +1,5 @@
-// SkinWatch Service Worker v7
-const CACHE_NAME = 'skinwatch-pwa-v7';
+// SkinWatch Service Worker v8
+const CACHE_NAME = 'skinwatch-pwa-v8';
 const STATIC_ASSETS = [
   './',
   './index.html',
