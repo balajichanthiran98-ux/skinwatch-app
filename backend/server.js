@@ -767,6 +767,7 @@ app.get('/api/geocode', async (req, res) => {
 });
 
 // ---- GET /api/reverse-geocode?lat=&lon= ----
+// ---- GET /api/reverse-geocode?lat=&lon= ----
 app.get('/api/reverse-geocode', async (req, res) => {
   const { lat, lon } = req.query;
   if (!lat || !lon) return res.status(400).json({ error: 'lat and lon are required' });
@@ -778,7 +779,6 @@ app.get('/api/reverse-geocode', async (req, res) => {
       const gRes = await fetch(gUrl);
       const gData = await gRes.json();
       if (gData.status === 'OK' && gData.results?.length > 0) {
-        // Find locality or formatted address
         const locality = gData.results.find(r => r.types.includes('locality')) || gData.results[0];
         return res.json({
           name: locality.formatted_address,
@@ -791,7 +791,30 @@ app.get('/api/reverse-geocode', async (req, res) => {
     }
   }
 
-  // 2. Fallback to OpenStreetMap Nominatim
+  // 2. High-reliability fallback: BigDataCloud Reverse Geocoding Client
+  try {
+    const bdcUrl = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const bdcRes = await fetch(bdcUrl);
+    if (bdcRes.ok) {
+      const bdcData = await bdcRes.json();
+      const parts = [
+        bdcData.locality || bdcData.city || bdcData.localityInfo?.administrative?.[3]?.name,
+        bdcData.principalSubdivision || bdcData.localityInfo?.administrative?.[1]?.name,
+        bdcData.countryName
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        return res.json({
+          name: parts.join(', '),
+          lat: parseFloat(lat),
+          lon: parseFloat(lon)
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('BigDataCloud reverse geocode error:', e.message);
+  }
+
+  // 3. Fallback to OpenStreetMap Nominatim
   try {
     const osmUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`;
     const osmRes = await fetch(osmUrl, {

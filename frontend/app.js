@@ -4369,8 +4369,27 @@ async function useCurrentLocation(silent = false) {
       let placeName = '';
       try {
         const rev = await apiGet(`/api/reverse-geocode?lat=${lat}&lon=${lon}`);
-        placeName = rev.name;
+        if (rev && rev.name && !/^\d+\.\d+,\s*\d+\.\d+$/.test(rev.name)) {
+          placeName = rev.name;
+        }
       } catch {}
+
+      // Robust direct client fallback if server returned bare numbers
+      if (!placeName) {
+        try {
+          const bdcRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+          if (bdcRes.ok) {
+            const bdcData = await bdcRes.json();
+            const parts = [
+              bdcData.locality || bdcData.city || bdcData.localityInfo?.administrative?.[3]?.name,
+              bdcData.principalSubdivision || bdcData.localityInfo?.administrative?.[1]?.name,
+              bdcData.countryName
+            ].filter(Boolean);
+            if (parts.length > 0) placeName = parts.join(', ');
+          }
+        } catch {}
+      }
+
       await applyDetectedLocation(lat, lon, placeName || `${lat.toFixed(2)}, ${lon.toFixed(2)}`);
       btns.forEach(b => b.disabled = false);
     },
