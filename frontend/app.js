@@ -383,7 +383,22 @@ async function loadUserDataForPhone(phone) {
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.user) {
+        // 2-Way Storage Synchronization: Merge local storage scans with server scans
+        const localHistory = loadJSON('sw_scan_history', {}) || {};
+        const serverHistory = (data.user.scanHistory && typeof data.user.scanHistory === 'object' && !Array.isArray(data.user.scanHistory))
+          ? data.user.scanHistory
+          : {};
+        
+        const mergedHistory = { ...serverHistory, ...localHistory };
+        data.user.scanHistory = mergedHistory;
+        
         applyUserDataToState(data.user);
+        
+        // If local had unsynced scans, push the merged version back to server
+        const hasUnsynced = Object.keys(localHistory).some(k => !serverHistory[k]);
+        if (hasUnsynced) {
+          saveCurrentUserData();
+        }
         return true;
       }
     }
@@ -434,7 +449,20 @@ function applyUserDataToState(userData) {
   }
 
   const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey() : new Date().toISOString().slice(0, 10);
-  state.checkPhoto = userData.checkPhoto || (state.scanHistory && state.scanHistory[todayKey]?.photo) || null;
+  
+  // Find latest photo across all recorded dates
+  let latestPhoto = (state.scanHistory && state.scanHistory[todayKey]?.photo) || userData.checkPhoto;
+  if (!latestPhoto && state.scanHistory && typeof state.scanHistory === 'object') {
+    const dates = Object.keys(state.scanHistory).sort().reverse();
+    for (const d of dates) {
+      if (state.scanHistory[d] && state.scanHistory[d].photo) {
+        latestPhoto = state.scanHistory[d].photo;
+        break;
+      }
+    }
+  }
+
+  state.checkPhoto = latestPhoto || null;
   state.checkHistory = state.scanHistory;
   saveJSON('sw_scan_history', state.scanHistory);
   if (state.checkPhoto) saveJSON('sw_check_photo', state.checkPhoto);
@@ -465,12 +493,23 @@ function resetCheckScreenForUser() {
 
   const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey() : new Date().toISOString().slice(0, 10);
   const todayScan = (state.scanHistory && typeof state.scanHistory === 'object' && !Array.isArray(state.scanHistory)) ? state.scanHistory[todayKey] : null;
-  const todayPhoto = todayScan ? todayScan.photo : null;
+  
+  // Find latest photo across any recorded date
+  let latestPhoto = todayScan ? todayScan.photo : state.checkPhoto;
+  if (!latestPhoto && state.scanHistory && typeof state.scanHistory === 'object') {
+    const dates = Object.keys(state.scanHistory).sort().reverse();
+    for (const d of dates) {
+      if (state.scanHistory[d] && state.scanHistory[d].photo) {
+        latestPhoto = state.scanHistory[d].photo;
+        break;
+      }
+    }
+  }
 
-  if (todayPhoto) {
+  if (latestPhoto) {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
-      uploadZone.style.backgroundImage = `url('${todayPhoto}')`;
+      uploadZone.style.backgroundImage = `url('${latestPhoto}')`;
     }
     if (uploadContent) uploadContent.style.display = 'none';
     if (photoActions) photoActions.style.display = 'flex';
@@ -3604,7 +3643,9 @@ function renderPastWeekComparison() {
     dotBtn.className = `timeline-day-card ${isLatest ? 'today-pill' : ''} ${isSelected && !isLatest ? 'selected-pill' : ''}`;
     dotBtn.title = `${item.day} (${item.date}) · Score ${item.score}`;
     dotBtn.innerHTML = `
-      <div class="timeline-thumb ${item.hasUserPhoto ? 'has-user-photo' : ''}" style="background-color: ${item.skinColor};"></div>
+      <div class="timeline-thumb ${item.hasUserPhoto ? 'has-user-photo' : ''}" style="${item.hasUserPhoto ? `background-image: url('${item.img}'); background-size: cover; background-position: center;` : `background-color: ${item.skinColor};`}">
+        ${item.hasUserPhoto ? '<span class="thumb-cam-dot"><i class="ti ti-camera"></i></span>' : ''}
+      </div>
       <span class="timeline-day-title">${item.day}</span>
       <span class="timeline-score-pill">${item.score}</span>
     `;
