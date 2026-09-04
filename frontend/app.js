@@ -333,10 +333,15 @@ let usersDb = loadJSON('sw_users_db', {
   }
 });
 
-// ---------- Multi-User Isolated Database & Storage Engine ----------
 function saveCurrentUserData() {
   if (!state.authUser || !state.authUser.phone) return;
   const ph = state.authUser.phone;
+
+  const validScanHistory = (state.scanHistory && typeof state.scanHistory === 'object' && !Array.isArray(state.scanHistory))
+    ? state.scanHistory
+    : (state.authUser.scanHistory && typeof state.authUser.scanHistory === 'object' && !Array.isArray(state.authUser.scanHistory))
+      ? state.authUser.scanHistory
+      : (loadJSON('sw_scan_history', {}) || {});
 
   const payload = {
     name: state.profile?.name || state.authUser.name || 'User',
@@ -355,13 +360,14 @@ function saveCurrentUserData() {
     waterTarget: state.waterTarget,
     skinCyclePhase: state.skinCyclePhase,
     checkPhoto: state.checkPhoto || null,
-    scanHistory: state.checkHistory || [],
+    scanHistory: validScanHistory,
     akvileLogs: state.akvileLogs || [],
     akvileSchoolProgress: state.akvileSchoolProgress || [1, 2]
   };
 
   // 1. Save locally for instant offline cache
   saveJSON(`sw_user_${ph}`, payload);
+  saveJSON('sw_scan_history', validScanHistory);
 
   // 2. Sync to user's isolated server database partition
   fetch(BACKEND_URL + '/api/auth/sync', {
@@ -413,8 +419,26 @@ function applyUserDataToState(userData) {
   state.waterGlasses = userData.waterGlasses ?? 4;
   state.waterTarget = userData.waterTarget ?? 8;
   state.skinCyclePhase = userData.skinCyclePhase ?? 2;
-  state.checkPhoto = userData.checkPhoto || null;
-  state.checkHistory = userData.scanHistory || userData.checkHistory || [];
+
+  // Set date-wise scan history map
+  if (userData.scanHistory && typeof userData.scanHistory === 'object' && !Array.isArray(userData.scanHistory)) {
+    state.scanHistory = userData.scanHistory;
+  } else if (userData.scanHistory && Array.isArray(userData.scanHistory) && userData.scanHistory.length > 0) {
+    state.scanHistory = {};
+    userData.scanHistory.forEach(s => {
+      const k = s.dateKey || (s.timestamp ? getLocalDateKey(new Date(s.timestamp)) : getLocalDateKey());
+      state.scanHistory[k] = s;
+    });
+  } else if (!state.scanHistory || Object.keys(state.scanHistory).length === 0) {
+    state.scanHistory = loadJSON('sw_scan_history', {}) || {};
+  }
+
+  const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey() : new Date().toISOString().slice(0, 10);
+  state.checkPhoto = userData.checkPhoto || (state.scanHistory && state.scanHistory[todayKey]?.photo) || null;
+  state.checkHistory = state.scanHistory;
+  saveJSON('sw_scan_history', state.scanHistory);
+  if (state.checkPhoto) saveJSON('sw_check_photo', state.checkPhoto);
+
   state.akvileSchoolProgress = userData.akvileSchoolProgress || [1, 2];
 
   try { resetCheckScreenForUser(); } catch {}
@@ -533,9 +557,12 @@ async function handleLogin() {
       phone: userData.phone,
       name: userData.name,
       token: 'sw_auth_token_' + Date.now(),
-      databasePartition: `user_${userData.phone}.json`
+      databasePartition: `user_${userData.phone}.json`,
+      scanHistory: userData.scanHistory,
+      checkPhoto: userData.checkPhoto
     };
     saveJSON('sw_session_auth', state.authUser);
+    try { sessionStorage.setItem('sw_session_user', JSON.stringify(userData)); } catch {}
     applyUserDataToState(userData);
     if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
     showToast(`Welcome back, ${userData.name}!`);
@@ -3470,7 +3497,11 @@ function getLocalDateKey(d = new Date()) {
 }
 
 function getPast7DaysTimeline() {
-  let history = state.scanHistory || (state.authUser && state.authUser.scanHistory) || {};
+  let history = (state.scanHistory && typeof state.scanHistory === 'object' && !Array.isArray(state.scanHistory))
+    ? state.scanHistory
+    : (state.authUser && state.authUser.scanHistory && typeof state.authUser.scanHistory === 'object' && !Array.isArray(state.authUser.scanHistory))
+      ? state.authUser.scanHistory
+      : (loadJSON('sw_scan_history', {}) || {});
   if (Array.isArray(history)) history = {};
 
   // Auto-migrate legacy standalone checkPhoto to yesterday (2026-08-30) if scanHistory was empty
