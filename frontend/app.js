@@ -4301,9 +4301,33 @@ function setLocationStatus(msg, isError = false) {
   });
 }
 
+async function applyDetectedLocation(lat, lon, name, customMsg) {
+  state.location = {
+    lat: parseFloat(lat),
+    lon: parseFloat(lon),
+    name: name || `${Number(lat).toFixed(2)}, ${Number(lon).toFixed(2)}`
+  };
+  saveJSON('sw_location', state.location);
+  if (state.profile) state.profile.city = state.location.name;
+
+  // Persist to user session & cloud database
+  if (state.authUser) {
+    state.authUser.location = state.location;
+    state.authUser.city = state.location.name;
+    sessionStorage.setItem('sw_session_user', JSON.stringify(state.authUser));
+    try { syncUserData(); } catch {}
+  }
+
+  setLocationStatus(customMsg || `Location: ${state.location.name}`);
+  renderProfile();
+  renderHome();
+  loadWeatherAndAQI();
+  loadForecast();
+}
+
 async function searchCity(query) {
   if (!query || !query.trim()) {
-    setLocationStatus('Please enter a city name to search.', true);
+    setLocationStatus('Please enter a location or village name to search.', true);
     return;
   }
   const inputs = [document.getElementById('loc-search'), document.getElementById('home-loc-search')].filter(Boolean);
@@ -4315,18 +4339,8 @@ async function searchCity(query) {
 
     const geo = await apiGet(`/api/geocode?query=${encodeURIComponent(query.trim())}`);
     if (geo && geo.lat != null && geo.lon != null) {
-      state.location = {
-        lat: geo.lat,
-        lon: geo.lon,
-        name: geo.name
-      };
-      saveJSON('sw_location', state.location);
+      await applyDetectedLocation(geo.lat, geo.lon, geo.name, `Location set to: ${geo.name}`);
       inputs.forEach(i => i.value = '');
-      setLocationStatus(`Location set to: ${geo.name}`);
-      renderProfile();
-      renderHome();
-      loadWeatherAndAQI();
-      loadForecast();
     } else {
       setLocationStatus(`Could not find "${query}".`, true);
     }
@@ -4343,32 +4357,8 @@ async function useCurrentLocation(silent = false) {
   const btns = [document.getElementById('locate-me'), document.getElementById('home-locate-me')].filter(Boolean);
   if (!silent) {
     btns.forEach(b => b.disabled = true);
-    setLocationStatus('Detecting live location...');
+    setLocationStatus('Pinpointing exact GPS location...');
   }
-
-  const applyDetectedLocation = async (lat, lon, name) => {
-    state.location = {
-      lat,
-      lon,
-      name: name || `${lat.toFixed(2)}, ${lon.toFixed(2)}`
-    };
-    saveJSON('sw_location', state.location);
-    if (state.profile) state.profile.city = state.location.name;
-
-    // Persist to user session & cloud database
-    if (state.authUser) {
-      state.authUser.location = state.location;
-      state.authUser.city = state.location.name;
-      sessionStorage.setItem('sw_session_user', JSON.stringify(state.authUser));
-      try { syncUserData(); } catch {}
-    }
-
-    setLocationStatus(`Location detected: ${state.location.name}`);
-    renderProfile();
-    renderHome();
-    loadWeatherAndAQI();
-    loadForecast();
-  };
 
   const tryIpFallback = async () => {
     try {
@@ -4386,7 +4376,7 @@ async function useCurrentLocation(silent = false) {
 
   if (!navigator.geolocation) {
     const ok = await tryIpFallback();
-    if (!ok && !silent) setLocationStatus('Location unavailable. Please search your city manually.', true);
+    if (!ok && !silent) setLocationStatus('Location unavailable. Please search your village or city manually.', true);
     btns.forEach(b => b.disabled = false);
     return;
   }
@@ -4403,7 +4393,7 @@ async function useCurrentLocation(silent = false) {
         }
       } catch {}
 
-      // Robust direct client fallback if server returned bare numbers
+      // Direct client fallback if server returned bare numbers
       if (!placeName) {
         try {
           const bdcRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
@@ -4426,7 +4416,7 @@ async function useCurrentLocation(silent = false) {
       console.warn('Browser GPS unavailable, falling back to network IP:', err.message);
       const ok = await tryIpFallback();
       if (!ok && !silent) {
-        setLocationStatus('Could not detect location. Please type your city name above.', true);
+        setLocationStatus('Could not detect location. Please type your village or city name above.', true);
       }
       btns.forEach(b => b.disabled = false);
     },
@@ -4480,13 +4470,7 @@ document.querySelectorAll('.travel-chip').forEach((chip) => {
     } else {
       const lat = parseFloat(chip.dataset.lat);
       const lon = parseFloat(chip.dataset.lon);
-      state.location = { lat, lon, name: cityName };
-      saveJSON('sw_location', state.location);
-      setLocationStatus(`Destination set to: ${cityName}`);
-      renderProfile();
-      renderHome();
-      loadWeatherAndAQI();
-      loadForecast();
+      await applyDetectedLocation(lat, lon, cityName, `Destination set to: ${cityName}`);
     }
   });
 });

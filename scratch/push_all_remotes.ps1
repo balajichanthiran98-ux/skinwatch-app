@@ -8,8 +8,7 @@ Write-Host "--- 1. Staging all files ---"
 Write-Host "--- 2. Checking Status ---"
 & $gitExe status
 
-Write-Host "--- 3. Committing latest changes ---"
-& $gitExe commit -m "feat: persistent date-wise AI photo progression gallery & 7D timeline synchronization" 2>$null
+& $gitExe commit -m "feat: pinpoint exact village reverse geocoding, Google Maps address formatting, and multi-device location sync" 2>$null
 
 Write-Host "--- 4. Push to remote skinwatch-app. ---"
 & $gitExe remote set-url origin "https://github.com/balajichanthiran98-ux/skinwatch-app."

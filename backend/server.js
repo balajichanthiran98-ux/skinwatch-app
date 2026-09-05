@@ -12,7 +12,7 @@ const historyStore = require('./historyStore');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.WEATHER_API_KEY;
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY || process.env.WEATHER_API_KEY || 'AIzaSyBKf9o8PsTjkZPbRrosCcWk2KK8z9ZEtlM';
 
 if (API_KEY) {
   console.log('✓ Google Maps & Weather API key detected');
@@ -720,6 +720,21 @@ app.get('/api/air-quality', async (req, res) => {
   return res.json({ ...fallbackAQI, _cache: 'fallback' });
 });
 
+// Clean formatting helper for Google Maps addresses
+function formatGoogleAddress(results) {
+  if (!results || !Array.isArray(results) || results.length === 0) return '';
+  for (const r of results) {
+    if (!r || !r.formatted_address) continue;
+    let clean = r.formatted_address.trim();
+    // Strip Plus Code from the start (e.g. "9PCX+3FW, " or "9QC2+22 ")
+    clean = clean.replace(/^[A-Z0-9]{2,8}\+[A-Z0-9]{2,8}(,\s*|\s+)/i, '').trim();
+    if (clean && !/^\d+$/.test(clean)) {
+      return clean;
+    }
+  }
+  return results[0]?.formatted_address || '';
+}
+
 // ---- GET /api/geocode?query=CityName ----
 app.get('/api/geocode', async (req, res) => {
   const { query } = req.query;
@@ -733,8 +748,9 @@ app.get('/api/geocode', async (req, res) => {
       const gData = await gRes.json();
       if (gData.status === 'OK' && gData.results?.length > 0) {
         const first = gData.results[0];
+        const cleanName = formatGoogleAddress(gData.results) || first.formatted_address;
         return res.json({
-          name: first.formatted_address,
+          name: cleanName,
           lat: first.geometry.location.lat,
           lon: first.geometry.location.lng
         });
@@ -767,24 +783,25 @@ app.get('/api/geocode', async (req, res) => {
 });
 
 // ---- GET /api/reverse-geocode?lat=&lon= ----
-// ---- GET /api/reverse-geocode?lat=&lon= ----
 app.get('/api/reverse-geocode', async (req, res) => {
   const { lat, lon } = req.query;
   if (!lat || !lon) return res.status(400).json({ error: 'lat and lon are required' });
 
-  // 1. Try Google Reverse Geocoding
+  // 1. Try Google Reverse Geocoding for pinpoint village / street accuracy
   if (API_KEY) {
     try {
       const gUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${API_KEY}`;
       const gRes = await fetch(gUrl);
       const gData = await gRes.json();
       if (gData.status === 'OK' && gData.results?.length > 0) {
-        const locality = gData.results.find(r => r.types.includes('locality')) || gData.results[0];
-        return res.json({
-          name: locality.formatted_address,
-          lat: parseFloat(lat),
-          lon: parseFloat(lon)
-        });
+        const cleanName = formatGoogleAddress(gData.results);
+        if (cleanName) {
+          return res.json({
+            name: cleanName,
+            lat: parseFloat(lat),
+            lon: parseFloat(lon)
+          });
+        }
       }
     } catch (e) {
       console.warn('Google reverse geocode error, trying fallback:', e.message);
@@ -823,7 +840,7 @@ app.get('/api/reverse-geocode', async (req, res) => {
     const osmData = await osmRes.json();
     if (osmData && osmData.display_name) {
       const addr = osmData.address || {};
-      const shortName = [addr.city || addr.town || addr.village || addr.suburb, addr.state, addr.country].filter(Boolean).join(', ') || osmData.display_name;
+      const shortName = [addr.suburb || addr.village || addr.town || addr.city, addr.state, addr.country].filter(Boolean).join(', ') || osmData.display_name;
       return res.json({
         name: shortName,
         lat: parseFloat(lat),
