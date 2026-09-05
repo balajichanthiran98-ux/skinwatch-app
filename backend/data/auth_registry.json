@@ -5,11 +5,11 @@
     "passwordHash": "6133c10090903d265fc9527f5b8ba471330ebcef2ae986b8821a06cd5b628460",
     "salt": "salt_+919876543210",
     "name": "Balaji",
-    "city": "Pallipalayam, Tamil Nadu, India",
+    "city": "9A, Selvam nagar, New Vellanur, Chennai, Tamil Nadu 600062, India",
     "skinType": "III",
     "dbFile": "user_+919876543210.json",
     "createdAt": "2026-08-20T00:00:00.000Z",
-    "lastLoginAt": "2026-09-02T17:25:19.760Z"
+    "lastLoginAt": "2026-09-05T16:22:28.164Z"
   },
   "+919123456789": {
     "phone": "+919123456789",
