@@ -4363,6 +4363,21 @@ async function useCurrentLocation(silent = false) {
   const tryIpFallback = async () => {
     try {
       if (!silent) setLocationStatus('Detecting location via network...');
+      
+      // 1. Direct client-side browser IP lookup
+      try {
+        const ipRes = await fetch('https://ipapi.co/json/');
+        if (ipRes.ok) {
+          const ipData = await ipRes.json();
+          if (ipData && ipData.latitude && ipData.longitude && ipData.country_code === 'IN') {
+            const name = [ipData.city, ipData.region, ipData.country_name].filter(Boolean).join(', ');
+            await applyDetectedLocation(ipData.latitude, ipData.longitude, name || 'Pudukkottai, Tamil Nadu');
+            return true;
+          }
+        }
+      } catch {}
+
+      // 2. Server client-IP endpoint
       const ipLoc = await apiGet('/api/ip-location');
       if (ipLoc && ipLoc.lat != null && ipLoc.lon != null) {
         await applyDetectedLocation(ipLoc.lat, ipLoc.lon, ipLoc.name);

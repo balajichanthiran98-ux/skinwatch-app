@@ -855,40 +855,39 @@ app.get('/api/reverse-geocode', async (req, res) => {
 });
 
 // ---- GET /api/ip-location ----
-// Fallback for when browser Geolocation is blocked (e.g. running from file://)
+// Fallback for when browser Geolocation is blocked: extracts Client IP (never cloud server datacenter!)
 app.get('/api/ip-location', async (req, res) => {
-  try {
-    const ipRes = await fetch('http://ip-api.com/json/');
-    const ipData = await ipRes.json();
-    if (ipData && ipData.status === 'success') {
-      const name = [ipData.city, ipData.regionName, ipData.country].filter(Boolean).join(', ');
-      return res.json({
-        name: name || ipData.city || 'Your Location',
-        lat: ipData.lat,
-        lon: ipData.lon
-      });
+  let clientIp = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || '';
+  if (clientIp.includes(',')) {
+    clientIp = clientIp.split(',')[0].trim();
+  }
+  clientIp = clientIp.replace(/^::ffff:/, '').trim();
+
+  const isPrivate = !clientIp || clientIp === '127.0.0.1' || clientIp === '::1' || clientIp.startsWith('10.') || clientIp.startsWith('192.168.') || clientIp.startsWith('172.');
+
+  if (!isPrivate) {
+    try {
+      const ipRes = await fetch(`http://ip-api.com/json/${clientIp}`);
+      const ipData = await ipRes.json();
+      if (ipData && ipData.status === 'success') {
+        const name = [ipData.city, ipData.regionName, ipData.country].filter(Boolean).join(', ');
+        return res.json({
+          name: name || ipData.city || 'Pudukkottai, Tamil Nadu',
+          lat: ipData.lat,
+          lon: ipData.lon
+        });
+      }
+    } catch (err) {
+      console.warn('ip-api.com lookup failed:', err.message);
     }
-  } catch (err) {
-    console.warn('ip-api.com lookup failed:', err.message);
   }
 
-  // Backup IP service
-  try {
-    const ipRes2 = await fetch('https://ipapi.co/json/');
-    const ipData2 = await ipRes2.json();
-    if (ipData2 && ipData2.latitude && ipData2.longitude) {
-      const name = [ipData2.city, ipData2.region, ipData2.country_name].filter(Boolean).join(', ');
-      return res.json({
-        name: name || ipData2.city || 'Your Location',
-        lat: ipData2.latitude,
-        lon: ipData2.longitude
-      });
-    }
-  } catch (err) {
-    console.warn('ipapi.co lookup failed:', err.message);
-  }
-
-  return res.status(500).json({ error: 'Could not determine IP location' });
+  // Safe regional default (Pudukkottai, Tamil Nadu) for local networks
+  return res.json({
+    name: 'Pudukkottai, Tamil Nadu',
+    lat: 10.3728,
+    lon: 78.8212
+  });
 });
 
 // ---- Phone Number Authentication & OTP Store ----
