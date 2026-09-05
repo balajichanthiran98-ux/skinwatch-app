@@ -554,6 +554,7 @@ function checkAuthState() {
     // Activate Home nav button
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.nav-btn[data-screen="home"]')?.classList.add('active');
+    try { useCurrentLocation(true); } catch {}
   } else {
     state.authUser = null;
     document.querySelectorAll('.screen').forEach(s => s.style.setProperty('display', 'none', 'important'));
@@ -606,6 +607,7 @@ async function handleLogin() {
     if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
     showToast(`Welcome back, ${userData.name}!`);
     checkAuthState();
+    try { useCurrentLocation(false); } catch {}
   };
 
   try {
@@ -4595,10 +4597,8 @@ function checkAuthState() {
     loadWeatherAndAQI();
     loadForecast();
 
-    // Auto-detect live location only if none exists at all
-    if (!state.location || !state.location.lat) {
-      try { useCurrentLocation(true); } catch {}
-    }
+    // Automatically acquire live GPS location for user
+    try { useCurrentLocation(true); } catch {}
     return true;
   } catch (err) {
     console.error('Session parse error:', err);
@@ -4647,6 +4647,7 @@ async function handleUserLogin() {
       // Save session
       sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
       checkAuthState();
+      try { useCurrentLocation(false); } catch {}
     } else {
       showAuthError(errEl, res?.error || 'Invalid mobile number or password.');
     }
