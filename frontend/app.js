@@ -3523,7 +3523,7 @@ function getPast7DaysTimeline() {
     
     const rec = history[dateKey];
     
-    // Calibrated Fitzpatrick Skin Tone Color Map showing chromatic progression
+    // Calibrated Fitzpatrick Skin Tone Color Map
     const skinType = (state.profile && state.profile.skinType) || (state.authUser && state.authUser.skinType) || 'III';
     const typePalettes = {
       'I': ['#E8C8B8', '#ECD0C2', '#F0D8CB', '#F4E0D5', '#F7E7DC', '#FAEEE4', '#FCF3EB'],
@@ -3536,28 +3536,29 @@ function getPast7DaysTimeline() {
     const palette = typePalettes[skinType] || typePalettes['III'];
     const skinColor = (rec && rec.skinColor) ? rec.skinColor : palette[6 - offset];
 
-    // Default baseline values if not scanned on that day
-    const baseScore = 78 + (6 - offset);
-    const baseHyd = 74 + (6 - offset) * 1.5;
-    const baseRed = Math.max(18, 32 - (6 - offset) * 2);
+    const hasRealScan = !!(rec && (rec.photo || rec.score != null || rec.metrics));
+    const scoreVal = hasRealScan ? (rec.score || (rec.metrics && rec.metrics.score) || null) : null;
+    const hydVal = hasRealScan ? (rec.hyd || (rec.metrics && rec.metrics.hydrationVal) || null) : null;
+    const redVal = hasRealScan ? (rec.red || (rec.metrics && rec.metrics.rednessVal) || null) : null;
 
     timeline.push({
       dateKey: dateKey,
       day: dayLabel,
       date: shortDate,
       label: `${dayLabel} (${shortDate})`,
-      score: rec ? (rec.score || 85) : Math.round(baseScore),
-      hyd: rec ? (rec.hyd || (rec.metrics && rec.metrics.hydrationVal) || 82) : Math.round(baseHyd),
-      red: rec ? (rec.red || (rec.metrics && rec.metrics.rednessVal) || 20) : Math.round(baseRed),
-      img: (rec && rec.photo) ? rec.photo : sampleFaceSvg,
+      score: scoreVal,
+      hyd: hydVal,
+      red: redVal,
+      img: (rec && rec.photo) ? rec.photo : null,
       skinColor: skinColor,
-      hasUserPhoto: !!(rec && rec.photo)
+      hasUserPhoto: !!(rec && rec.photo),
+      hasRealScan: hasRealScan
     });
   }
   return timeline;
 }
 
-let selectedCompareIndex = 0; // Default compare with earliest day
+let selectedCompareIndex = 0;
 
 function renderPastWeekComparison() {
   const dotsRow = document.getElementById('past-week-dots-row');
@@ -3566,113 +3567,210 @@ function renderPastWeekComparison() {
 
   const pastWeekDays = getPast7DaysTimeline();
 
-  // Find the day with the most recent actual user scan photo
-  let latestScannedIndex = -1;
-  for (let idx = pastWeekDays.length - 1; idx >= 0; idx--) {
-    if (pastWeekDays[idx].hasUserPhoto) {
-      latestScannedIndex = idx;
-      break;
-    }
-  }
-
-  // If a photo was taken on any day, the Right card displays that latest scan
-  const targetRightIndex = latestScannedIndex !== -1 ? latestScannedIndex : (pastWeekDays.length - 1);
-  const targetRightItem = pastWeekDays[targetRightIndex];
-
-  // The Left card compares against an earlier baseline day
-  if (selectedCompareIndex >= pastWeekDays.length || selectedCompareIndex === targetRightIndex) {
-    selectedCompareIndex = (targetRightIndex === 0) ? 1 : 0;
-  }
-  const activeItem = pastWeekDays[selectedCompareIndex];
-
-  // 1. Render 7-Day Interactive Timeline Strip Cards
-  pastWeekDays.forEach((item, i) => {
-    const isLatest = i === targetRightIndex;
-    const isSelected = i === selectedCompareIndex;
-
-    const dotBtn = document.createElement('button');
-    dotBtn.className = `timeline-day-card ${isLatest ? 'today-pill' : ''} ${isSelected && !isLatest ? 'selected-pill' : ''}`;
-    dotBtn.title = `${item.day} (${item.date}) · Score ${item.score}`;
-    dotBtn.innerHTML = `
-      <div class="timeline-thumb ${item.hasUserPhoto ? 'has-user-photo' : ''}" style="${item.hasUserPhoto ? `background-image: url('${item.img}'); background-size: cover; background-position: center;` : `background-color: ${item.skinColor};`}">
-        ${item.hasUserPhoto ? '<span class="thumb-cam-dot"><i class="ti ti-camera"></i></span>' : ''}
-      </div>
-      <span class="timeline-day-title">${item.day}</span>
-      <span class="timeline-score-pill">${item.score}</span>
-    `;
-
-    dotBtn.addEventListener('click', () => {
-      if (i === targetRightIndex) {
-        selectedCompareIndex = (i === 0) ? 1 : 0;
-      } else {
-        selectedCompareIndex = i;
-      }
-      renderPastWeekComparison();
-    });
-
-    dotsRow.appendChild(dotBtn);
+  // Find all days with actual scans
+  const scannedIndices = [];
+  pastWeekDays.forEach((item, idx) => {
+    if (item.hasRealScan) scannedIndices.push(idx);
   });
 
-  // 2. Update Side-by-Side Dual Photo Cards
   const splitBeforeImg = document.getElementById('split-before-img');
   const splitAfterImg = document.getElementById('split-after-img');
   const splitBeforeLbl = document.getElementById('split-before-lbl');
   const splitAfterLbl = document.getElementById('split-after-lbl');
-
-  if (splitBeforeImg) splitBeforeImg.style.backgroundImage = `url('${activeItem.img}')`;
-  if (splitAfterImg) splitAfterImg.style.backgroundImage = `url('${targetRightItem.img}')`;
-  if (splitBeforeLbl) splitBeforeLbl.textContent = `${activeItem.day} (${activeItem.date})`;
-  if (splitAfterLbl) splitAfterLbl.textContent = `${targetRightItem.day} (${targetRightItem.date})`;
-
-  // Scores & Biometrics in Cards
   const beforeScoreEl = document.getElementById('gallery-before-score');
   const afterScoreEl = document.getElementById('gallery-after-score');
   const beforeHydEl = document.getElementById('gallery-before-hyd');
   const afterHydEl = document.getElementById('gallery-after-hyd');
   const beforeRedEl = document.getElementById('gallery-before-red');
   const afterRedEl = document.getElementById('gallery-after-red');
-
-  if (beforeScoreEl) beforeScoreEl.textContent = `Score ${activeItem.score}`;
-  if (afterScoreEl) afterScoreEl.textContent = `Score ${targetRightItem.score}`;
-  if (beforeHydEl) beforeHydEl.textContent = `${activeItem.hyd} AU`;
-  if (afterHydEl) afterHydEl.textContent = `${targetRightItem.hyd} AU`;
-  if (beforeRedEl) beforeRedEl.textContent = `${activeItem.red}%`;
-  if (afterRedEl) afterRedEl.textContent = `${targetRightItem.red}%`;
-
-  // 3. Update Dynamic Differential Delta Badges
   const scoreBadge = document.getElementById('compare-score-badge');
   const vsIndicator = document.getElementById('vs-delta-indicator');
   const deltaBarrier = document.getElementById('delta-barrier-val');
   const deltaHyd = document.getElementById('delta-hyd-val');
   const deltaRed = document.getElementById('delta-red-val');
 
-  const scoreDiff = targetRightItem.score - activeItem.score;
-  const hydDiff = targetRightItem.hyd - activeItem.hyd;
-  const redDiff = targetRightItem.red - activeItem.red; // negative is reduction/improvement
+  // Case 0: No Scans Recorded Yet
+  if (scannedIndices.length === 0) {
+    pastWeekDays.forEach((item, i) => {
+      const dotBtn = document.createElement('button');
+      dotBtn.className = `timeline-day-card ${i === pastWeekDays.length - 1 ? 'today-pill' : ''}`;
+      dotBtn.title = `${item.day} (${item.date}) · No Scan Recorded`;
+      dotBtn.innerHTML = `
+        <div class="timeline-thumb" style="background-color: var(--border, #E2DDD5); display:flex; align-items:center; justify-content:center;">
+          <i class="ti ti-camera" style="font-size:13px; color:var(--text-muted, #888);"></i>
+        </div>
+        <span class="timeline-day-title">${item.day}</span>
+        <span class="timeline-score-pill" style="background:rgba(0,0,0,0.06); color:var(--text-muted,#888);">--</span>
+      `;
+      dotsRow.appendChild(dotBtn);
+    });
 
-  if (scoreBadge) {
-    scoreBadge.textContent = scoreDiff >= 0 ? `+${scoreDiff}% Barrier Recovery` : `${scoreDiff}% Barrier Shift`;
-    scoreBadge.style.color = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
+    if (splitBeforeImg) {
+      splitBeforeImg.style.backgroundImage = 'none';
+      splitBeforeImg.style.backgroundColor = '#262422';
+    }
+    if (splitAfterImg) {
+      splitAfterImg.style.backgroundImage = 'none';
+      splitAfterImg.style.backgroundColor = '#262422';
+    }
+    if (splitBeforeLbl) splitBeforeLbl.textContent = 'Baseline (Pending)';
+    if (splitAfterLbl) splitAfterLbl.textContent = 'Today (No Scan)';
+
+    if (beforeScoreEl) beforeScoreEl.textContent = 'Score --';
+    if (afterScoreEl) afterScoreEl.textContent = 'Score --';
+    if (beforeHydEl) beforeHydEl.textContent = '-- AU';
+    if (afterHydEl) afterHydEl.textContent = '-- AU';
+    if (beforeRedEl) beforeRedEl.textContent = '--%';
+    if (afterRedEl) afterRedEl.textContent = '--%';
+
+    if (scoreBadge) {
+      scoreBadge.textContent = 'Baseline Pending';
+      scoreBadge.style.color = 'var(--text-muted, #777)';
+      scoreBadge.style.borderColor = 'var(--border, #ddd)';
+      scoreBadge.style.background = 'rgba(0,0,0,0.04)';
+    }
+    if (vsIndicator) {
+      vsIndicator.textContent = '--';
+      vsIndicator.style.background = '#8C6A2E';
+    }
+    if (deltaBarrier) {
+      deltaBarrier.textContent = '--';
+      deltaBarrier.style.color = 'var(--text-muted, #777)';
+    }
+    if (deltaHyd) {
+      deltaHyd.textContent = '--';
+      deltaHyd.style.color = 'var(--text-muted, #777)';
+    }
+    if (deltaRed) {
+      deltaRed.textContent = '--';
+      deltaRed.style.color = 'var(--text-muted, #777)';
+    }
+    return;
   }
 
-  if (vsIndicator) {
-    vsIndicator.textContent = scoreDiff >= 0 ? `+${scoreDiff}%` : `${scoreDiff}%`;
-    vsIndicator.style.background = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
+  // Case 1 or more scans exist
+  const latestScannedIndex = scannedIndices[scannedIndices.length - 1];
+  const targetRightItem = pastWeekDays[latestScannedIndex];
+
+  if (scannedIndices.length === 1) {
+    selectedCompareIndex = latestScannedIndex;
+  } else if (!scannedIndices.includes(selectedCompareIndex) || selectedCompareIndex === latestScannedIndex) {
+    selectedCompareIndex = scannedIndices[0];
+  }
+  const activeItem = pastWeekDays[selectedCompareIndex];
+
+  // Render 7-Day Interactive Timeline Strip Cards
+  pastWeekDays.forEach((item, i) => {
+    const isLatest = i === latestScannedIndex;
+    const isSelected = i === selectedCompareIndex;
+
+    const dotBtn = document.createElement('button');
+    dotBtn.className = `timeline-day-card ${isLatest ? 'today-pill' : ''} ${isSelected && !isLatest ? 'selected-pill' : ''}`;
+    dotBtn.title = `${item.day} (${item.date}) · ${item.score ? `Score ${item.score}` : 'No Scan'}`;
+    dotBtn.innerHTML = `
+      <div class="timeline-thumb ${item.hasUserPhoto ? 'has-user-photo' : ''}" style="${item.hasUserPhoto ? `background-image: url('${item.img}'); background-size: cover; background-position: center;` : (item.hasRealScan ? `background-color: ${item.skinColor};` : 'background-color: var(--border, #E2DDD5); display:flex; align-items:center; justify-content:center;')}">
+        ${item.hasUserPhoto ? '<span class="thumb-cam-dot"><i class="ti ti-camera"></i></span>' : (item.hasRealScan ? '' : '<i class="ti ti-camera" style="font-size:12px; color:var(--text-muted,#888);"></i>')}
+      </div>
+      <span class="timeline-day-title">${item.day}</span>
+      <span class="timeline-score-pill" style="${item.score ? '' : 'background:rgba(0,0,0,0.06); color:var(--text-muted);'}">${item.score || '--'}</span>
+    `;
+
+    if (item.hasRealScan) {
+      dotBtn.addEventListener('click', () => {
+        if (i === latestScannedIndex) {
+          selectedCompareIndex = (scannedIndices.length > 1) ? scannedIndices[0] : latestScannedIndex;
+        } else {
+          selectedCompareIndex = i;
+        }
+        renderPastWeekComparison();
+      });
+    }
+
+    dotsRow.appendChild(dotBtn);
+  });
+
+  // Update Side-by-Side Dual Photo Cards
+  if (splitBeforeImg) {
+    if (activeItem.img) {
+      splitBeforeImg.style.backgroundImage = `url('${activeItem.img}')`;
+      splitBeforeImg.style.backgroundColor = 'transparent';
+    } else {
+      splitBeforeImg.style.backgroundImage = 'none';
+      splitBeforeImg.style.backgroundColor = activeItem.skinColor || '#262422';
+    }
+  }
+  if (splitAfterImg) {
+    if (targetRightItem.img) {
+      splitAfterImg.style.backgroundImage = `url('${targetRightItem.img}')`;
+      splitAfterImg.style.backgroundColor = 'transparent';
+    } else {
+      splitAfterImg.style.backgroundImage = 'none';
+      splitAfterImg.style.backgroundColor = targetRightItem.skinColor || '#262422';
+    }
   }
 
-  if (deltaBarrier) {
-    deltaBarrier.textContent = `${activeItem.score}% → ${targetRightItem.score}% (${scoreDiff >= 0 ? '+' : ''}${scoreDiff}%)`;
-    deltaBarrier.style.color = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
+  if (splitBeforeLbl) {
+    splitBeforeLbl.textContent = (scannedIndices.length === 1) ? `Baseline (Day 1)` : `${activeItem.day} (${activeItem.date})`;
+  }
+  if (splitAfterLbl) {
+    splitAfterLbl.textContent = `${targetRightItem.day} (${targetRightItem.date})`;
   }
 
-  if (deltaHyd) {
-    deltaHyd.textContent = `${activeItem.hyd} → ${targetRightItem.hyd} AU (${hydDiff >= 0 ? '+' : ''}${hydDiff})`;
-    deltaHyd.style.color = hydDiff >= 0 ? '#0284C7' : '#C2410C';
-  }
+  if (beforeScoreEl) beforeScoreEl.textContent = `Score ${activeItem.score || '--'}`;
+  if (afterScoreEl) afterScoreEl.textContent = `Score ${targetRightItem.score || '--'}`;
+  if (beforeHydEl) beforeHydEl.textContent = activeItem.hyd ? `${activeItem.hyd} AU` : '-- AU';
+  if (afterHydEl) afterHydEl.textContent = targetRightItem.hyd ? `${targetRightItem.hyd} AU` : '-- AU';
+  if (beforeRedEl) beforeRedEl.textContent = activeItem.red ? `${activeItem.red}%` : '--%';
+  if (afterRedEl) afterRedEl.textContent = targetRightItem.red ? `${targetRightItem.red}%` : '--%';
 
-  if (deltaRed) {
-    deltaRed.textContent = `${activeItem.red}% → ${targetRightItem.red}% (${redDiff <= 0 ? '' : '+'}${redDiff}%)`;
-    deltaRed.style.color = redDiff <= 0 ? '#2E7D32' : '#C2410C';
+  // Update Dynamic Deltas
+  if (scannedIndices.length === 1) {
+    if (scoreBadge) {
+      scoreBadge.textContent = 'Day 1 Baseline Established';
+      scoreBadge.style.color = '#2E7D32';
+      scoreBadge.style.background = '#E8F5E9';
+    }
+    if (vsIndicator) {
+      vsIndicator.textContent = 'Day 1';
+      vsIndicator.style.background = '#2E7D32';
+    }
+    if (deltaBarrier) {
+      deltaBarrier.textContent = `Baseline: ${targetRightItem.score}%`;
+      deltaBarrier.style.color = '#2E7D32';
+    }
+    if (deltaHyd) {
+      deltaHyd.textContent = `Baseline: ${targetRightItem.hyd || 80} AU`;
+      deltaHyd.style.color = '#0284C7';
+    }
+    if (deltaRed) {
+      deltaRed.textContent = `Baseline: ${targetRightItem.red || 20}%`;
+      deltaRed.style.color = '#2E7D32';
+    }
+  } else {
+    const scoreDiff = (targetRightItem.score || 0) - (activeItem.score || 0);
+    const hydDiff = (targetRightItem.hyd || 0) - (activeItem.hyd || 0);
+    const redDiff = (targetRightItem.red || 0) - (activeItem.red || 0);
+
+    if (scoreBadge) {
+      scoreBadge.textContent = scoreDiff >= 0 ? `+${scoreDiff}% Barrier Recovery` : `${scoreDiff}% Barrier Shift`;
+      scoreBadge.style.color = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
+    }
+    if (vsIndicator) {
+      vsIndicator.textContent = scoreDiff >= 0 ? `+${scoreDiff}%` : `${scoreDiff}%`;
+      vsIndicator.style.background = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
+    }
+    if (deltaBarrier) {
+      deltaBarrier.textContent = `${activeItem.score}% → ${targetRightItem.score}% (${scoreDiff >= 0 ? '+' : ''}${scoreDiff}%)`;
+      deltaBarrier.style.color = scoreDiff >= 0 ? '#2E7D32' : '#C2410C';
+    }
+    if (deltaHyd) {
+      deltaHyd.textContent = `${activeItem.hyd} → ${targetRightItem.hyd} AU (${hydDiff >= 0 ? '+' : ''}${hydDiff})`;
+      deltaHyd.style.color = hydDiff >= 0 ? '#0284C7' : '#C2410C';
+    }
+    if (deltaRed) {
+      deltaRed.textContent = `${activeItem.red}% → ${targetRightItem.red}% (${redDiff <= 0 ? '' : '+'}${redDiff}%)`;
+      deltaRed.style.color = redDiff <= 0 ? '#2E7D32' : '#C2410C';
+    }
   }
 }
 
@@ -4028,21 +4126,27 @@ function renderProfile() {
   const userWater = ((state.waterGlasses || 0) * 0.3).toFixed(1);
 
   if (statWater) statWater.textContent = `${userWater}L`;
-  if (statSpf) statSpf.textContent = `${scanCount > 0 ? scanCount : (state.authUser?.spfDays || 0)} Days`;
-  if (statStreak) statStreak.textContent = `${scanCount > 0 ? scanCount : (state.authUser?.streak || 0)} Days`;
+  if (statSpf) statSpf.textContent = `${scanCount} Days`;
+  if (statStreak) statStreak.textContent = `${scanCount} Days`;
   
-  const scoreToUse = state.diagScore || (state.lastScanMetrics && state.lastScanMetrics.score) || (scanCount > 0 ? 86 : 82);
-  if (statBarrier) statBarrier.textContent = `${scoreToUse}%`;
-
-  if (resilienceVal) {
-    const grade = scoreToUse >= 85 ? 'High Protection' : (scoreToUse >= 70 ? 'Moderate Protection' : 'Calibrating');
-    resilienceVal.textContent = `${scoreToUse}% (${grade})`;
-  }
-  if (resilienceFill) {
-    resilienceFill.style.width = `${Math.min(100, Math.max(15, scoreToUse))}%`;
-  }
-  if (resiliencePersona) {
-    resiliencePersona.textContent = (p.skinFeel && p.skinFeel.includes('Dewy')) ? 'Barrier Intact & Plump' : 'Sun-Aware & Calibrating';
+  if (scanCount > 0 || state.diagScore || (state.lastScanMetrics && state.lastScanMetrics.score)) {
+    const scoreToUse = state.diagScore || (state.lastScanMetrics && state.lastScanMetrics.score) || 85;
+    if (statBarrier) statBarrier.textContent = `${scoreToUse}%`;
+    if (resilienceVal) {
+      const grade = scoreToUse >= 85 ? 'High Protection' : (scoreToUse >= 70 ? 'Moderate Protection' : 'Calibrated');
+      resilienceVal.textContent = `${scoreToUse}% (${grade})`;
+    }
+    if (resilienceFill) {
+      resilienceFill.style.width = `${Math.min(100, Math.max(15, scoreToUse))}%`;
+    }
+    if (resiliencePersona) {
+      resiliencePersona.textContent = (p.skinFeel && p.skinFeel.includes('Dewy')) ? 'Barrier Intact & Plump' : 'Sun-Aware & Calibrated';
+    }
+  } else {
+    if (statBarrier) statBarrier.textContent = '--';
+    if (resilienceVal) resilienceVal.textContent = '-- (Awaiting 1st Scan)';
+    if (resilienceFill) resilienceFill.style.width = '0%';
+    if (resiliencePersona) resiliencePersona.textContent = 'Awaiting Clinical Scan';
   }
 
   // 8. Verified Phone Badge

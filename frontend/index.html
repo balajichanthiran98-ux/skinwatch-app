@@ -17,11 +17,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css?v=5.0">
+<link rel="stylesheet" href="style.css?v=5.1">
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=25')
+      navigator.serviceWorker.register('sw.js?v=26')
         .then((reg) => {
           reg.update();
           console.log('✓ SkinWatch PWA Service Worker Registered & Updated', reg.scope);
@@ -744,7 +744,7 @@
               </div>
               <p class="muted-note" style="margin:2px 0 0; font-size:11.5px;">Tap any past day below to compare with Today</p>
             </div>
-            <span class="compare-badge" id="compare-score-badge">+8% Barrier Recovery</span>
+            <span class="compare-badge" id="compare-score-badge">Baseline Pending</span>
           </div>
 
           <!-- Side-by-Side Dual Photo Comparison Gallery Grid -->
@@ -752,17 +752,17 @@
             <!-- Day A (Selected Baseline) -->
             <div class="gallery-photo-card" id="gallery-card-before">
               <div class="gallery-photo-frame" id="split-before-img">
-                <span class="gallery-photo-tag left" id="split-before-lbl">Mon (Aug 17)</span>
-                <div class="gallery-score-badge" id="gallery-before-score">Score 78</div>
+                <span class="gallery-photo-tag left" id="split-before-lbl">Baseline</span>
+                <div class="gallery-score-badge" id="gallery-before-score">Score --</div>
               </div>
               <div class="gallery-card-metrics">
                 <div class="gallery-metric-row">
                   <span>Hydration</span>
-                  <strong id="gallery-before-hyd" style="color:#1976D2;">74 AU</strong>
+                  <strong id="gallery-before-hyd" style="color:#1976D2;">-- AU</strong>
                 </div>
                 <div class="gallery-metric-row">
                   <span>Redness EI</span>
-                  <strong id="gallery-before-red" style="color:#C2410C;">32%</strong>
+                  <strong id="gallery-before-red" style="color:#C2410C;">--%</strong>
                 </div>
               </div>
             </div>
@@ -771,23 +771,23 @@
             <div class="gallery-vs-pillar">
               <div class="vs-circle">VS</div>
               <div class="vs-line"></div>
-              <div class="vs-delta-indicator" id="vs-delta-indicator">+8%</div>
+              <div class="vs-delta-indicator" id="vs-delta-indicator">--</div>
             </div>
 
             <!-- Day B (Today / Latest Active) -->
             <div class="gallery-photo-card active-day" id="gallery-card-after">
               <div class="gallery-photo-frame" id="split-after-img">
-                <span class="gallery-photo-tag right" id="split-after-lbl">Today (Aug 23)</span>
-                <div class="gallery-score-badge active" id="gallery-after-score">Score 86</div>
+                <span class="gallery-photo-tag right" id="split-after-lbl">Today</span>
+                <div class="gallery-score-badge active" id="gallery-after-score">Score --</div>
               </div>
               <div class="gallery-card-metrics">
                 <div class="gallery-metric-row">
                   <span>Hydration</span>
-                  <strong id="gallery-after-hyd" style="color:#1976D2;">84 AU</strong>
+                  <strong id="gallery-after-hyd" style="color:#1976D2;">-- AU</strong>
                 </div>
                 <div class="gallery-metric-row">
                   <span>Redness EI</span>
-                  <strong id="gallery-after-red" style="color:#2E7D32;">18%</strong>
+                  <strong id="gallery-after-red" style="color:#2E7D32;">--%</strong>
                 </div>
               </div>
             </div>
@@ -806,21 +806,21 @@
                 <div class="delta-stat-icon" style="background:#E8F5E9; color:#2E7D32;"><i class="ti ti-shield-check"></i></div>
                 <span class="delta-stat-lbl">Barrier Health</span>
               </div>
-              <strong class="delta-stat-val" id="delta-barrier-val" style="color:#2E7D32;">78% → 86% (+8%)</strong>
+              <strong class="delta-stat-val" id="delta-barrier-val" style="color:#2E7D32;">--</strong>
             </div>
             <div class="delta-stat-box">
               <div class="delta-stat-box-top">
                 <div class="delta-stat-icon" style="background:#E3F2FD; color:#1976D2;"><i class="ti ti-droplet"></i></div>
                 <span class="delta-stat-lbl">Hydration</span>
               </div>
-              <strong class="delta-stat-val" id="delta-hyd-val" style="color:#1976D2;">74 → 84 AU (+10)</strong>
+              <strong class="delta-stat-val" id="delta-hyd-val" style="color:#1976D2;">--</strong>
             </div>
             <div class="delta-stat-box">
               <div class="delta-stat-box-top">
                 <div class="delta-stat-icon" style="background:#FFF3E0; color:#E65100;"><i class="ti ti-flame"></i></div>
                 <span class="delta-stat-lbl">Erythema</span>
               </div>
-              <strong class="delta-stat-val" id="delta-red-val" style="color:#2E7D32;">32% → 18% (-14%)</strong>
+              <strong class="delta-stat-val" id="delta-red-val" style="color:#2E7D32;">--</strong>
             </div>
           </div>
         </div>
@@ -1811,6 +1811,6 @@
 
 </div>
 
-<script src="app.js?v=5.0"></script>
+<script src="app.js?v=5.1"></script>
 </body>
 </html>

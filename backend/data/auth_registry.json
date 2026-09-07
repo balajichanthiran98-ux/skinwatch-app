@@ -1,1 +1,14 @@
-{}
+{
+  "+916380637145": {
+    "phone": "+916380637145",
+    "normalizedPhone": "+916380637145",
+    "passwordHash": "548e2d6403543725a38ddb825d7f49ce75e746291f821f8135f4f7d0007d1507",
+    "salt": "salt_+916380637145_1788789098519",
+    "name": "Senthil",
+    "city": "10.30, 79.08",
+    "skinType": "III",
+    "dbFile": "user_+916380637145.json",
+    "createdAt": "2026-09-07T13:51:30.806Z",
+    "lastLoginAt": "2026-09-07T13:51:38.519Z"
+  }
+}
