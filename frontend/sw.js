@@ -1,5 +1,5 @@
-// SkinWatch Service Worker v30 - Network-First Core Shell
-const CACHE_NAME = 'skinwatch-pwa-v30';
+// SkinWatch Service Worker v32 - Network-First Core Shell
+const CACHE_NAME = 'skinwatch-pwa-v32';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const STATIC_ASSETS = [
   './manifest.json',
   './assets/logo.png',
   './assets/skinwatch-logo.png',
+  './icon.svg',
   './icon-192.png',
   './icon-512.png',
   './icon-maskable-192.png',
