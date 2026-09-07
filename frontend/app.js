@@ -588,11 +588,6 @@ async function handleLogin() {
   const phone = rawPhone.startsWith('+') ? rawPhone : `${code}${rawPhone}`;
   if (btn) btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Verifying...</span>`;
 
-  // Quick fallback check for instant local authentication
-  const norm = phone.replace(/[\s\-\(\)]/g, '');
-  const isBalaji = norm.includes('9876543210');
-  const isPriya = norm.includes('9123456789');
-
   const executeInstantLogin = (userData) => {
     state.authUser = {
       phone: userData.phone,
@@ -612,9 +607,9 @@ async function handleLogin() {
   };
 
   try {
-    // Attempt fast backend fetch with 1.2s timeout
+    // Attempt fast backend fetch
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1200);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
 
     const res = await fetch(BACKEND_URL + '/api/auth/login', {
       method: 'POST',
@@ -633,31 +628,7 @@ async function handleLogin() {
       }
     }
   } catch (e) {
-    console.warn('Backend fetch bypassed or timed out, executing local engine:', e);
-  }
-
-  // If backend was unreachable or file://, authenticate locally
-  if ((isBalaji || isPriya) && (password === 'password123' || password.length >= 4)) {
-    const demoUser = isBalaji ? {
-      phone: '+919876543210',
-      name: 'Balaji',
-      city: 'Trichy, Tamil Nadu',
-      skinType: 'III',
-      skinTypeName: 'Type III (Medium / Olive)',
-      waterGlasses: 5,
-      waterTarget: 8
-    } : {
-      phone: '+919123456789',
-      name: 'Priya',
-      city: 'Paris, France',
-      skinType: 'II',
-      skinTypeName: 'Type II (Fair / Sensitive)',
-      waterGlasses: 6,
-      waterTarget: 8
-    };
-
-    executeInstantLogin(demoUser);
-    return;
+    console.warn('Backend fetch error:', e);
   }
 
   // Check custom local users created in this browser

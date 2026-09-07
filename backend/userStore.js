@@ -33,80 +33,8 @@ function getUserDbFilename(phone) {
   return path.join(USERS_DIR, `user_${safe}.json`);
 }
 
-// Default initial pre-seeded profiles
-const INITIAL_PROFILES = [
-  {
-    phone: "+919876543210",
-    displayPhone: "+91 98765 43210",
-    password: "password123",
-    name: "Balaji",
-    city: "Trichy, Tamil Nadu",
-    location: { name: "Trichy, Tamil Nadu", lat: 10.7905, lon: 78.7047 },
-    skinType: "III",
-    skinTypeName: "Type III (Medium / Olive)",
-    skinFeel: "Combination / TEWL Prone",
-    concerns: ["UV Barrier Defense", "Sebum Balance", "Pigmentation"],
-    tolerances: ["Vitamin C", "Niacinamide", "Centella Asiatica"],
-    allergies: ["Fragrance", "Essential Oils"],
-    amSteps: [
-      { id: "a1", name: "Gentle Foaming Cleanser", done: true },
-      { id: "a2", name: "15% Vitamin C Antioxidant Serum", done: true },
-      { id: "a3", name: "Ceramide Barrier Hydration Cream", done: false },
-      { id: "a4", name: "SPF 50+ PA++++ Fluid Sunscreen", done: false }
-    ],
-    suppSteps: [
-      { id: "s1", name: "Omega-3 Fatty Acids (1000mg)", done: true },
-      { id: "s2", name: "Zinc & Copper Skin Defense", done: false }
-    ],
-    pmSteps: [
-      { id: "p1", name: "Double Cleanse Oil & Foam", done: false },
-      { id: "p2", name: "0.3% Retinol Night Serum", done: false },
-      { id: "p3", name: "Centella Soothing Recovery Cream", done: false }
-    ],
-    waterGlasses: 5,
-    waterTarget: 8,
-    skinCyclePhase: 2,
-    checkPhoto: null,
-    scanHistory: [],
-    createdAt: "2026-08-20T00:00:00.000Z",
-    lastLoginAt: new Date().toISOString()
-  },
-  {
-    phone: "+919123456789",
-    displayPhone: "+91 91234 56789",
-    password: "password123",
-    name: "Priya",
-    city: "Paris, France",
-    location: { name: "Paris, France", lat: 48.8566, lon: 2.3522 },
-    skinType: "II",
-    skinTypeName: "Type II (Fair / Sensitive)",
-    skinFeel: "Dry / Sensitive",
-    concerns: ["Deep Hydration", "Erythema Calming", "Anti-Pollution"],
-    tolerances: ["Hyaluronic Acid", "Squalane", "Panthenol"],
-    allergies: ["AHA Glycolic", "Salicylic Acid"],
-    amSteps: [
-      { id: "a1", name: "Milky Hydrating Cleanser", done: true },
-      { id: "a2", name: "Hyaluronic Acid Multi-Weight Essence", done: true },
-      { id: "a3", name: "Squalane Moisture Shield", done: true },
-      { id: "a4", name: "Mineral SPF 50 Sensitive Sunscreen", done: true }
-    ],
-    suppSteps: [
-      { id: "s1", name: "Marine Collagen Peptides", done: true }
-    ],
-    pmSteps: [
-      { id: "p1", name: "Gentle Micellar Water Rinse", done: false },
-      { id: "p2", name: "Peptide Repair Ampoule", done: false },
-      { id: "p3", name: "Rich Ceramide Overnight Balm", done: false }
-    ],
-    waterGlasses: 7,
-    waterTarget: 8,
-    skinCyclePhase: 3,
-    checkPhoto: null,
-    scanHistory: [],
-    createdAt: "2026-08-20T00:00:00.000Z",
-    lastLoginAt: new Date().toISOString()
-  }
-];
+// Default initial pre-seeded profiles (empty for production/clean slate)
+const INITIAL_PROFILES = [];
 
 class UserStore {
   constructor() {
@@ -123,7 +51,7 @@ class UserStore {
         this.authRegistry = {};
       }
 
-      // Seed initial demo users if not present
+      // Seed initial profiles if any configured
       INITIAL_PROFILES.forEach(profile => {
         const norm = normalizePhone(profile.phone);
         const userDbFile = getUserDbFilename(norm);
@@ -464,13 +392,7 @@ class UserStore {
   }
 
   getDemoAccounts() {
-    return Object.values(this.authRegistry).map(u => ({
-      phone: u.phone,
-      name: u.name,
-      city: u.city,
-      skinType: u.skinType,
-      dbFile: u.dbFile
-    }));
+    return [];
   }
 }
 
