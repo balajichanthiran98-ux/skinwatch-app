@@ -5962,3 +5962,43 @@ body {
 .fe-complete-action-btn:hover {
   background: #1B5E20;
 }
+
+/* =========================================================================
+   SkinWatch App Luxury Watch Logo Branding
+   ========================================================================= */
+.auth-brand-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+.auth-logo-badge {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: #141210;
+  padding: 3px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), 0 0 0 2px rgba(212, 175, 55, 0.45);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.auth-logo-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38), 0 0 0 3px rgba(212, 175, 55, 0.8);
+}
+
+.auth-brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+

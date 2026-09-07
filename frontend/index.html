@@ -17,11 +17,11 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css?v=5.2">
+<link rel="stylesheet" href="style.css?v=5.3">
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=27')
+      navigator.serviceWorker.register('sw.js?v=28')
         .then((reg) => {
           reg.update();
           console.log('✓ SkinWatch PWA Service Worker Registered & Updated', reg.scope);
@@ -48,7 +48,7 @@
   <section id="screen-auth" class="screen auth-screen" style="display:flex;">
     <div class="auth-brand-wrap">
       <div class="auth-logo-badge">
-        <i class="ti ti-droplet-half-2"></i>
+        <img src="assets/logo.png" alt="SkinWatch Logo" class="auth-brand-logo-img">
       </div>
       <h1 class="auth-app-title">SkinWatch</h1>
       <p class="auth-app-tagline">Climate-Aware Skincare Intelligence</p>
@@ -1811,6 +1811,6 @@
 
 </div>
 
-<script src="app.js?v=5.2"></script>
+<script src="app.js?v=5.3"></script>
 </body>
 </html>

@@ -1,11 +1,12 @@
-// SkinWatch Service Worker v27 - Network-First Core Shell
-const CACHE_NAME = 'skinwatch-pwa-v27';
+// SkinWatch Service Worker v28 - Network-First Core Shell
+const CACHE_NAME = 'skinwatch-pwa-v28';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
+  './assets/logo.png',
   './icon-192.png',
   './icon-512.png',
   './apple-touch-icon.png'
