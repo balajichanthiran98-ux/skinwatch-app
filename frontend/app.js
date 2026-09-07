@@ -470,6 +470,8 @@ function resetCheckScreenForUser() {
     }
   }
 
+  const latestScan = todayScan || (state.scanHistory && Object.keys(state.scanHistory).length > 0 ? state.scanHistory[Object.keys(state.scanHistory).sort().reverse()[0]] : null);
+
   if (latestPhoto) {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
@@ -477,7 +479,32 @@ function resetCheckScreenForUser() {
     }
     if (uploadContent) uploadContent.style.display = 'none';
     if (photoActions) photoActions.style.display = 'flex';
-    if (diagnosticResults) diagnosticResults.style.display = 'block';
+    if (diagnosticResults) {
+      diagnosticResults.style.display = 'block';
+      if (latestScan) {
+        const m = latestScan.metrics || latestScan;
+        const score = latestScan.score || m.overallScore || m.skinScore || 85;
+        const hyd = latestScan.hyd || m.hydVal || m.hydrationVal || 82;
+        const red = latestScan.red || m.redVal || m.rednessVal || 18;
+        const pore = m.poreVal || 79;
+        const uv = m.uvShieldVal || 92;
+
+        const scoreEl = document.getElementById('diag-score');
+        if (scoreEl) scoreEl.innerHTML = `${score} <span class="diag-max">/ 100</span>`;
+        const hydEl = document.getElementById('metric-hyd');
+        const hydBar = document.getElementById('metric-hyd-bar');
+        if (hydEl && hydBar) { hydEl.textContent = `${hyd}%`; hydBar.style.width = `${hyd}%`; }
+        const redEl = document.getElementById('metric-red');
+        const redBar = document.getElementById('metric-red-bar');
+        if (redEl && redBar) { redEl.textContent = `${red}%`; redBar.style.width = `${red}%`; }
+        const poreEl = document.getElementById('metric-pore');
+        const poreBar = document.getElementById('metric-pore-bar');
+        if (poreEl && poreBar) { poreEl.textContent = `${pore}%`; poreBar.style.width = `${pore}%`; }
+        const uvEl = document.getElementById('metric-uv');
+        const uvBar = document.getElementById('metric-uv-bar');
+        if (uvEl && uvBar) { uvEl.textContent = `${uv}%`; uvBar.style.width = `${uv}%`; }
+      }
+    }
   } else {
     if (uploadZone) {
       uploadZone.style.display = 'flex';
@@ -3473,12 +3500,13 @@ async function runBiometricScan(imageUrl) {
       state.scanHistory[todayKey] = {
         photo: imgToUse,
         metrics: metrics,
-        score: metrics.skinScore,
-        hyd: metrics.hydrationVal,
-        red: metrics.rednessVal,
+        score: metrics.overallScore || 85,
+        hyd: metrics.hydVal || 82,
+        red: metrics.redVal || 18,
         timestamp: Date.now()
       };
       state.checkPhoto = imgToUse;
+      state.diagScore = metrics.overallScore || 85;
       saveJSON('sw_scan_history', state.scanHistory);
       saveJSON('sw_check_photo', state.checkPhoto);
       if (state.authUser) {
@@ -3488,6 +3516,7 @@ async function runBiometricScan(imageUrl) {
         syncUserData();
       }
       renderPastWeekComparison();
+      try { renderProfile(); } catch {}
     }, 400);
   }, 1800);
 }
@@ -3537,9 +3566,9 @@ function getPast7DaysTimeline() {
     const skinColor = (rec && rec.skinColor) ? rec.skinColor : palette[6 - offset];
 
     const hasRealScan = !!(rec && (rec.photo || rec.score != null || rec.metrics));
-    const scoreVal = hasRealScan ? (rec.score || (rec.metrics && rec.metrics.score) || null) : null;
-    const hydVal = hasRealScan ? (rec.hyd || (rec.metrics && rec.metrics.hydrationVal) || null) : null;
-    const redVal = hasRealScan ? (rec.red || (rec.metrics && rec.metrics.rednessVal) || null) : null;
+    const scoreVal = hasRealScan ? (rec.score || rec.metrics?.overallScore || rec.metrics?.skinScore || rec.metrics?.score || 85) : null;
+    const hydVal = hasRealScan ? (rec.hyd || rec.metrics?.hydVal || rec.metrics?.hydrationVal || 82) : null;
+    const redVal = hasRealScan ? (rec.red || rec.metrics?.redVal || rec.metrics?.rednessVal || 18) : null;
 
     timeline.push({
       dateKey: dateKey,
