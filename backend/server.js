@@ -1140,17 +1140,33 @@ app.get('/api/auth/demo-accounts', (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// Serve frontend static assets (robust discovery)
-const path = require('path');
-const fs = require('fs');
+// Explicit Zero-Cache Handlers for Icons, Favicons, Manifest, and Service Worker
+app.get([
+  '/favicon.ico', '/favicon-32x32.png', '/favicon-16x16.png',
+  '/skinwatch-favicon.ico', '/skinwatch-favicon-32x32.png',
+  '/icon.svg', '/icon-192.png', '/icon-512.png',
+  '/icon-maskable-192.png', '/icon-maskable-512.png',
+  '/skinwatch-icon-192.png', '/skinwatch-icon-512.png', '/skinwatch-icon-maskable-512.png',
+  '/apple-touch-icon.png', '/manifest.json', '/sw.js'
+], (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  const target = req.path.replace(/^\//, '');
+  const filePath = path.join(frontendDir, target);
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath);
+  }
+  next();
+});
 
-const frontendDir = fs.existsSync(path.join(__dirname, '../frontend'))
-  ? path.join(__dirname, '../frontend')
-  : (fs.existsSync(path.join(__dirname, 'frontend'))
-    ? path.join(__dirname, 'frontend')
-    : __dirname);
-
-app.use(express.static(frontendDir));
+app.use(express.static(frontendDir, {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html') || path.endsWith('.json') || path.endsWith('.ico') || path.endsWith('.png') || path.endsWith('.svg')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    }
+  }
+}));
 
 // Fallback to index.html for frontend routing
 app.get('*', (req, res, next) => {
