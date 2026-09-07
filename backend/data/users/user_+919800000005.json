@@ -1,0 +1,69 @@
+{
+  "phone": "+919800000005",
+  "displayPhone": "+919800000005",
+  "name": "Sanjay Patel",
+  "city": "Coimbatore, Tamil Nadu",
+  "location": {
+    "name": "Coimbatore, Tamil Nadu",
+    "lat": 10.8,
+    "lon": 78.8
+  },
+  "skinType": "III",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Custom Step for Sanjay Patel",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 5,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_SANJAY_005_1788785197040_USER_5",
+  "scanHistory": {
+    "2026-09-01": {
+      "photo": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_SANJAY_005_1788785197040_USER_5",
+      "score": 84,
+      "hyd": 74,
+      "red": 19,
+      "timestamp": 1788525997040
+    }
+  },
+  "createdAt": "2026-09-07T12:46:37.039Z",
+  "lastLoginAt": "2026-09-07T12:46:37.089Z"
+}

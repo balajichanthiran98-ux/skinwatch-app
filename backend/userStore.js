@@ -169,9 +169,7 @@ class UserStore {
   // Load a user's isolated database file
   loadUserDb(phone) {
     const norm = normalizePhone(phone);
-    const registryEntry = this.findRegistryEntry(norm);
-    if (!registryEntry) return null;
-
+    if (!norm) return null;
     const userDbFile = getUserDbFilename(norm);
     if (fs.existsSync(userDbFile)) {
       try {
@@ -199,10 +197,30 @@ class UserStore {
 
   findRegistryEntry(phone) {
     const norm = normalizePhone(phone);
+    if (!norm) return null;
+    if (this.authRegistry && this.authRegistry[norm]) return this.authRegistry[norm];
     for (const key in this.authRegistry) {
       if (key === norm || key.endsWith(norm) || norm.endsWith(key)) {
         return this.authRegistry[key];
       }
+    }
+    // Re-check disk registry for multi-process freshness
+    try {
+      if (fs.existsSync(AUTH_REGISTRY_FILE)) {
+        const raw = fs.readFileSync(AUTH_REGISTRY_FILE, 'utf8');
+        this.authRegistry = JSON.parse(raw) || {};
+        if (this.authRegistry[norm]) return this.authRegistry[norm];
+        for (const key in this.authRegistry) {
+          if (key === norm || key.endsWith(norm) || norm.endsWith(key)) {
+            return this.authRegistry[key];
+          }
+        }
+      }
+    } catch {}
+
+    const userDbFile = getUserDbFilename(norm);
+    if (fs.existsSync(userDbFile)) {
+      return { normalizedPhone: norm, phone: norm };
     }
     return null;
   }

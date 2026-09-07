@@ -1,0 +1,69 @@
+{
+  "phone": "+919800000006",
+  "displayPhone": "+919800000006",
+  "name": "Ananya Reddy",
+  "city": "Salem, Tamil Nadu",
+  "location": {
+    "name": "Salem, Tamil Nadu",
+    "lat": 11,
+    "lon": 79
+  },
+  "skinType": "II",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Custom Step for Ananya Reddy",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 6,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_ANANYA_006_1788785197044_USER_6",
+  "scanHistory": {
+    "2026-09-01": {
+      "photo": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_ANANYA_006_1788785197044_USER_6",
+      "score": 85,
+      "hyd": 75,
+      "red": 20,
+      "timestamp": 1788612397044
+    }
+  },
+  "createdAt": "2026-09-07T12:46:37.043Z",
+  "lastLoginAt": "2026-09-07T12:46:37.091Z"
+}

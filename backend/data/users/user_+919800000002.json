@@ -1,0 +1,69 @@
+{
+  "phone": "+919800000002",
+  "displayPhone": "+919800000002",
+  "name": "Divya Krishnan",
+  "city": "Trichy, Tamil Nadu",
+  "location": {
+    "name": "Trichy, Tamil Nadu",
+    "lat": 10.2,
+    "lon": 78.2
+  },
+  "skinType": "II",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Custom Step for Divya Krishnan",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 2,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_DIVYA_002_1788785197029_USER_2",
+  "scanHistory": {
+    "2026-09-01": {
+      "photo": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_DIVYA_002_1788785197029_USER_2",
+      "score": 81,
+      "hyd": 71,
+      "red": 16,
+      "timestamp": 1788266797029
+    }
+  },
+  "createdAt": "2026-09-07T12:46:37.028Z",
+  "lastLoginAt": "2026-09-07T12:46:37.082Z"
+}

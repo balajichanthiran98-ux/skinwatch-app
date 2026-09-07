@@ -1,0 +1,69 @@
+{
+  "phone": "+919800000001",
+  "displayPhone": "+919800000001",
+  "name": "Aarav Sharma",
+  "city": "Pudukkottai, Tamil Nadu",
+  "location": {
+    "name": "Pudukkottai, Tamil Nadu",
+    "lat": 10,
+    "lon": 78
+  },
+  "skinType": "III",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Custom Step for Aarav Sharma",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 1,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_AARAV_001_1788785197023_USER_1",
+  "scanHistory": {
+    "2026-09-01": {
+      "photo": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_AARAV_001_1788785197023_USER_1",
+      "score": 80,
+      "hyd": 70,
+      "red": 15,
+      "timestamp": 1788180397023
+    }
+  },
+  "createdAt": "2026-09-07T12:46:37.022Z",
+  "lastLoginAt": "2026-09-07T12:46:37.080Z"
+}

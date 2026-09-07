@@ -1,0 +1,69 @@
+{
+  "phone": "+919800000007",
+  "displayPhone": "+919800000007",
+  "name": "Venkatesh S",
+  "city": "Karur, Tamil Nadu",
+  "location": {
+    "name": "Karur, Tamil Nadu",
+    "lat": 11.2,
+    "lon": 79.2
+  },
+  "skinType": "V",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Custom Step for Venkatesh S",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 7,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_VENKATESH_007_1788785197049_USER_7",
+  "scanHistory": {
+    "2026-09-01": {
+      "photo": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_VENKATESH_007_1788785197049_USER_7",
+      "score": 86,
+      "hyd": 76,
+      "red": 21,
+      "timestamp": 1788698797049
+    }
+  },
+  "createdAt": "2026-09-07T12:46:37.046Z",
+  "lastLoginAt": "2026-09-07T12:46:37.094Z"
+}

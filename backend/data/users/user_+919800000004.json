@@ -1,0 +1,69 @@
+{
+  "phone": "+919800000004",
+  "displayPhone": "+919800000004",
+  "name": "Meera Nair",
+  "city": "Chennai, Tamil Nadu",
+  "location": {
+    "name": "Chennai, Tamil Nadu",
+    "lat": 10.6,
+    "lon": 78.6
+  },
+  "skinType": "I",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Custom Step for Meera Nair",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 4,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_MEERA_004_1788785197036_USER_4",
+  "scanHistory": {
+    "2026-09-01": {
+      "photo": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_MEERA_004_1788785197036_USER_4",
+      "score": 83,
+      "hyd": 73,
+      "red": 18,
+      "timestamp": 1788439597036
+    }
+  },
+  "createdAt": "2026-09-07T12:46:37.034Z",
+  "lastLoginAt": "2026-09-07T12:46:37.087Z"
+}
