@@ -54,14 +54,56 @@
   "waterGlasses": 1,
   "waterTarget": 8,
   "skinCyclePhase": 1,
-  "checkPhoto": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_AARAV_001_1788785197023_USER_1",
+  "checkPhoto": "data:image/jpeg;base64,USER_1_DATE_2026-09-07_PHOTO_HASH_1788785716141",
   "scanHistory": {
     "2026-09-01": {
-      "photo": "data:image/jpeg;base64,UNIQUE_HEX_PHOTO_AARAV_001_1788785197023_USER_1",
-      "score": 80,
+      "photo": "data:image/jpeg;base64,USER_1_DATE_2026-09-01_PHOTO_HASH_1788785716141",
+      "score": 75,
+      "hyd": 68,
+      "red": 24,
+      "timestamp": 1788256800000
+    },
+    "2026-09-02": {
+      "photo": "data:image/jpeg;base64,USER_1_DATE_2026-09-02_PHOTO_HASH_1788785716141",
+      "score": 76,
       "hyd": 70,
-      "red": 15,
-      "timestamp": 1788180397023
+      "red": 23,
+      "timestamp": 1788343200000
+    },
+    "2026-09-03": {
+      "photo": "data:image/jpeg;base64,USER_1_DATE_2026-09-03_PHOTO_HASH_1788785716141",
+      "score": 77,
+      "hyd": 72,
+      "red": 22,
+      "timestamp": 1788429600000
+    },
+    "2026-09-04": {
+      "photo": "data:image/jpeg;base64,USER_1_DATE_2026-09-04_PHOTO_HASH_1788785716141",
+      "score": 78,
+      "hyd": 74,
+      "red": 21,
+      "timestamp": 1788516000000
+    },
+    "2026-09-05": {
+      "photo": "data:image/jpeg;base64,USER_1_DATE_2026-09-05_PHOTO_HASH_1788785716141",
+      "score": 79,
+      "hyd": 76,
+      "red": 20,
+      "timestamp": 1788602400000
+    },
+    "2026-09-06": {
+      "photo": "data:image/jpeg;base64,USER_1_DATE_2026-09-06_PHOTO_HASH_1788785716141",
+      "score": 80,
+      "hyd": 78,
+      "red": 19,
+      "timestamp": 1788688800000
+    },
+    "2026-09-07": {
+      "photo": "data:image/jpeg;base64,USER_1_DATE_2026-09-07_PHOTO_HASH_1788785716141",
+      "score": 81,
+      "hyd": 80,
+      "red": 18,
+      "timestamp": 1788775200000
     }
   },
   "createdAt": "2026-09-07T12:46:37.022Z",
