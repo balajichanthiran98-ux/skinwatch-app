@@ -2,7 +2,7 @@
   "phone": "+919876543210",
   "displayPhone": "+91 98765 43210",
   "name": "Balaji",
-  "city": "9A, Selvam nagar, New Vellanur, Chennai, Tamil Nadu 600062, India",
+  "city": "Pudukkottai, Tamil Nadu",
   "location": {
     "lat": 13.1722,
     "lon": 80.106,
@@ -76,7 +76,7 @@
       "done": false
     }
   ],
-  "waterGlasses": 5,
+  "waterGlasses": 6,
   "waterTarget": 8,
   "skinCyclePhase": 2,
   "scanHistory": {
@@ -150,9 +150,16 @@
         }
       },
       "timestamp": 1788284499832
+    },
+    "2026-09-07": {
+      "photo": "data:image/jpeg;base64,TEST_CHECKIN_PHOTO_DATA_1788786345619",
+      "score": 88,
+      "hyd": 84,
+      "red": 16,
+      "timestamp": 1788786345619
     }
   },
   "createdAt": "2026-08-20T00:00:00.000Z",
-  "lastLoginAt": "2026-09-05T16:22:28.164Z",
-  "checkPhoto": null
+  "lastLoginAt": "2026-09-07T13:05:41.412Z",
+  "checkPhoto": "data:image/jpeg;base64,TEST_CHECKIN_PHOTO_DATA_1788786345619"
 }
