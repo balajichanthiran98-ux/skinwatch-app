@@ -1,5 +1,5 @@
-// SkinWatch Service Worker v28 - Network-First Core Shell
-const CACHE_NAME = 'skinwatch-pwa-v28';
+// SkinWatch Service Worker v30 - Network-First Core Shell
+const CACHE_NAME = 'skinwatch-pwa-v30';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -7,9 +7,15 @@ const STATIC_ASSETS = [
   './app.js',
   './manifest.json',
   './assets/logo.png',
+  './assets/skinwatch-logo.png',
   './icon-192.png',
   './icon-512.png',
-  './apple-touch-icon.png'
+  './icon-maskable-192.png',
+  './icon-maskable-512.png',
+  './apple-touch-icon.png',
+  './favicon.ico',
+  './favicon-32x32.png',
+  './favicon-16x16.png'
 ];
 
 // Install Event: Pre-cache core shell & immediately activate
@@ -38,49 +44,19 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Network-First for HTML/JS/CSS/API to guarantee instant live updates
+// Fetch Event: Network-First to guarantee instant live updates
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  const url = new URL(event.request.url);
-
-  // Network-First for API, HTML documents, and Script updates
-  if (url.pathname.startsWith('/api/') || 
-      url.pathname.endsWith('.html') || 
-      url.pathname.endsWith('.js') || 
-      url.pathname.endsWith('.css') || 
-      url.pathname === '/' || 
-      url.pathname.endsWith('/')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return networkResponse;
-        })
-        .catch(() => caches.match(event.request))
-    );
-    return;
-  }
-
-  // Fallback Stale-While-Revalidate for other static assets (images/fonts)
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

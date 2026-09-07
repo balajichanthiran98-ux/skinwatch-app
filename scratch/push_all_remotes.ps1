@@ -8,7 +8,7 @@ Write-Host "--- 1. Staging all files ---"
 Write-Host "--- 2. Checking Status ---"
 & $gitExe status
 
-& $gitExe commit -m "feat: pinpoint exact village reverse geocoding, Google Maps address formatting, and multi-device location sync" 2>$null
+& $gitExe commit -m "feat: generate 1:1 square and maskable PWA icons, update manifest v2, and bump sw cache to v30" 2>$null
 
 Write-Host "--- 4. Push to remote skinwatch-app. ---"
 & $gitExe remote set-url origin "https://github.com/balajichanthiran98-ux/skinwatch-app."

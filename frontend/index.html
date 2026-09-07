@@ -3,25 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#D4AF37">
+<meta name="theme-color" content="#111216">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SkinWatch">
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/x-icon" href="favicon.ico?v=3">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=3">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=3">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=3">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png?v=3">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3">
+<link rel="manifest" href="manifest.json?v=3">
 <title>SkinWatch - Climate Skincare & Routine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css?v=5.3">
+<link rel="stylesheet" href="style.css?v=5.4">
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=28')
+      navigator.serviceWorker.register('sw.js?v=30')
         .then((reg) => {
           reg.update();
           console.log('✓ SkinWatch PWA Service Worker Registered & Updated', reg.scope);
