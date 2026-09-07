@@ -201,13 +201,13 @@ let state = {
     }
   ],
   profile: {
-    name: 'Balaji',
+    name: '',
     skinType: 'Normal',
     phototype: 'Type III-IV',
     retinoidTolerance: 'Beginner',
     vitcTolerance: 'Pure C',
-    concerns: ['Dryness'],
-    lifestyles: ['AC Office', 'Blue Light', 'Sleep 7h'],
+    concerns: ['Hydration & Barrier Defense'],
+    lifestyles: ['Daily Protection'],
     allergies: []
   },
   waterGlasses: 4,
@@ -218,11 +218,8 @@ let state = {
   spfReapplyDue: null,
   checkPhoto: null,
   checkHistory: [],
-  akvileLogs: [
-    { date: 'Yesterday', acne: 0, barrier: ['Calm'], stress: 'Low', sleep: '7-8h', diet: ['Clean'], cycle: 'NA', timestamp: Date.now() - 86400000 },
-    { date: '2 Days Ago', acne: 1, barrier: ['Tight'], stress: 'High', sleep: '<6h', diet: ['Dairy', 'Sugar'], cycle: 'Luteal', timestamp: Date.now() - 172800000 }
-  ],
-  akvileSchoolProgress: [1, 2],
+  akvileLogs: [],
+  akvileSchoolProgress: [1],
   akvileCurrentLog: {
     acne: 0,
     barrier: ['Calm'],
@@ -237,6 +234,17 @@ let state = {
   historyRange: 'week',
   openDayIndex: null
 };
+
+// Purge legacy demo keys from client storage
+try {
+  localStorage.removeItem('sw_users_db');
+  const demoKeys = ['+919876543210', '+919123456789', '9876543210', '9123456789'];
+  for (const k of Object.keys(localStorage)) {
+    if (demoKeys.some(dk => k.includes(dk))) {
+      localStorage.removeItem(k);
+    }
+  }
+} catch {}
 
 function loadJSON(key, fallback) {
   try {
@@ -286,52 +294,7 @@ function showToast(message) {
 }
 
 // ---------- Multi-User Database & Storage Engine ----------
-let usersDb = loadJSON('sw_users_db', {
-  '+91 98765 43210': {
-    phone: '+91 98765 43210',
-    profile: {
-      name: 'Balaji',
-      skinType: 'Normal',
-      phototype: 'Type III-IV',
-      retinoidTolerance: 'Beginner',
-      vitcTolerance: 'Pure C',
-      concerns: ['Dryness'],
-      lifestyles: ['AC Office', 'Blue Light', 'Sleep 7h'],
-      allergies: []
-    },
-    location: DEFAULT_LOCATION,
-    amSteps: [
-      { id: 'a1', name: 'Cleanser', done: false },
-      { id: 'a2', name: 'Vitamin C serum', done: false },
-      { id: 'a3', name: 'Sunscreen', done: false }
-    ],
-    suppSteps: [
-      { id: 's1', name: 'Omega-3 Fish Oil (Lipid Barrier Support)', done: false },
-      { id: 's2', name: 'Vitamin C & Bioflavonoids (Collagen Defense)', done: false },
-      { id: 's3', name: 'Zinc & Vitamin D3 (Skin Immunity)', done: false }
-    ],
-    pmSteps: [
-      { id: 'p1', name: 'Cleanser', done: false },
-      { id: 'p2', name: 'Retinol', done: false },
-      { id: 'p3', name: 'Night moisturizer', done: false }
-    ],
-    waterGlasses: 4,
-    waterTarget: 8,
-    waterReminderInterval: 120,
-    waterLastSipTime: Date.now(),
-    skinCyclePhase: 2,
-    checkHistory: [
-      { date: 'Aug 21', score: 82, hyd: 78, red: 24, pore: 76, uv: 88, feel: 'Dewy & Calm' },
-      { date: 'Aug 22', score: 85, hyd: 82, red: 20, pore: 78, uv: 90, feel: 'Dewy & Calm' },
-      { date: 'Today', score: 86, hyd: 84, red: 18, pore: 79, uv: 92, feel: 'Dewy & Calm' }
-    ],
-    akvileLogs: [
-      { date: 'Yesterday', acne: 0, barrier: ['Calm'], stress: 'Low', sleep: '7-8h', diet: ['Clean'], cycle: 'NA', timestamp: Date.now() - 86400000 },
-      { date: '2 Days Ago', acne: 1, barrier: ['Tight'], stress: 'High', sleep: '<6h', diet: ['Dairy', 'Sugar'], cycle: 'Luteal', timestamp: Date.now() - 172800000 }
-    ],
-    akvileSchoolProgress: [1, 2]
-  }
-});
+let usersDb = loadJSON('sw_users_db', {});
 
 function saveCurrentUserData() {
   if (!state.authUser || !state.authUser.phone) return;

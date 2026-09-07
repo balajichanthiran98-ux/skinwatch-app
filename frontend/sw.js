@@ -1,5 +1,5 @@
-// SkinWatch Service Worker v20
-const CACHE_NAME = 'skinwatch-pwa-v20';
+// SkinWatch Service Worker v25 - Network-First Core Shell
+const CACHE_NAME = 'skinwatch-pwa-v25';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,45 +11,60 @@ const STATIC_ASSETS = [
   './apple-touch-icon.png'
 ];
 
-// Install Event: Pre-cache core shell
+// Install Event: Pre-cache core shell & immediately activate
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
-// Activate Event: Clear old caches
+// Activate Event: Wipe ALL old caches instantly
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+        keys.map((k) => {
+          if (k !== CACHE_NAME) {
+            console.log('[SW] Purging old cache:', k);
+            return caches.delete(k);
+          }
+        })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch Event
+// Fetch Event: Network-First for HTML/JS/CSS/API to guarantee instant live updates
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // API calls & Dynamic Weather: Network-First
-  if (url.pathname.startsWith('/api/')) {
+  // Network-First for API, HTML documents, and Script updates
+  if (url.pathname.startsWith('/api/') || 
+      url.pathname.endsWith('.html') || 
+      url.pathname.endsWith('.js') || 
+      url.pathname.endsWith('.css') || 
+      url.pathname === '/' || 
+      url.pathname.endsWith('/')) {
     event.respondWith(
       fetch(event.request)
-        .then((response) => response)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
         .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Static Assets: Stale-While-Revalidate
+  // Fallback Stale-While-Revalidate for other static assets (images/fonts)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request)

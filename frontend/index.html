@@ -17,12 +17,15 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css?v=4.0">
+<link rel="stylesheet" href="style.css?v=5.0">
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js')
-        .then((reg) => console.log('✓ SkinWatch PWA Service Worker Registered', reg.scope))
+      navigator.serviceWorker.register('sw.js?v=25')
+        .then((reg) => {
+          reg.update();
+          console.log('✓ SkinWatch PWA Service Worker Registered & Updated', reg.scope);
+        })
         .catch((err) => console.log('Service Worker registration failed:', err));
     });
   }
@@ -76,7 +79,7 @@
               <option value="+65">🇸🇬 +65</option>
               <option value="+61">🇦🇺 +61</option>
             </select>
-            <input id="login-phone-input" type="tel" class="auth-phone-field" placeholder="98765 43210" maxlength="14" autocomplete="tel" required>
+            <input id="login-phone-input" type="tel" class="auth-phone-field" placeholder="Enter mobile number" maxlength="14" autocomplete="tel" required>
           </div>
         </div>
 
@@ -105,7 +108,7 @@
 
         <div class="auth-field-group">
           <label class="auth-field-label">Full Name</label>
-          <input id="signup-name-input" type="text" class="auth-phone-field" placeholder="e.g. Balaji" required>
+          <input id="signup-name-input" type="text" class="auth-phone-field" placeholder="Enter your full name" required>
         </div>
 
         <div class="auth-field-group">
@@ -117,7 +120,7 @@
               <option value="+44">🇬🇧 +44</option>
               <option value="+971">🇦🇪 +971</option>
             </select>
-            <input id="signup-phone-input" type="tel" class="auth-phone-field" placeholder="98765 43210" maxlength="14" autocomplete="tel" required>
+            <input id="signup-phone-input" type="tel" class="auth-phone-field" placeholder="Enter mobile number" maxlength="14" autocomplete="tel" required>
           </div>
         </div>
 
@@ -179,7 +182,7 @@
 
       <div class="auth-field-group" style="margin-top:18px;">
         <label class="auth-field-label">Your Name</label>
-        <input id="onboard-name-input" type="text" class="auth-phone-field" placeholder="Enter your name (e.g. Balaji)" />
+        <input id="onboard-name-input" type="text" class="auth-phone-field" placeholder="Enter your full name" />
       </div>
 
       <div class="auth-field-group">
@@ -1430,7 +1433,7 @@
         <span class="profile-meta-pill"><i class="ti ti-map-pin"></i> <span id="profile-location">Location not set</span></span>
         <div class="profile-phone-badge" id="profile-phone-badge">
           <i class="ti ti-phone-check"></i>
-          <span id="profile-phone-text">+91 98765 43210</span>
+          <span id="profile-phone-text">--</span>
           <span class="verified-tag">Verified</span>
         </div>
       </div>
@@ -1808,6 +1811,6 @@
 
 </div>
 
-<script src="app.js?v=4.0"></script>
+<script src="app.js?v=5.0"></script>
 </body>
 </html>
