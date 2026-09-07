@@ -1138,7 +1138,14 @@ app.get('/api/auth/demo-accounts', (req, res) => {
   });
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+const path = require('path');
+const fs = require('fs');
+
+const frontendDir = fs.existsSync(path.join(__dirname, '../frontend'))
+  ? path.join(__dirname, '../frontend')
+  : (fs.existsSync(path.join(__dirname, 'frontend'))
+    ? path.join(__dirname, 'frontend')
+    : __dirname);
 
 // Explicit Zero-Cache Handlers for Icons, Favicons, Manifest, and Service Worker
 app.get([
