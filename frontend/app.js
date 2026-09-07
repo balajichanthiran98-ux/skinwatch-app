@@ -435,23 +435,23 @@ function applyUserDataToState(userData) {
   state.waterTarget = userData.waterTarget ?? 8;
   state.skinCyclePhase = userData.skinCyclePhase ?? 2;
 
-  // Set date-wise scan history map
+  // Set date-wise scan history map strictly for this user
   if (userData.scanHistory && typeof userData.scanHistory === 'object' && !Array.isArray(userData.scanHistory)) {
-    state.scanHistory = userData.scanHistory;
+    state.scanHistory = { ...userData.scanHistory };
   } else if (userData.scanHistory && Array.isArray(userData.scanHistory) && userData.scanHistory.length > 0) {
     state.scanHistory = {};
     userData.scanHistory.forEach(s => {
       const k = s.dateKey || (s.timestamp ? getLocalDateKey(new Date(s.timestamp)) : getLocalDateKey());
       state.scanHistory[k] = s;
     });
-  } else if (!state.scanHistory || Object.keys(state.scanHistory).length === 0) {
-    state.scanHistory = loadJSON('sw_scan_history', {}) || {};
+  } else {
+    state.scanHistory = {};
   }
 
   const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey() : new Date().toISOString().slice(0, 10);
   
-  // Find latest photo across all recorded dates
-  let latestPhoto = (state.scanHistory && state.scanHistory[todayKey]?.photo) || userData.checkPhoto;
+  // Find latest photo across all recorded dates for this specific user
+  let latestPhoto = (state.scanHistory && state.scanHistory[todayKey]?.photo) || userData.checkPhoto || null;
   if (!latestPhoto && state.scanHistory && typeof state.scanHistory === 'object') {
     const dates = Object.keys(state.scanHistory).sort().reverse();
     for (const d of dates) {
@@ -464,8 +464,9 @@ function applyUserDataToState(userData) {
 
   state.checkPhoto = latestPhoto || null;
   state.checkHistory = state.scanHistory;
-  saveJSON('sw_scan_history', state.scanHistory);
-  if (state.checkPhoto) saveJSON('sw_check_photo', state.checkPhoto);
+  if (state.authUser && state.authUser.phone) {
+    saveJSON(`sw_scan_history_${state.authUser.phone}`, state.scanHistory);
+  }
 
   state.akvileSchoolProgress = userData.akvileSchoolProgress || [1, 2];
 
@@ -3570,22 +3571,8 @@ function getPast7DaysTimeline() {
     ? state.scanHistory
     : (state.authUser && state.authUser.scanHistory && typeof state.authUser.scanHistory === 'object' && !Array.isArray(state.authUser.scanHistory))
       ? state.authUser.scanHistory
-      : (loadJSON('sw_scan_history', {}) || {});
+      : {};
   if (Array.isArray(history)) history = {};
-
-  // Auto-migrate legacy standalone checkPhoto to yesterday (2026-08-30) if scanHistory was empty
-  const userPhoto = state.checkPhoto || (state.authUser && state.authUser.checkPhoto);
-  if (userPhoto && Object.keys(history).length === 0) {
-    history['2026-08-30'] = {
-      photo: userPhoto,
-      score: 84,
-      hyd: 83,
-      red: 20,
-      timestamp: 1788028800000
-    };
-    state.scanHistory = history;
-    saveJSON('sw_scan_history', history);
-  }
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -4094,11 +4081,34 @@ function renderProfile() {
     btn.classList.toggle('active', (p.lifestyles || []).includes(btn.dataset.value));
   });
 
-  // 7. Stats
+  // 7. Dynamic User Milestones & Statistics
   const statWater = document.getElementById('stat-water');
-  if (statWater) {
-    const totalWater = (((state.waterGlasses || 4) * 0.3) + 14.8).toFixed(1);
-    statWater.textContent = `${totalWater}L`;
+  const statSpf = document.getElementById('stat-spf');
+  const statStreak = document.getElementById('stat-streak');
+  const statBarrier = document.getElementById('stat-barrier');
+  const resilienceVal = document.getElementById('resilience-val');
+  const resilienceFill = document.getElementById('resilience-fill');
+  const resiliencePersona = document.getElementById('resilience-persona');
+
+  const scanCount = (state.scanHistory && typeof state.scanHistory === 'object') ? Object.keys(state.scanHistory).length : 0;
+  const userWater = ((state.waterGlasses || 0) * 0.3).toFixed(1);
+
+  if (statWater) statWater.textContent = `${userWater}L`;
+  if (statSpf) statSpf.textContent = `${scanCount > 0 ? scanCount : (state.authUser?.spfDays || 0)} Days`;
+  if (statStreak) statStreak.textContent = `${scanCount > 0 ? scanCount : (state.authUser?.streak || 0)} Days`;
+  
+  const scoreToUse = state.diagScore || (state.lastScanMetrics && state.lastScanMetrics.score) || (scanCount > 0 ? 86 : 82);
+  if (statBarrier) statBarrier.textContent = `${scoreToUse}%`;
+
+  if (resilienceVal) {
+    const grade = scoreToUse >= 85 ? 'High Protection' : (scoreToUse >= 70 ? 'Moderate Protection' : 'Calibrating');
+    resilienceVal.textContent = `${scoreToUse}% (${grade})`;
+  }
+  if (resilienceFill) {
+    resilienceFill.style.width = `${Math.min(100, Math.max(15, scoreToUse))}%`;
+  }
+  if (resiliencePersona) {
+    resiliencePersona.textContent = (p.skinFeel && p.skinFeel.includes('Dewy')) ? 'Barrier Intact & Plump' : 'Sun-Aware & Calibrating';
   }
 
   // 8. Verified Phone Badge
@@ -4569,10 +4579,12 @@ function checkAuthState() {
     if (user.waterGlasses != null) state.waterGlasses = user.waterGlasses;
     if (user.waterTarget != null) user.waterTarget = user.waterTarget;
     if (user.skinCyclePhase != null) state.skinCyclePhase = user.skinCyclePhase;
-    if (user.scanHistory) state.scanHistory = user.scanHistory;
-    else state.scanHistory = loadJSON('sw_scan_history', {}) || {};
-    if (user.checkPhoto) state.checkPhoto = user.checkPhoto;
-    else state.checkPhoto = null;
+    if (user.scanHistory && typeof user.scanHistory === 'object' && !Array.isArray(user.scanHistory)) {
+      state.scanHistory = { ...user.scanHistory };
+    } else {
+      state.scanHistory = {};
+    }
+    state.checkPhoto = user.checkPhoto || null;
     state.lastScanMetrics = null;
 
     // Reset check screen DOM elements specifically for this user
@@ -4736,8 +4748,13 @@ function showAuthError(el, msg) {
 // User Sign Out
 window.userSignOut = function() {
   sessionStorage.removeItem('sw_session_user');
+  localStorage.removeItem('sw_session_auth');
+  localStorage.removeItem('sw_check_photo');
+  localStorage.removeItem('sw_scan_history');
   state.authUser = null;
   state.checkPhoto = null;
+  state.scanHistory = {};
+  state.checkHistory = {};
   state.lastScanMetrics = null;
   resetCheckScreenForUser();
 
@@ -4748,6 +4765,7 @@ window.userSignOut = function() {
   if (passInput) passInput.value = '';
 
   checkAuthState();
+  if (typeof showToast === 'function') showToast('Signed out successfully.');
 };
 
 // Sync user state changes back to database
