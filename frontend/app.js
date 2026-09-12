@@ -329,8 +329,12 @@ function saveCurrentUserData() {
 
   // 1. Save locally for instant offline cache
   saveJSON(`sw_user_${ph}`, payload);
-  if (state.acneTrackerHistory) saveJSON('sw_acne_tracker_history', state.acneTrackerHistory);
+  if (state.acneTrackerHistory) {
+    saveJSON('sw_acne_tracker_history', state.acneTrackerHistory);
+    saveJSON(`sw_acne_tracker_history_${ph}`, state.acneTrackerHistory);
+  }
   saveJSON('sw_scan_history', validScanHistory);
+  saveJSON(`sw_scan_history_${ph}`, validScanHistory);
 
   // 2. Sync to user's isolated server database partition
   fetch(BACKEND_URL + '/api/auth/sync', {
@@ -431,9 +435,10 @@ function applyUserDataToState(userData) {
     saveJSON(`sw_scan_history_${state.authUser.phone}`, state.scanHistory);
   }
 
-  state.acneTrackerHistory = (userData.acneTrackerHistory && Array.isArray(userData.acneTrackerHistory))
+  const userPhone = userData.phone || state.authUser?.phone;
+  state.acneTrackerHistory = (userData.acneTrackerHistory && Array.isArray(userData.acneTrackerHistory) && userData.acneTrackerHistory.length > 0)
     ? userData.acneTrackerHistory
-    : (loadJSON('sw_acne_tracker_history', null) || (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []));
+    : (userPhone ? loadJSON(`sw_acne_tracker_history_${userPhone}`, null) : null) || loadJSON('sw_acne_tracker_history', null) || (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
 
   try { resetCheckScreenForUser(); } catch {}
   try { if (typeof renderAkvileSystem === 'function') renderAkvileSystem(); } catch {}
@@ -5497,17 +5502,20 @@ window.getLiveClimateSnapshot = getLiveClimateSnapshot;
 
 function getDefaultAcneHistory() {
   const now = Date.now();
-  const d1 = new Date(now - 6 * 86400000).toISOString(); // Oldest / Baseline (Sep 6)
-  const d2 = new Date(now - 3 * 86400000).toISOString(); // Midpoint (Sep 9)
-  const d3 = new Date(now).toISOString();                 // Latest / Today (Sep 12)
+  const d1 = new Date(now - 6 * 86400000); // Oldest / Baseline (Sep 6)
+  const d2 = new Date(now - 3 * 86400000); // Midpoint (Sep 9)
+  const d3 = new Date(now);                // Latest / Today (Sep 12)
   const liveSnap = getLiveClimateSnapshot();
+  const userName = state.profile?.name || state.authUser?.name || 'Balaji';
 
   // Return in chronological descending order (Newest first, Oldest last) with realistic clinical photography
   return [
     {
       id: 'scan-d3',
-      timestamp: d3,
-      dateFormatted: new Date(d3).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      userName: userName,
+      dateKey: (typeof getLocalDateKey === 'function') ? getLocalDateKey(d3) : d3.toISOString().slice(0, 10),
+      timestamp: d3.toISOString(),
+      dateFormatted: d3.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       severity: 'mild',
       severityScore: 38,
       totalLesions: 8,
@@ -5526,8 +5534,10 @@ function getDefaultAcneHistory() {
     },
     {
       id: 'scan-d2',
-      timestamp: d2,
-      dateFormatted: new Date(d2).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      userName: userName,
+      dateKey: (typeof getLocalDateKey === 'function') ? getLocalDateKey(d2) : d2.toISOString().slice(0, 10),
+      timestamp: d2.toISOString(),
+      dateFormatted: d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       severity: 'mild',
       severityScore: 48,
       totalLesions: 12,
@@ -5546,8 +5556,10 @@ function getDefaultAcneHistory() {
     },
     {
       id: 'scan-d1',
-      timestamp: d1,
-      dateFormatted: new Date(d1).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      userName: userName,
+      dateKey: (typeof getLocalDateKey === 'function') ? getLocalDateKey(d1) : d1.toISOString().slice(0, 10),
+      timestamp: d1.toISOString(),
+      dateFormatted: d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       severity: 'moderate',
       severityScore: 64,
       totalLesions: 16,
@@ -6424,8 +6436,14 @@ function saveCurrentAcneScan() {
   state.currentAcneScan.tags = Array.from(state.activeAcneTags || []);
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey(now) : now.toISOString().slice(0, 10);
+  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const userName = state.profile?.name || state.authUser?.name || 'User';
+
+  state.currentAcneScan.userName = userName;
+  state.currentAcneScan.dateKey = todayKey;
+  state.currentAcneScan.timestamp = now.toISOString();
   state.currentAcneScan.dateFormatted = `${dateStr} · ${timeStr}`;
 
   // Explicitly snapshot live climate telemetry at time of saving
@@ -6454,15 +6472,45 @@ function saveCurrentAcneScan() {
   // Re-sort strictly by timestamp descending
   state.acneTrackerHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  // Date-wise & Name-based sync to main user daily scan history gallery
+  if (state.currentAcneScan.photo) {
+    if (!state.scanHistory || typeof state.scanHistory !== 'object' || Array.isArray(state.scanHistory)) {
+      state.scanHistory = {};
+    }
+    state.checkPhoto = state.currentAcneScan.photo;
+    state.scanHistory[todayKey] = {
+      photo: state.currentAcneScan.photo,
+      metrics: {
+        overallScore: Math.max(10, 100 - (state.currentAcneScan.severityScore || 20)),
+        skinScore: Math.max(10, 100 - (state.currentAcneScan.severityScore || 20)),
+        hydVal: state.currentAcneScan.weatherSnapshot?.humidity || 80,
+        redVal: Math.round((state.currentAcneScan.severityScore || 20) * 0.7),
+        acneLesions: state.currentAcneScan.totalLesions,
+        dominantType: state.currentAcneScan.zones?.cheeks?.dominant_type || 'papules'
+      },
+      score: Math.max(10, 100 - (state.currentAcneScan.severityScore || 20)),
+      timestamp: Date.now(),
+      userName: userName,
+      dateKey: todayKey
+    };
+    saveJSON('sw_scan_history', state.scanHistory);
+    saveJSON('sw_check_photo', state.checkPhoto);
+    try { if (typeof renderPastWeekComparison === 'function') renderPastWeekComparison(); } catch {}
+  }
+
   // Persist locally and sync to isolated database
   saveJSON('sw_acne_tracker_history', state.acneTrackerHistory);
+  if (state.authUser && state.authUser.phone) {
+    saveJSON(`sw_acne_tracker_history_${state.authUser.phone}`, state.acneTrackerHistory);
+    saveJSON(`sw_scan_history_${state.authUser.phone}`, state.scanHistory);
+  }
   saveCurrentUserData();
 
   // Re-render UI
   renderAcneTracker();
 
   if (typeof showToast === 'function') {
-    showToast('✓ Facial scan saved to your Acne Timeline!');
+    showToast(`✓ Facial scan saved for ${userName} on ${dateStr}!`);
   }
 }
 
@@ -6884,7 +6932,7 @@ function renderAcneHistoryList() {
         <img src="${s.photo || ''}" alt="Scan Thumbnail" class="acne-history-thumb">
         <div class="acne-history-info">
           <div class="row-between">
-            <span class="acne-history-date">${s.dateFormatted || s.timestamp.slice(0, 10)}</span>
+            <span class="acne-history-date">${s.userName ? `<span style="font-weight:600; color:var(--text-main, #1F2937);">${s.userName}</span> · ` : ''}${s.dateFormatted || s.timestamp.slice(0, 10)}</span>
             <span class="acne-badge-pill ${sevClass}" style="font-size:9.5px; padding:2px 7px;">${s.severity} (${s.severityScore})</span>
           </div>
           <div class="acne-history-meta">

@@ -305,6 +305,7 @@ class UserStore {
       skinCyclePhase: 1,
       checkPhoto: null,
       scanHistory: [],
+      acneTrackerHistory: [],
       createdAt: new Date().toISOString(),
       lastLoginAt: new Date().toISOString()
     };
@@ -368,6 +369,7 @@ class UserStore {
       }
     }
     if (data.akvileSchoolProgress) user.akvileSchoolProgress = data.akvileSchoolProgress;
+    if (data.acneTrackerHistory !== undefined) user.acneTrackerHistory = data.acneTrackerHistory;
 
     this.saveUserDb(phone, user);
 
