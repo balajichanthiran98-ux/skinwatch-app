@@ -1,7 +1,6 @@
-// SkinWatch frontend
-// Talks to the backend proxy for live weather/AQI/forecast/history and
-// routine flags. Routine and profile data are stored in localStorage for
-// now, since there is no user login/database yet.
+// SkinWatch frontend v8.0 (Build: 2026.09.12.v8.0)
+console.log('%c✓ SkinWatch v8.0 Active | Acne Biometrics & Live Climate Sync', 'background: #0f172a; color: #10b981; font-weight: bold; padding: 4px 8px; border-radius: 4px;');
+
 
 // Auto-detect Backend API URL regardless of host port or Live Server
 const BACKEND_URL = (function() {

@@ -1,10 +1,10 @@
-// SkinWatch Service Worker v38 - Network-First Core Shell
-const CACHE_NAME = 'skinwatch-pwa-v38';
+// SkinWatch Service Worker v50 - Instant Update & Network First
+const CACHE_NAME = 'skinwatch-pwa-v50';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
+  './style.css?v=8.0',
+  './app.js?v=8.0',
   './manifest.json',
   './assets/logo.png',
   './assets/skinwatch-logo.png',
@@ -24,7 +24,7 @@ const STATIC_ASSETS = [
   './favicon-16x16.png'
 ];
 
-// Install Event: Pre-cache core shell & immediately activate
+// Install Event: Skip waiting immediately
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -34,20 +34,27 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event: Wipe ALL old caches instantly
+// Activate Event: Wipe ALL old caches instantly & claim clients
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((k) => {
           if (k !== CACHE_NAME) {
-            console.log('[SW] Purging old cache:', k);
+            console.log('[SW] Purging stale cache:', k);
             return caches.delete(k);
           }
         })
       );
     }).then(() => self.clients.claim())
   );
+});
+
+// Listen for skip waiting messages from client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Fetch Event: Network-First to guarantee instant live updates

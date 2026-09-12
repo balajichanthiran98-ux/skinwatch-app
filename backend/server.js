@@ -1283,10 +1283,10 @@ app.get([
 });
 
 app.use(express.static(frontendDir, {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.html') || path.endsWith('.json') || path.endsWith('.ico') || path.endsWith('.png') || path.endsWith('.svg')) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-    }
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
   }
 }));
 
