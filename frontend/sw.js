@@ -1,10 +1,10 @@
-// SkinWatch Service Worker v50 - Instant Update & Network First
-const CACHE_NAME = 'skinwatch-pwa-v50';
+// SkinWatch Service Worker v55 - Instant Multi-Device Sync
+const CACHE_NAME = 'skinwatch-pwa-v55';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './style.css?v=8.0',
-  './app.js?v=8.0',
+  './style.css?v=9.0',
+  './app.js?v=9.0',
   './manifest.json',
   './assets/logo.png',
   './assets/skinwatch-logo.png',

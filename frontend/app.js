@@ -1,5 +1,5 @@
-// SkinWatch frontend v8.0 (Build: 2026.09.12.v8.0)
-console.log('%c✓ SkinWatch v8.0 Active | Acne Biometrics & Live Climate Sync', 'background: #0f172a; color: #10b981; font-weight: bold; padding: 4px 8px; border-radius: 4px;');
+// SkinWatch frontend v9.0 (Build: 2026.09.12.v9.0)
+console.log('%c✓ SkinWatch v9.0 Active | Cross-Device Cloud Sync & Acne Biometrics', 'background: #0f172a; color: #10b981; font-weight: bold; padding: 4px 8px; border-radius: 4px;');
 
 
 // Auto-detect Backend API URL regardless of host port or Live Server
@@ -350,21 +350,61 @@ async function loadUserDataForPhone(phone) {
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.user) {
-        // 2-Way Storage Synchronization: Merge local storage scans with server scans
-        const localHistory = loadJSON('sw_scan_history', {}) || {};
+        // Multi-device sync: Merge local with server scans, giving priority to server data with valid photos
+        const localHistory = loadJSON(`sw_scan_history_${phone}`, null) || loadJSON('sw_scan_history', {}) || {};
         const serverHistory = (data.user.scanHistory && typeof data.user.scanHistory === 'object' && !Array.isArray(data.user.scanHistory))
           ? data.user.scanHistory
           : {};
-        
-        const mergedHistory = { ...serverHistory, ...localHistory };
+
+        const mergedHistory = { ...localHistory };
+        for (const k in serverHistory) {
+          const sItem = serverHistory[k];
+          const lItem = mergedHistory[k];
+          if (!lItem) {
+            mergedHistory[k] = sItem;
+          } else {
+            const sTime = sItem.timestamp ? new Date(sItem.timestamp).getTime() : 0;
+            const lTime = lItem.timestamp ? new Date(lItem.timestamp).getTime() : 0;
+            // Prefer server item if newer, or if it has a photo while local does not
+            if (sTime >= lTime || (sItem.photo && (!lItem.photo || lItem.photo.length < 50))) {
+              mergedHistory[k] = sItem;
+            }
+          }
+        }
         data.user.scanHistory = mergedHistory;
-        
+
+        // Multi-device sync for Acne Tracker History
+        const serverAcne = (Array.isArray(data.user.acneTrackerHistory) && data.user.acneTrackerHistory.length > 0)
+          ? data.user.acneTrackerHistory
+          : [];
+        const localAcne = loadJSON(`sw_acne_tracker_history_${phone}`, null) || loadJSON('sw_acne_tracker_history', []) || [];
+
+        const acneMap = new Map();
+        [...localAcne, ...serverAcne].forEach(item => {
+          if (!item || !item.id) return;
+          const existing = acneMap.get(item.id);
+          if (!existing) {
+            acneMap.set(item.id, item);
+          } else {
+            const existingTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+            const itemTime = item.timestamp ? new Date(item.timestamp).getTime() : 0;
+            if (itemTime >= existingTime || (item.photo && !existing.photo)) {
+              acneMap.set(item.id, item);
+            }
+          }
+        });
+        const mergedAcne = Array.from(acneMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        data.user.acneTrackerHistory = mergedAcne.length > 0 ? mergedAcne : (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
+
         applyUserDataToState(data.user);
-        
-        // If local had unsynced scans, push the merged version back to server
-        const hasUnsynced = Object.keys(localHistory).some(k => !serverHistory[k]);
-        if (hasUnsynced) {
-          saveCurrentUserData();
+
+        // Update local caches
+        saveJSON(`sw_user_${phone}`, data.user);
+        saveJSON(`sw_scan_history_${phone}`, mergedHistory);
+        saveJSON('sw_scan_history', mergedHistory);
+        if (data.user.acneTrackerHistory) {
+          saveJSON(`sw_acne_tracker_history_${phone}`, data.user.acneTrackerHistory);
+          saveJSON('sw_acne_tracker_history', data.user.acneTrackerHistory);
         }
         return true;
       }
@@ -441,6 +481,9 @@ function applyUserDataToState(userData) {
     : (userPhone ? loadJSON(`sw_acne_tracker_history_${userPhone}`, null) : null) || loadJSON('sw_acne_tracker_history', null) || (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
 
   try { resetCheckScreenForUser(); } catch {}
+  try { if (typeof renderAcneTracker === 'function') renderAcneTracker(); } catch {}
+  try { if (typeof renderPastWeekComparison === 'function') renderPastWeekComparison(); } catch {}
+  try { if (typeof renderProfile === 'function') renderProfile(); } catch {}
   try { if (typeof renderAkvileSystem === 'function') renderAkvileSystem(); } catch {}
 }
 
@@ -541,7 +584,12 @@ function checkAuthState() {
 
   if (session && session.phone) {
     state.authUser = session;
-    loadUserDataForPhone(session.phone);
+    loadUserDataForPhone(session.phone).then(() => {
+      try { resetCheckScreenForUser(); } catch {}
+      try { if (typeof renderAcneTracker === 'function') renderAcneTracker(); } catch {}
+      try { if (typeof renderPastWeekComparison === 'function') renderPastWeekComparison(); } catch {}
+      try { if (typeof renderProfile === 'function') renderProfile(); } catch {}
+    });
     document.querySelectorAll('.screen').forEach(s => s.style.setProperty('display', 'none', 'important'));
     if (homeScreen) {
       homeScreen.style.setProperty('display', 'block', 'important');
@@ -563,6 +611,34 @@ function checkAuthState() {
       tabbar.style.setProperty('display', 'none', 'important');
     }
   }
+}
+
+// Cross-device real-time sync when switching between mobile and laptop
+let isSyncingCloud = false;
+async function syncFromCloud() {
+  if (isSyncingCloud) return;
+  if (!state.authUser || !state.authUser.phone) return;
+  isSyncingCloud = true;
+  try {
+    await loadUserDataForPhone(state.authUser.phone);
+    try { resetCheckScreenForUser(); } catch {}
+    try { if (typeof renderAcneTracker === 'function') renderAcneTracker(); } catch {}
+    try { if (typeof renderPastWeekComparison === 'function') renderPastWeekComparison(); } catch {}
+    try { if (typeof renderProfile === 'function') renderProfile(); } catch {}
+  } finally {
+    isSyncingCloud = false;
+  }
+}
+window.syncFromCloud = syncFromCloud;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', () => syncFromCloud());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') syncFromCloud();
+  });
+  setInterval(() => {
+    if (document.visibilityState === 'visible') syncFromCloud();
+  }, 10000);
 }
 
 async function handleLogin() {

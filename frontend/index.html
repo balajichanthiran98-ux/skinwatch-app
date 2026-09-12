@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css?v=8.0">
+<link rel="stylesheet" href="style.css?v=9.0">
 <script>
   // Force instant favicon & PWA icon cache update
   (function() {
@@ -42,7 +42,7 @@
     });
 
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=50')
+      navigator.serviceWorker.register('sw.js?v=55')
         .then((reg) => {
           reg.update();
           console.log('✓ SkinWatch PWA Service Worker Registered & Checked for Updates', reg.scope);
@@ -2111,6 +2111,6 @@
 
 </div>
 
-<script src="app.js?v=8.0"></script>
+<script src="app.js?v=9.0"></script>
 </body>
 </html>
