@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css?v=5.6">
+<link rel="stylesheet" href="style.css?v=6.0">
 <script>
   // Force instant favicon & PWA icon cache update
   (function() {
@@ -33,7 +33,7 @@
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=35')
+      navigator.serviceWorker.register('sw.js?v=36')
         .then((reg) => {
           reg.update();
           console.log('✓ SkinWatch PWA Service Worker Registered & Updated', reg.scope);
@@ -592,7 +592,7 @@
         <button type="button" class="akvile-subtab-btn active" data-tab="scan"><i class="ti ti-scan"></i> AI Scan</button>
         <button type="button" class="akvile-subtab-btn" data-tab="trigger"><i class="ti ti-activity-heartbeat"></i> Daily Log</button>
         <button type="button" class="akvile-subtab-btn" data-tab="inci"><i class="ti ti-flask"></i> Pore Checker</button>
-        <button type="button" class="akvile-subtab-btn" data-tab="school"><i class="ti ti-school"></i> Skin School</button>
+        <button type="button" class="akvile-subtab-btn" data-tab="acne-tracker"><i class="ti ti-chart-dots-3"></i> Acne Tracker</button>
       </div>
     </div>
 
@@ -1051,122 +1051,401 @@
       </div>
     </div>
 
-    <!-- SUBVIEW 4: Dermatology Skin School Micro-Lessons -->
-    <div id="akvile-view-school" class="akvile-subview" style="display:none;">
+    <!-- SUBVIEW 4: AI Acne Tracker, Zone Mapping & Environmental Correlator -->
+    <div id="akvile-view-acne-tracker" class="akvile-subview" style="display:none;">
       <div class="section-block">
-        <div class="akvile-hero-card">
+        
+        <!-- Hero Summary Card -->
+        <div class="akvile-hero-card acne-hero-card">
           <div class="akvile-hero-top">
-            <div class="akvile-badge-icon" style="background:#FEF3C7; color:#B45309;"><i class="ti ti-school"></i></div>
+            <div class="akvile-badge-icon" style="background:rgba(239, 68, 68, 0.15); color:#EF4444;"><i class="ti ti-chart-dots-3"></i></div>
+            <div style="flex:1;">
+              <div class="row-between">
+                <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Acne & Zone Tracker</h3>
+                <span id="acne-streak-badge" class="pill-badge" style="background:rgba(217,119,6,0.12); color:#D97706; font-size:11px;"><i class="ti ti-flame"></i> <span id="acne-streak-count">1</span>-Day Log</span>
+              </div>
+              <p class="muted-note" style="margin:2px 0 0;">AI facial zone scoring, lesion mapping & climate trigger correlation.</p>
+            </div>
+          </div>
+
+          <!-- Top Metric Mini-Cards -->
+          <div class="acne-metrics-grid" style="margin-top:14px;">
+            <div class="acne-metric-card">
+              <span class="acne-metric-lbl">Current Severity</span>
+              <div class="acne-metric-val-row">
+                <strong id="acne-hero-severity" class="acne-sev-mild">Mild (38)</strong>
+              </div>
+              <span id="acne-hero-trend" class="acne-trend-note text-success"><i class="ti ti-trending-down"></i> -14% vs Last Wk</span>
+            </div>
+            <div class="acne-metric-card">
+              <span class="acne-metric-lbl">Total Lesions</span>
+              <div class="acne-metric-val-row">
+                <strong id="acne-hero-lesions">10 est.</strong>
+              </div>
+              <span id="acne-hero-erythema" class="acne-trend-note text-warning">Erythema: Low</span>
+            </div>
+            <div class="acne-metric-card">
+              <span class="acne-metric-lbl">Climate Load</span>
+              <div class="acne-metric-val-row">
+                <strong id="acne-hero-climate">UV 7 · AQI 65</strong>
+              </div>
+              <span id="acne-hero-humidity" class="acne-trend-note">Humidity: 65%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Guided Photo Capture Studio -->
+        <div class="akvile-card" style="margin-top:14px;">
+          <div class="akvile-card-header">
+            <div class="row-between">
+              <div>
+                <h4 class="akvile-card-title"><i class="ti ti-camera" style="color:var(--gold);"></i> Facial Capture & Alignment Studio</h4>
+                <p class="muted-note" style="margin:2px 0 0;">Consistent lighting and face positioning ensure accurate tracking over time.</p>
+              </div>
+              <button id="acne-demo-scan-btn" class="pill-btn sm" title="Load Sample Scan"><i class="ti ti-wand"></i> Sample Scan</button>
+            </div>
+          </div>
+
+          <!-- Viewfinder & Live Camera Stream -->
+          <div id="acne-camera-container" class="acne-viewfinder-wrap" style="display:none;">
+            <video id="acne-camera-feed" autoplay playsinline muted></video>
+            <div class="hud-bracket hud-top-left"></div>
+            <div class="hud-bracket hud-top-right"></div>
+            <div class="hud-bracket hud-bottom-left"></div>
+            <div class="hud-bracket hud-bottom-right"></div>
+            
+            <!-- Face Alignment Guide -->
+            <div class="acne-face-guide">
+              <div class="acne-guide-oval">
+                <div class="acne-guide-eyes-line"><span>Eye Level</span></div>
+                <div class="acne-guide-nose-cross"></div>
+                <div class="acne-guide-chin-notch"></div>
+              </div>
+              <span class="acne-guide-hint">Align face inside oval & look straight</span>
+            </div>
+
+            <!-- Real-Time Lighting / Lux Quality Indicator -->
+            <div class="acne-lighting-bar">
+              <span id="acne-lux-icon"><i class="ti ti-sun"></i></span>
+              <span id="acne-lux-status">Lighting: Optimal Studio Lux</span>
+            </div>
+
+            <!-- Camera Controls Bar -->
+            <div class="camera-controls-bar">
+              <button id="acne-close-cam-btn" class="cam-circle-btn sm" title="Close Camera" onclick="window.stopAcneCamera()"><i class="ti ti-x"></i></button>
+              <button id="acne-shutter-btn" class="cam-shutter-btn" title="Capture Face Photo" onclick="window.captureAcnePhoto()"><div class="cam-shutter-inner"></div></button>
+              <button id="acne-flip-cam-btn" class="cam-circle-btn sm" title="Flip Camera" onclick="window.toggleAcneCameraFacing()"><i class="ti ti-switch-camera"></i></button>
+            </div>
+          </div>
+
+          <!-- Photo Action Bar when camera is closed -->
+          <div id="acne-capture-actions" class="acne-capture-btn-group" style="margin-top:10px;">
+            <button id="acne-open-cam-btn" class="btn-primary" style="flex:1;" onclick="window.startAcneCamera()"><i class="ti ti-camera"></i> Open Guided Camera</button>
+            <label class="btn-secondary" style="margin:0; cursor:pointer; display:inline-flex; align-items:center; gap:6px; justify-content:center;">
+              <i class="ti ti-photo-up"></i> Upload Photo
+              <input type="file" id="acne-file-input" accept="image/*" style="display:none;">
+            </label>
+          </div>
+
+          <!-- Image Preview & Canvas Container -->
+          <div id="acne-preview-wrap" style="display:none; margin-top:14px; position:relative;">
+            <div class="acne-preview-box">
+              <img id="acne-preview-img" src="" alt="Captured Face Preview" class="acne-preview-img">
+              <canvas id="acne-cv-canvas" style="display:none;"></canvas>
+              <div class="acne-overlay-grid" id="acne-overlay-grid">
+                <div class="acne-overlay-zone" data-zone="forehead" style="top:13%; left:25%; width:50%; height:16%;"><span>Forehead</span></div>
+                <div class="acne-overlay-zone" data-zone="cheeks-l" style="top:32%; left:21%; width:23%; height:20%;"><span>L. Cheek</span></div>
+                <div class="acne-overlay-zone" data-zone="nose" style="top:30%; left:40%; width:19%; height:18%;"><span>Nose</span></div>
+                <div class="acne-overlay-zone" data-zone="cheeks-r" style="top:32%; left:56%; width:23%; height:20%;"><span>R. Cheek</span></div>
+                <div class="acne-overlay-zone" data-zone="chin" style="top:54%; left:30%; width:41%; height:17%;"><span>Chin & Jaw</span></div>
+              </div>
+            </div>
+
+            <!-- Face Alignment & Zone Adjust Bar -->
+            <div class="acne-align-toolbar">
+              <div class="acne-align-info">
+                <i class="ti ti-scan" style="color:var(--primary);"></i>
+                <span id="acne-preview-info">Face Biometric Zones Calibrated</span>
+              </div>
+              <div class="acne-align-actions">
+                <button class="pill-btn sm" type="button" onclick="window.autoFitAcneFace()" title="Automatically fit zones to detected face"><i class="ti ti-sparkles"></i> Auto-Fit</button>
+                <div class="acne-nudge-group">
+                  <button class="pill-btn sm icon-only" type="button" onclick="window.nudgeAcneGrid(-3)" title="Nudge zones Up"><i class="ti ti-arrow-up"></i></button>
+                  <button class="pill-btn sm icon-only" type="button" onclick="window.nudgeAcneGrid(3)" title="Nudge zones Down"><i class="ti ti-arrow-down"></i></button>
+                  <button class="pill-btn sm icon-only" type="button" onclick="window.scaleAcneGrid(1.08)" title="Expand Zone Grid"><i class="ti ti-zoom-in"></i></button>
+                  <button class="pill-btn sm icon-only" type="button" onclick="window.scaleAcneGrid(0.92)" title="Shrink Zone Grid"><i class="ti ti-zoom-out"></i></button>
+                </div>
+                <button id="acne-toggle-grid-btn" class="pill-btn sm" type="button" onclick="window.toggleAcneZoneGrid()" title="Toggle Grid overlay"><i class="ti ti-grid-dots"></i> Grid</button>
+                <label class="pill-btn sm" style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; margin:0;" title="Upload face photo">
+                  <i class="ti ti-photo-up"></i>
+                  <input type="file" id="acne-preview-file-input" accept="image/*" style="display:none;" onchange="window.handleAcnePreviewUpload(event)">
+                </label>
+                <button id="acne-retake-btn" class="pill-btn sm" style="color:var(--danger);" onclick="window.resetAcnePreview()" title="Retake photo"><i class="ti ti-rotate-clockwise"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: AI Acne & Zone Breakdown Analysis -->
+        <div id="acne-analysis-card" class="akvile-card" style="margin-top:14px; display:none;">
+          <div class="akvile-card-header">
+            <div class="row-between">
+              <div>
+                <h4 class="akvile-card-title"><i class="ti ti-scan-eye" style="color:var(--gold);"></i> AI Severity & Zone Breakdown</h4>
+                <p class="muted-note" id="acne-analysis-timestamp" style="margin:2px 0 0;">Analyzed just now</p>
+              </div>
+              <span id="acne-severity-badge" class="acne-badge-pill sev-mild">Mild Acne</span>
+            </div>
+          </div>
+
+          <!-- Overall Severity & Change Row -->
+          <div class="acne-score-banner">
+            <div class="acne-score-circle">
+              <span id="acne-score-number">38</span>
+              <small>/100</small>
+            </div>
+            <div class="acne-score-details">
+              <div class="row-between">
+                <strong id="acne-score-title">Mild Inflammatory Congestion</strong>
+                <span id="acne-change-pill" class="pill-badge sm text-success"><i class="ti ti-arrow-down-right"></i> Improved vs Prev</span>
+              </div>
+              <p class="muted-note" id="acne-focus-advice" style="margin:4px 0 0;">Cheek flare-up detected: focus on soothing niacinamide & barrier protection.</p>
+              <div class="acne-confidence-note" id="acne-confidence-text"><i class="ti ti-shield-check"></i> Consistent frontal illumination detected. Reliable zone segmentation.</div>
+            </div>
+          </div>
+
+          <!-- 4 Facial Zones Breakdown -->
+          <div class="acne-zones-container" style="margin-top:16px;">
+            <span class="akvile-sub-lbl"><i class="ti ti-layout-grid"></i> Regional Facial Zone Distribution:</span>
+            <div class="acne-zones-grid">
+              
+              <!-- Zone 1: Forehead -->
+              <div class="acne-zone-box" id="zone-box-forehead">
+                <div class="row-between">
+                  <span class="acne-zone-title"><i class="ti ti-border-top"></i> Forehead (T-Zone)</span>
+                  <span class="acne-zone-redness low" id="zone-forehead-redness">Low Redness</span>
+                </div>
+                <div class="acne-zone-stat-row">
+                  <span class="acne-zone-stat"><strong id="zone-forehead-lesions">2</strong> lesions</span>
+                  <span class="acne-zone-type" id="zone-forehead-type">Microcomedones</span>
+                </div>
+                <div class="acne-zone-bar"><div class="acne-zone-fill" id="zone-forehead-bar" style="width:25%;"></div></div>
+              </div>
+
+              <!-- Zone 2: Cheeks -->
+              <div class="acne-zone-box" id="zone-box-cheeks">
+                <div class="row-between">
+                  <span class="acne-zone-title"><i class="ti ti-columns"></i> Cheeks (L & R)</span>
+                  <span class="acne-zone-redness medium" id="zone-cheeks-redness">Medium Redness</span>
+                </div>
+                <div class="acne-zone-stat-row">
+                  <span class="acne-zone-stat"><strong id="zone-cheeks-lesions">4</strong> lesions</span>
+                  <span class="acne-zone-type" id="zone-cheeks-type">Papules</span>
+                </div>
+                <div class="acne-zone-bar"><div class="acne-zone-fill" id="zone-cheeks-bar" style="width:45%;"></div></div>
+              </div>
+
+              <!-- Zone 3: Chin & Jawline -->
+              <div class="acne-zone-box" id="zone-box-chin">
+                <div class="row-between">
+                  <span class="acne-zone-title"><i class="ti ti-border-bottom"></i> Chin & Jawline</span>
+                  <span class="acne-zone-redness medium" id="zone-chin-redness">Medium Redness</span>
+                </div>
+                <div class="acne-zone-stat-row">
+                  <span class="acne-zone-stat"><strong id="zone-chin-lesions">3</strong> lesions</span>
+                  <span class="acne-zone-type" id="zone-chin-type">Hormonal Bumps</span>
+                </div>
+                <div class="acne-zone-bar"><div class="acne-zone-fill" id="zone-chin-bar" style="width:35%;"></div></div>
+              </div>
+
+              <!-- Zone 4: Nose -->
+              <div class="acne-zone-box" id="zone-box-nose">
+                <div class="row-between">
+                  <span class="acne-zone-title"><i class="ti ti-point"></i> Nose & Central</span>
+                  <span class="acne-zone-redness low" id="zone-nose-redness">Low Redness</span>
+                </div>
+                <div class="acne-zone-stat-row">
+                  <span class="acne-zone-stat"><strong id="zone-nose-lesions">1</strong> lesions</span>
+                  <span class="acne-zone-type" id="zone-nose-type">Sebaceous Filaments</span>
+                </div>
+                <div class="acne-zone-bar"><div class="acne-zone-fill" id="zone-nose-bar" style="width:15%;"></div></div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Auto Environmental Snapshot Linked to this Scan -->
+          <div class="acne-env-snapshot" style="margin-top:16px;">
+            <span class="akvile-sub-lbl"><i class="ti ti-cloud-storm"></i> Environmental Baseline at Scan:</span>
+            <div class="acne-env-chips-row">
+              <span class="acne-env-chip"><i class="ti ti-sun"></i> UV Index: <strong id="acne-snap-uv">7.5 (High)</strong></span>
+              <span class="acne-env-chip"><i class="ti ti-droplet"></i> Humidity: <strong id="acne-snap-hum">65%</strong></span>
+              <span class="acne-env-chip"><i class="ti ti-wind"></i> AQI: <strong id="acne-snap-aqi">65 (Moderate)</strong></span>
+            </div>
+          </div>
+
+          <!-- Lifestyle & Potential Trigger Tags -->
+          <div class="acne-tags-section" style="margin-top:16px;">
+            <span class="akvile-sub-lbl"><i class="ti ti-tags"></i> Tag Lifestyle & Potential Triggers:</span>
+            <div class="akvile-chips-grid" id="acne-trigger-tags">
+              <button type="button" class="akvile-chip" data-tag="dairy">🥛 Dairy / Whey</button>
+              <button type="button" class="akvile-chip" data-tag="sugar">🍬 High Sugar/GI</button>
+              <button type="button" class="akvile-chip" data-tag="stress">⚡ High Stress</button>
+              <button type="button" class="akvile-chip" data-tag="sleep">😴 Sleep &lt;6h</button>
+              <button type="button" class="akvile-chip" data-tag="cycle">🩸 Hormonal Cycle</button>
+              <button type="button" class="akvile-chip" data-tag="new_product">🧪 New Active/Product</button>
+              <button type="button" class="akvile-chip" data-tag="sweat">💦 Heavy Sweat</button>
+              <button type="button" class="akvile-chip" data-tag="mask">😷 Mask/Friction</button>
+            </div>
+          </div>
+
+          <!-- User Notes & Observation -->
+          <div style="margin-top:14px;">
+            <span class="akvile-sub-lbl">Optional Clinical Notes:</span>
+            <input type="text" id="acne-scan-notes" class="input-modern" placeholder="e.g., started Azelaic 10% 3 days ago, cheek redness subsiding..." style="width:100%; margin-top:4px;">
+          </div>
+
+          <!-- Action Button: Save to Timeline -->
+          <div style="margin-top:16px;">
+            <button id="acne-save-log-btn" class="btn-primary" style="width:100%;" onclick="window.saveCurrentAcneScan()"><i class="ti ti-device-floppy"></i> Save Scan to Acne Timeline</button>
+          </div>
+        </div>
+
+        <!-- Section: Interactive Before & After Progress Slider -->
+        <div class="akvile-card" id="acne-comparison-section" style="margin-top:14px;">
+          <div class="akvile-card-header">
+            <div class="row-between">
+              <div>
+                <h4 class="akvile-card-title"><i class="ti ti-arrows-diff" style="color:var(--gold);"></i> Before & After Comparison Slider</h4>
+                <p class="muted-note" style="margin:2px 0 0;">Drag slider to compare skin barrier recovery across scan dates.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scan Selectors -->
+          <div class="acne-compare-selectors">
+            <div class="acne-selector-group">
+              <label>Baseline Scan (Before):</label>
+              <select id="acne-compare-a-select" class="input-modern sm" onchange="window.updateAcneCompareImages()"></select>
+            </div>
+            <div class="acne-selector-group">
+              <label>Follow-up Scan (After):</label>
+              <select id="acne-compare-b-select" class="input-modern sm" onchange="window.updateAcneCompareImages()"></select>
+            </div>
+          </div>
+
+          <!-- Interactive Dual Slider Box -->
+          <div class="acne-compare-slider-wrap" id="acne-compare-slider-wrap" style="--slider-pos: 50%;">
+            <!-- Base Layer (Right side): Follow-up / Latest Scan -->
+            <div class="acne-compare-img-box">
+              <img id="acne-compare-img-after" src="" alt="Follow-up Scan" class="acne-compare-img after">
+              <span class="acne-compare-tag tag-after" id="acne-tag-after-lbl">Follow-up</span>
+            </div>
+            <!-- Overlay Clipped Layer (Left side): Baseline / Before Scan -->
+            <div class="acne-compare-img-box after-box" id="acne-compare-overlay-box">
+              <img id="acne-compare-img-before" src="" alt="Baseline Scan" class="acne-compare-img before">
+              <span class="acne-compare-tag tag-before" id="acne-tag-before-lbl">Baseline</span>
+            </div>
+            <!-- Draggable Divider Handle -->
+            <div class="acne-slider-handle" id="acne-slider-handle" style="left:50%;">
+              <div class="acne-handle-line"></div>
+              <div class="acne-handle-circle"><i class="ti ti-arrows-left-right"></i></div>
+            </div>
+            <!-- Range input for 100% native smooth slider drag on all devices -->
+            <input type="range" min="0" max="100" value="50" class="acne-compare-range-input" id="acne-compare-range-input" aria-label="Before and after comparison slider" oninput="window.onAcneSliderInput(this.value)">
+          </div>
+
+          <!-- Comparison Delta Metric -->
+          <div class="acne-compare-delta-bar" id="acne-compare-delta-bar" style="margin-top:12px;">
+            <div class="row-between" style="font-size:12px;">
+              <span id="acne-delta-text"><strong>Improvement:</strong> -6 Lesions (-35% Severity)</span>
+              <span id="acne-delta-status-pill" class="text-success"><i class="ti ti-circle-check"></i> Positive Barrier Trajectory</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Climate & Trigger Correlation Engine -->
+        <div class="akvile-card" style="margin-top:14px;">
+          <div class="akvile-card-header">
             <div>
-              <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Dermatology Skin School</h3>
-              <p class="muted-note" style="margin:2px 0 0;">Science-backed micro-lessons created by dermatologists & cosmetic chemists.</p>
-            </div>
-          </div>
-          <!-- Progress Bar -->
-          <div class="school-progress-bar-wrap" style="margin-top:12px;">
-            <div class="row-between" style="font-size:11px; margin-bottom:4px;">
-              <span style="color:var(--text-muted);">Mastery Progress</span>
-              <strong id="school-progress-pct" style="color:var(--gold);">50% Mastered</strong>
-            </div>
-            <div class="school-track"><div class="school-fill" id="school-fill" style="width:50%;"></div></div>
-          </div>
-        </div>
-
-        <!-- Lesson Modules List -->
-        <div class="school-modules-list" id="school-modules-list" style="margin-top:14px;">
-          <!-- Module 1 -->
-          <div class="school-card" data-lesson="1">
-            <div class="school-card-head" onclick="window.toggleSchoolLesson(1)">
-              <div class="school-card-icon"><i class="ti ti-microscope"></i></div>
-              <div style="flex:1;">
-                <div class="school-card-title">1. The 4 Pillars of Acne</div>
-                <div class="school-card-meta">Sebum, Hyperkeratinization, C. Acnes & Inflammation</div>
-              </div>
-              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(1)"><i class="ti ti-circle-check"></i></button>
-            </div>
-            <div class="school-card-body" id="school-body-1" style="display:none;">
-              <p>Acne is fundamentally an inflammatory condition within the pilosebaceous unit triggered by 4 interconnected steps:</p>
-              <ul class="school-points">
-                <li><strong>Excess Sebum:</strong> Androgens stimulate sebaceous glands to produce high-viscosity squalene & wax esters.</li>
-                <li><strong>Follicular Retention:</strong> Sticky dead corneocytes clog the pore opening instead of desquamating.</li>
-                <li><strong>C. Acnes Proliferation:</strong> Anaerobic bacteria consume sebum triglycerides and release irritating lipases.</li>
-                <li><strong>Inflammatory Cascade:</strong> Immune neutrophils rush in, resulting in red inflammatory papules or pustules.</li>
-              </ul>
-              <div class="school-takeaway">
-                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> Treat acne from both angles: normalize cell turnover (BHA/Retinoids) while reducing inflammation and barrier stress.
-              </div>
+              <h4 class="akvile-card-title"><i class="ti ti-sparkles" style="color:var(--gold);"></i> Climate & Trigger Insights</h4>
+              <p class="muted-note" style="margin:2px 0 0;">Correlating environmental stressors with breakout patterns.</p>
             </div>
           </div>
 
-          <!-- Module 2 -->
-          <div class="school-card" data-lesson="2" style="margin-top:10px;">
-            <div class="school-card-head" onclick="window.toggleSchoolLesson(2)">
-              <div class="school-card-icon"><i class="ti ti-shield-check"></i></div>
-              <div style="flex:1;">
-                <div class="school-card-title">2. Barrier Repair: 3:1:1 Ratio</div>
-                <div class="school-card-meta">Ceramides, Cholesterol & Free Fatty Acids</div>
-              </div>
-              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(2)"><i class="ti ti-circle-check"></i></button>
+          <!-- Severity Timeline Chart -->
+          <div class="acne-chart-box" style="margin-top:10px;">
+            <div class="row-between" style="margin-bottom:8px;">
+              <span class="akvile-sub-lbl" style="margin:0;">Acne Severity Timeline (Rolling 14-Days):</span>
+              <span id="acne-chart-summary" class="pill-badge sm text-success">Trajectory: Calming</span>
             </div>
-            <div class="school-card-body" id="school-body-2" style="display:none;">
-              <p>Your stratum corneum functions like a brick-and-mortar wall:</p>
-              <ul class="school-points">
-                <li><strong>Corneocytes (Bricks):</strong> Protein-rich skin cells.</li>
-                <li><strong>Lipid Bilayer (Mortar):</strong> Exactly 50% Ceramides, 25% Cholesterol, and 15% Free Fatty Acids (approx. 3:1:1 molar ratio).</li>
-                <li>When compromised by over-cleansing or harsh climates, Trans-Epidermal Water Loss (TEWL) spikes, allowing bacteria and irritants in.</li>
-              </ul>
-              <div class="school-takeaway">
-                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> If skin feels tight or stings, suspend all exfoliants and switch to ceramide/squalane barrier moisturizers for 5 days.
-              </div>
+            <div class="acne-chart-svg-wrap" id="acne-chart-svg-wrap">
+              <!-- Rendered via JS -->
             </div>
           </div>
 
-          <!-- Module 3 -->
-          <div class="school-card" data-lesson="3" style="margin-top:10px;">
-            <div class="school-card-head" onclick="window.toggleSchoolLesson(3)">
-              <div class="school-card-icon"><i class="ti ti-atom-2"></i></div>
-              <div style="flex:1;">
-                <div class="school-card-title">3. Actives Compatibility Matrix</div>
-                <div class="school-card-meta">What to combine vs what to separate in routines</div>
-              </div>
-              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(3)"><i class="ti ti-circle-check"></i></button>
-            </div>
-            <div class="school-card-body" id="school-body-3" style="display:none;">
-              <p>Combining the wrong actives cancels efficacy or compromises your barrier:</p>
-              <ul class="school-points">
-                <li><strong>✅ Synergistic Pairs:</strong> Vitamin C + Ferulic Acid · Niacinamide + Salicylic Acid · Retinol + Hyaluronic Acid / Ceramides.</li>
-                <li><strong>❌ Separate (Use on Alternate Days):</strong> Retinol + AHA/BHA exfoliants · Pure L-Ascorbic Acid + Benzoyl Peroxide (oxidizes Vit C).</li>
-                <li><strong>⚡ Golden Rule:</strong> Never introduce two new active ingredients simultaneously. Space introductions 2 weeks apart.</li>
-              </ul>
-              <div class="school-takeaway">
-                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> Use antioxidants and SPF during AM for environmental defense; reserve cell-renewing Retinoids for PM reset.
+          <!-- Environmental Correlation Insights -->
+          <div class="acne-insights-list" id="acne-insights-list" style="margin-top:14px;">
+            <!-- Insight 1: Humidity & Sebum -->
+            <div class="acne-insight-item">
+              <div class="acne-insight-icon" style="background:rgba(59,130,246,0.12); color:#3B82F6;"><i class="ti ti-droplet"></i></div>
+              <div class="acne-insight-text">
+                <strong>Humidity & Sebum Retention:</strong>
+                <p id="acne-insight-humidity-text">High ambient humidity (>70%) correlates with elevated T-zone microcomedones. Switch to lightweight gel hydrators on humid days.</p>
               </div>
             </div>
-          </div>
 
-          <!-- Module 4 -->
-          <div class="school-card" data-lesson="4" style="margin-top:10px;">
-            <div class="school-card-head" onclick="window.toggleSchoolLesson(4)">
-              <div class="school-card-icon"><i class="ti ti-dna"></i></div>
-              <div style="flex:1;">
-                <div class="school-card-title">4. Diet, Hormones & IGF-1</div>
-                <div class="school-card-meta">The biological connection between lifestyle and breakouts</div>
+            <!-- Insight 2: UV & Barrier Thickening -->
+            <div class="acne-insight-item" style="margin-top:8px;">
+              <div class="acne-insight-icon" style="background:rgba(245,158,11,0.12); color:#F59E0B;"><i class="ti ti-sun"></i></div>
+              <div class="acne-insight-text">
+                <strong>UV Exposure & Post-Inflammatory Erythema:</strong>
+                <p id="acne-insight-uv-text">Elevated UV indices spike erythema markers. Consistent broad-spectrum SPF prevents hyperpigmentation from active breakouts.</p>
               </div>
-              <button type="button" class="school-check-btn" onclick="event.stopPropagation(); window.toggleSchoolDone(4)"><i class="ti ti-circle-check"></i></button>
             </div>
-            <div class="school-card-body" id="school-body-4" style="display:none;">
-              <p>How internal lifestyle triggers biochemically alter sebum chemistry:</p>
-              <ul class="school-points">
-                <li><strong>Insulin / IGF-1 Spike:</strong> High glycemic carbs and skim milk trigger Insulin-like Growth Factor 1, activating mTORC1 and boosting sebum lipid production.</li>
-                <li><strong>Cortisol & Stress:</strong> Chronically elevated stress hormone upregulates CRH (Corticotropin-Releasing Hormone) receptors in sebocytes, fueling inflammation.</li>
-                <li><strong>Luteal Phase Progesterone:</strong> Rises in the week before menstruation, narrowing pore diameter while skin temperature rises.</li>
-              </ul>
-              <div class="school-takeaway">
-                <i class="ti ti-bulb"></i> <strong>Clinical Rule:</strong> Prioritize low-GI foods, quality sleep, and switch to gentle calming hydrators during the luteal phase.
+
+            <!-- Insight 3: Trigger Frequency -->
+            <div class="acne-insight-item" style="margin-top:8px;">
+              <div class="acne-insight-icon" style="background:rgba(168,85,247,0.12); color:#A855F7;"><i class="ti ti-dna"></i></div>
+              <div class="acne-insight-text">
+                <strong>Lifestyle Trigger Correlation:</strong>
+                <p id="acne-insight-trigger-text">Dairy and sleep deficit &lt;6h tagged prior to 67% of recorded cheek flare-ups.</p>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Section: Chronological Acne Scan Timeline History -->
+        <div class="akvile-card" style="margin-top:14px;">
+          <div class="akvile-card-header">
+            <div class="row-between">
+              <div>
+                <h4 class="akvile-card-title"><i class="ti ti-history" style="color:var(--gold);"></i> Acne Scan History</h4>
+                <p class="muted-note" style="margin:2px 0 0;">All facial scans, severity indices & weather snapshots.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button type="button" class="pill-btn sm" onclick="window.restoreAcneClinicalTimeline()" title="Load full 7-day recovery progress timeline"><i class="ti ti-rotate-clockwise"></i> 7-Day Cycle</button>
+                <span id="acne-history-count" class="pill-badge sm">3 Scans</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="acne-history-list" id="acne-history-list" style="margin-top:12px;">
+            <!-- Rendered dynamically by JS -->
+          </div>
+        </div>
+
+        <!-- Non-Diagnostic Medical Disclaimer & Privacy Guarantee -->
+        <div class="acne-disclaimer-card" style="margin-top:14px;">
+          <div style="display:flex; gap:10px; align-items:flex-start;">
+            <i class="ti ti-shield-lock" style="font-size:18px; color:var(--gold); flex-shrink:0; margin-top:2px;"></i>
+            <div style="font-size:11px; line-height:1.5; color:var(--text-muted);">
+              <strong>Privacy & Clinical Disclaimer:</strong>
+              This Acne Tracker is an informational tracking and pattern recognition tool, not a medical device or clinical diagnosis. Facial images are processed and kept strictly in your local device profile. Consult a board-certified dermatologist for medical evaluation.
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
@@ -1823,6 +2102,6 @@
 
 </div>
 
-<script src="app.js?v=5.3"></script>
+<script src="app.js?v=6.3"></script>
 </body>
 </html>

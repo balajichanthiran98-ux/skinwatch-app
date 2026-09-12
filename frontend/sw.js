@@ -1,5 +1,5 @@
-// SkinWatch Service Worker v35 - Network-First Core Shell
-const CACHE_NAME = 'skinwatch-pwa-v35';
+// SkinWatch Service Worker v38 - Network-First Core Shell
+const CACHE_NAME = 'skinwatch-pwa-v38';
 const STATIC_ASSETS = [
   './',
   './index.html',
