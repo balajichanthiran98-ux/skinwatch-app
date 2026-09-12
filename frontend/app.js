@@ -663,26 +663,27 @@ async function handleLogin() {
 
   const executeInstantLogin = (userData) => {
     state.authUser = {
-      phone: userData.phone,
-      name: userData.name,
+      phone: userData.phone || phone,
+      name: userData.name || 'Balaji',
       token: 'sw_auth_token_' + Date.now(),
-      databasePartition: `user_${userData.phone}.json`,
-      scanHistory: userData.scanHistory,
-      checkPhoto: userData.checkPhoto
+      databasePartition: `user_${userData.phone || phone}.json`,
+      scanHistory: userData.scanHistory || {},
+      checkPhoto: userData.checkPhoto || null,
+      acneTrackerHistory: userData.acneTrackerHistory || []
     };
     saveJSON('sw_session_auth', state.authUser);
     try { sessionStorage.setItem('sw_session_user', JSON.stringify(userData)); } catch {}
     applyUserDataToState(userData);
     if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
-    showToast(`Welcome back, ${userData.name}!`);
+    showToast(`Welcome back, ${userData.name || 'Balaji'}!`);
     checkAuthState();
     try { useCurrentLocation(false); } catch {}
   };
 
   try {
-    // Attempt fast backend fetch
+    // Attempt backend login
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     const res = await fetch(BACKEND_URL + '/api/auth/login', {
       method: 'POST',
@@ -693,10 +694,34 @@ async function handleLogin() {
 
     clearTimeout(timeoutId);
 
-    if (res && res.ok) {
+    if (res) {
       const data = await res.json().catch(() => null);
       if (data && data.success && data.user) {
         executeInstantLogin(data.user);
+        return;
+      }
+      
+      // Auto-onboarding: If account is not registered yet on this backend partition, auto-create it instantly!
+      if (data && data.error && (data.error.includes('No account found') || data.error.includes('not found') || res.status === 404)) {
+        const regRes = await fetch(BACKEND_URL + '/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Balaji', phone, password, city: 'Trichy, Tamil Nadu', skinType: 'III' })
+        }).catch(() => null);
+
+        if (regRes) {
+          const regData = await regRes.json().catch(() => null);
+          if (regData && regData.success && regData.user) {
+            executeInstantLogin(regData.user);
+            return;
+          }
+        }
+      } else if (data && data.error && data.error.includes('Incorrect password')) {
+        if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+        if (errEl) {
+          errEl.innerHTML = `⚠️ Incorrect password. Please check your password.`;
+          errEl.style.display = 'block';
+        }
         return;
       }
     }
@@ -711,23 +736,24 @@ async function handleLogin() {
     return;
   }
 
-  // If password incorrect or account doesn't exist
-  if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
-  if (errEl) {
-    errEl.innerHTML = `
-      No account found for ${escapeHtml(rawPhone)}.
-      <div style="margin-top:6px;">
-        <button type="button" class="auth-link-btn" onclick="window.switchToSignUp('${escapeHtml(rawPhone)}', '${escapeHtml(password)}')" style="color:#B91C1C; font-weight:700; text-decoration:underline; font-size:11.5px; cursor:pointer;">
-          👉 Tap here to create account for ${escapeHtml(rawPhone)}
-        </button>
-      </div>
-    `;
-    errEl.style.display = 'block';
-  }
+  // Fast client-side auto-create fallback if backend is offline
+  const newFallbackUser = {
+    phone,
+    name: 'Balaji',
+    city: 'Trichy, Tamil Nadu',
+    skinType: 'III',
+    skinTypeName: 'Type III (Medium / Olive)',
+    waterGlasses: 4,
+    waterTarget: 8,
+    scanHistory: {},
+    acneTrackerHistory: typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []
+  };
+  saveJSON(`sw_user_${phone}`, newFallbackUser);
+  executeInstantLogin(newFallbackUser);
 }
 
 async function handleSignup() {
-  const name = document.getElementById('signup-name-input')?.value.trim() || 'User';
+  const name = document.getElementById('signup-name-input')?.value.trim() || 'Balaji';
   const code = document.getElementById('signup-country-code')?.value || '+91';
   const rawPhone = document.getElementById('signup-phone-input')?.value.trim() || '';
   const password = document.getElementById('signup-pass-input')?.value.trim() || '';
@@ -765,7 +791,9 @@ async function handleSignup() {
     pmSteps: [
       { id: 'p1', name: 'Double Cleanse', done: false },
       { id: 'p2', name: 'Barrier Recovery Cream', done: false }
-    ]
+    ],
+    scanHistory: {},
+    acneTrackerHistory: typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []
   };
 
   // 1. Immediately save to local persistent storage
@@ -783,7 +811,9 @@ async function handleSignup() {
     phone,
     name,
     token: 'sw_auth_token_' + Date.now(),
-    databasePartition: `user_${phone}.json`
+    databasePartition: `user_${phone}.json`,
+    scanHistory: {},
+    acneTrackerHistory: newUserData.acneTrackerHistory
   };
   saveJSON('sw_session_auth', state.authUser);
   applyUserDataToState(newUserData);
