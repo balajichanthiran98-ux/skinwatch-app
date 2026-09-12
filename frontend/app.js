@@ -577,7 +577,12 @@ function resetCheckScreenForUser() {
 
 // ---------- Unified Authentication Controller (Sign In & Sign Up) ----------
 function checkAuthState() {
-  const session = loadJSON('sw_session_auth', null);
+  const session = loadJSON('sw_session_auth', null) || (function() {
+    try {
+      const u = sessionStorage.getItem('sw_session_user');
+      return u ? JSON.parse(u) : null;
+    } catch { return null; }
+  })();
   const authScreen = document.getElementById('screen-auth');
   const homeScreen = document.getElementById('screen-home');
   const tabbar = document.querySelector('.tabbar');
@@ -589,8 +594,15 @@ function checkAuthState() {
       try { if (typeof renderAcneTracker === 'function') renderAcneTracker(); } catch {}
       try { if (typeof renderPastWeekComparison === 'function') renderPastWeekComparison(); } catch {}
       try { if (typeof renderProfile === 'function') renderProfile(); } catch {}
+      try { if (typeof renderHome === 'function') renderHome(); } catch {}
+      try { if (typeof renderRoutineAll === 'function') renderRoutineAll(); } catch {}
     });
-    document.querySelectorAll('.screen').forEach(s => s.style.setProperty('display', 'none', 'important'));
+
+    document.querySelectorAll('.screen').forEach(s => {
+      if (s.id !== 'screen-home') {
+        s.style.setProperty('display', 'none', 'important');
+      }
+    });
     if (homeScreen) {
       homeScreen.style.setProperty('display', 'block', 'important');
     }
@@ -600,16 +612,26 @@ function checkAuthState() {
     // Activate Home nav button
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.nav-btn[data-screen="home"]')?.classList.add('active');
+
     try { useCurrentLocation(true); } catch {}
+    try { if (typeof renderHome === 'function') renderHome(); } catch {}
+    try { if (typeof renderProfile === 'function') renderProfile(); } catch {}
+    try { if (typeof renderRoutineAll === 'function') renderRoutineAll(); } catch {}
+    return true;
   } else {
     state.authUser = null;
-    document.querySelectorAll('.screen').forEach(s => s.style.setProperty('display', 'none', 'important'));
+    document.querySelectorAll('.screen').forEach(s => {
+      if (s.id !== 'screen-auth') {
+        s.style.setProperty('display', 'none', 'important');
+      }
+    });
     if (authScreen) {
       authScreen.style.setProperty('display', 'flex', 'important');
     }
     if (tabbar) {
       tabbar.style.setProperty('display', 'none', 'important');
     }
+    return false;
   }
 }
 
@@ -658,8 +680,12 @@ async function handleLogin() {
     return;
   }
 
-  const phone = rawPhone.startsWith('+') ? rawPhone : `${code}${rawPhone}`;
-  if (btn) btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Verifying...</span>`;
+  const cleanDigits = rawPhone.replace(/[^0-9]/g, '');
+  const phone = rawPhone.startsWith('+') ? ('+' + cleanDigits) : `${code}${cleanDigits}`;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Verifying...</span>`;
+  }
 
   const executeInstantLogin = (userData) => {
     state.authUser = {
@@ -673,8 +699,12 @@ async function handleLogin() {
     };
     saveJSON('sw_session_auth', state.authUser);
     try { sessionStorage.setItem('sw_session_user', JSON.stringify(userData)); } catch {}
+    try { localStorage.setItem('sw_session_user', JSON.stringify(userData)); } catch {}
     applyUserDataToState(userData);
-    if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+    }
     showToast(`Welcome back, ${userData.name || 'Balaji'}!`);
     checkAuthState();
     try { useCurrentLocation(false); } catch {}
@@ -717,7 +747,10 @@ async function handleLogin() {
           }
         }
       } else if (data && data.error && data.error.includes('Incorrect password')) {
-        if (btn) btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+        }
         if (errEl) {
           errEl.innerHTML = `⚠️ Incorrect password. Please check your password.`;
           errEl.style.display = 'block';
@@ -772,8 +805,12 @@ async function handleSignup() {
     return;
   }
 
-  const phone = rawPhone.startsWith('+') ? rawPhone : `${code}${rawPhone}`;
-  if (btn) btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Creating Database...</span>`;
+  const cleanDigits = rawPhone.replace(/[^0-9]/g, '');
+  const phone = rawPhone.startsWith('+') ? ('+' + cleanDigits) : `${code}${cleanDigits}`;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Creating Database...</span>`;
+  }
 
   const newUserData = {
     phone,
@@ -816,9 +853,14 @@ async function handleSignup() {
     acneTrackerHistory: newUserData.acneTrackerHistory
   };
   saveJSON('sw_session_auth', state.authUser);
+  try { sessionStorage.setItem('sw_session_user', JSON.stringify(newUserData)); } catch {}
+  try { localStorage.setItem('sw_session_user', JSON.stringify(newUserData)); } catch {}
   applyUserDataToState(newUserData);
 
-  if (btn) btn.innerHTML = `<span>Create Account & Enter</span> <i class="ti ti-check"></i>`;
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = `<span>Create Account & Enter</span> <i class="ti ti-check"></i>`;
+  }
   showToast(`Account created for ${name}!`);
   checkAuthState();
   try { refreshWeather(); } catch {}
@@ -827,6 +869,8 @@ async function handleSignup() {
 function handleSignOut() {
   saveCurrentUserData();
   localStorage.removeItem('sw_session_auth');
+  sessionStorage.removeItem('sw_session_user');
+  localStorage.removeItem('sw_session_user');
   state.authUser = null;
   checkAuthState();
   showToast('You have been signed out.');
@@ -835,6 +879,7 @@ function handleSignOut() {
 window.handleLogin = handleLogin;
 window.handleSignup = handleSignup;
 window.handleSignOut = handleSignOut;
+window.userSignOut = handleSignOut;
 
 // 1-Tap Quick Demo Account Switcher
 window.quickDemoFill = function(rawPhone, password) {
@@ -893,6 +938,35 @@ function initAuthSystem() {
   document.getElementById('auth-login-submit-btn')?.addEventListener('click', handleLogin);
   document.getElementById('auth-signup-submit-btn')?.addEventListener('click', handleSignup);
   document.getElementById('sign-out-btn')?.addEventListener('click', handleSignOut);
+  document.getElementById('profile-sign-out-btn')?.addEventListener('click', handleSignOut);
+
+  // Form submission prevention and direct triggering
+  formSignIn?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleLogin();
+  });
+  formSignUp?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleSignup();
+  });
+
+  // Enter key support on login fields
+  const loginPhoneInput = document.getElementById('login-phone-input');
+  const loginPassInput = document.getElementById('login-pass-input');
+  if (loginPhoneInput && loginPassInput) {
+    loginPhoneInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        loginPassInput.focus();
+      }
+    });
+    loginPassInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleLogin();
+      }
+    });
+  }
 
   // Password visibility toggles
   document.getElementById('toggle-login-pass')?.addEventListener('click', () => {
@@ -4828,340 +4902,7 @@ if (heroCityElem) {
   });
 }
 
-// ==========================================================================
-// USER AUTHENTICATION & PERSISTENT DATABASE CONTROLLER
-// ==========================================================================
-
-// Global Demo Account Auto-Fill
-window.quickDemoFill = function(phone, password) {
-  const phoneInput = document.getElementById('login-phone-input');
-  const passInput = document.getElementById('login-pass-input');
-  const signInTab = document.getElementById('tab-btn-signin');
-  if (signInTab) signInTab.click();
-
-  if (phoneInput) {
-    phoneInput.value = phone;
-    phoneInput.focus();
-  }
-  if (passInput) {
-    passInput.value = password;
-  }
-
-  // Clear any error messages
-  const errEl = document.getElementById('auth-login-error');
-  if (errEl) errEl.style.display = 'none';
-};
-
-// Check active session on load or refresh
-function checkAuthState() {
-  const sessionData = sessionStorage.getItem('sw_session_user');
-  const authScreen = document.getElementById('screen-auth');
-  const tabbar = document.querySelector('.tabbar');
-
-  if (!sessionData) {
-    // No active session in this browser window -> SHOW LOGIN SCREEN ONLY
-    state.authUser = null;
-    state.checkPhoto = null;
-    state.lastScanMetrics = null;
-    resetCheckScreenForUser();
-    document.querySelectorAll('.screen').forEach((s) => {
-      s.style.display = (s.id === 'screen-auth') ? 'flex' : 'none';
-    });
-    if (authScreen) authScreen.style.display = 'flex';
-    if (tabbar) tabbar.style.display = 'none';
-    return false;
-  }
-
-  try {
-    const user = JSON.parse(sessionData);
-    state.authUser = user;
-
-    // Load user's isolated profile, location & routine data
-    if (user.location) state.location = user.location;
-    if (user.name) {
-      state.profile = state.profile || {};
-      state.profile.name = user.name;
-      state.profile.city = user.city || state.profile.city;
-      state.profile.skinType = user.skinType || state.profile.skinType;
-      state.profile.skinFeel = user.skinFeel || state.profile.skinFeel;
-      state.profile.concerns = user.concerns || state.profile.concerns;
-      state.profile.tolerances = user.tolerances || state.profile.tolerances;
-      state.profile.allergies = user.allergies || state.profile.allergies;
-    }
-    if (user.amSteps) state.amSteps = user.amSteps;
-    if (user.pmSteps) state.pmSteps = user.pmSteps;
-    if (user.suppSteps) state.suppSteps = user.suppSteps;
-    if (user.waterGlasses != null) state.waterGlasses = user.waterGlasses;
-    if (user.waterTarget != null) user.waterTarget = user.waterTarget;
-    if (user.skinCyclePhase != null) state.skinCyclePhase = user.skinCyclePhase;
-    if (user.scanHistory && typeof user.scanHistory === 'object' && !Array.isArray(user.scanHistory)) {
-      state.scanHistory = { ...user.scanHistory };
-    } else {
-      state.scanHistory = {};
-    }
-    state.checkPhoto = user.checkPhoto || null;
-    state.lastScanMetrics = null;
-
-    // Reset check screen DOM elements specifically for this user
-    resetCheckScreenForUser();
-
-    // Reveal main app UI & bottom navigation
-    if (authScreen) authScreen.style.display = 'none';
-    if (tabbar) tabbar.style.display = 'flex';
-
-    // Activate current tab
-    const activeNav = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn[data-screen="home"]');
-    const screenName = activeNav ? activeNav.dataset.screen : 'home';
-    document.querySelectorAll('.screen').forEach((s) => {
-      if (s.id !== 'screen-auth' && s.id !== 'screen-onboarding') {
-        s.style.display = (s.id === `screen-${screenName}`) ? 'block' : 'none';
-      }
-    });
-
-    renderHome();
-    renderProfile();
-    renderRoutineAll();
-    loadWeatherAndAQI();
-    loadForecast();
-
-    // Automatically acquire live GPS location for user
-    try { useCurrentLocation(true); } catch {}
-    return true;
-  } catch (err) {
-    console.error('Session parse error:', err);
-    sessionStorage.removeItem('sw_session_user');
-    document.querySelectorAll('.screen').forEach((s) => {
-      s.style.display = (s.id === 'screen-auth') ? 'flex' : 'none';
-    });
-    if (authScreen) authScreen.style.display = 'flex';
-    if (tabbar) tabbar.style.display = 'none';
-    return false;
-  }
-}
-
-// Sign In Action
-async function handleUserLogin() {
-  const codeSelect = document.getElementById('login-country-code');
-  const phoneInput = document.getElementById('login-phone-input');
-  const passInput = document.getElementById('login-pass-input');
-  const errEl = document.getElementById('auth-login-error');
-  const submitBtn = document.getElementById('auth-login-submit-btn');
-
-  if (!phoneInput || !passInput) return;
-  const rawPhone = phoneInput.value.trim();
-  const password = passInput.value.trim();
-  const countryCode = codeSelect ? codeSelect.value : '+91';
-  const fullPhone = rawPhone.startsWith('+') ? rawPhone : `${countryCode}${rawPhone}`;
-
-  if (!rawPhone) {
-    showAuthError(errEl, 'Please enter your mobile phone number.');
-    return;
-  }
-  if (!password) {
-    showAuthError(errEl, 'Please enter your password.');
-    return;
-  }
-
-  if (errEl) errEl.style.display = 'none';
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i> Authenticating...';
-  }
-
-  try {
-    const res = await apiPost('/api/auth/login', { phone: fullPhone, password });
-    if (res && res.success && res.user) {
-      // Save session
-      sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
-      checkAuthState();
-      try { useCurrentLocation(false); } catch {}
-    } else {
-      showAuthError(errEl, res?.error || 'Invalid mobile number or password.');
-    }
-  } catch (err) {
-    showAuthError(errEl, err.message || 'Login failed. Please check your network connection.');
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>';
-    }
-  }
-}
-
-// Sign Up / Registration Action
-async function handleUserRegistration() {
-  const nameInput = document.getElementById('signup-name-input');
-  const codeSelect = document.getElementById('signup-country-code');
-  const phoneInput = document.getElementById('signup-phone-input');
-  const passInput = document.getElementById('signup-pass-input');
-  const cityInput = document.getElementById('signup-city-input');
-  const skinTypeSelect = document.getElementById('signup-skintype-select');
-  const errEl = document.getElementById('auth-signup-error');
-  const submitBtn = document.getElementById('auth-signup-submit-btn');
-
-  if (!nameInput || !phoneInput || !passInput) return;
-  const name = nameInput.value.trim();
-  const rawPhone = phoneInput.value.trim();
-  const password = passInput.value.trim();
-  const city = cityInput ? cityInput.value.trim() : 'Trichy, Tamil Nadu';
-  const skinType = skinTypeSelect ? skinTypeSelect.value : 'III';
-  const countryCode = codeSelect ? codeSelect.value : '+91';
-  const fullPhone = rawPhone.startsWith('+') ? rawPhone : `${countryCode}${rawPhone}`;
-
-  if (!name) {
-    showAuthError(errEl, 'Please enter your full name.');
-    return;
-  }
-  if (!rawPhone) {
-    showAuthError(errEl, 'Please enter your mobile phone number.');
-    return;
-  }
-  if (password.length < 4) {
-    showAuthError(errEl, 'Password must be at least 4 characters long.');
-    return;
-  }
-
-  if (errEl) errEl.style.display = 'none';
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i> Creating Profile...';
-  }
-
-  try {
-    const res = await apiPost('/api/auth/register', {
-      name,
-      phone: fullPhone,
-      password,
-      city,
-      skinType
-    });
-
-    if (res && res.success && res.user) {
-      sessionStorage.setItem('sw_session_user', JSON.stringify(res.user));
-      checkAuthState();
-      // Auto-detect live location immediately upon account creation
-      try { useCurrentLocation(false); } catch {}
-    } else {
-      showAuthError(errEl, res?.error || 'Registration failed. An account may already exist.');
-    }
-  } catch (err) {
-    showAuthError(errEl, err.message || 'Registration failed. Please check connection.');
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span>Create Account & Enter</span> <i class="ti ti-check"></i>';
-    }
-  }
-}
-
-function showAuthError(el, msg) {
-  if (!el) return;
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-// User Sign Out
-window.userSignOut = function() {
-  sessionStorage.removeItem('sw_session_user');
-  localStorage.removeItem('sw_session_auth');
-  localStorage.removeItem('sw_check_photo');
-  localStorage.removeItem('sw_scan_history');
-  state.authUser = null;
-  state.checkPhoto = null;
-  state.scanHistory = {};
-  state.checkHistory = {};
-  state.lastScanMetrics = null;
-  resetCheckScreenForUser();
-
-  // Clear inputs
-  const phoneInput = document.getElementById('login-phone-input');
-  const passInput = document.getElementById('login-pass-input');
-  if (phoneInput) phoneInput.value = '';
-  if (passInput) passInput.value = '';
-
-  checkAuthState();
-  if (typeof showToast === 'function') showToast('Signed out successfully.');
-};
-
-// Sync user state changes back to database
-function syncUserData() {
-  saveCurrentUserData();
-}
-
-// Hook Sign Out Button in Profile screen
-const profSignOutBtn = document.getElementById('profile-sign-out-btn') || document.getElementById('sign-out-btn');
-if (profSignOutBtn) {
-  profSignOutBtn.addEventListener('click', window.userSignOut);
-}
-
-// Tabs Switcher (Sign In vs Create Account)
-const tabSignIn = document.getElementById('tab-btn-signin');
-const tabSignUp = document.getElementById('tab-btn-signup');
-const formSignIn = document.getElementById('form-signin');
-const formSignUp = document.getElementById('form-signup');
-
-if (tabSignIn && tabSignUp && formSignIn && formSignUp) {
-  tabSignIn.addEventListener('click', () => {
-    tabSignIn.classList.add('active');
-    tabSignUp.classList.remove('active');
-    formSignIn.style.display = 'block';
-    formSignUp.style.display = 'none';
-  });
-
-  tabSignUp.addEventListener('click', () => {
-    tabSignUp.classList.add('active');
-    tabSignIn.classList.remove('active');
-    formSignUp.style.display = 'block';
-    formSignIn.style.display = 'none';
-  });
-}
-
-// Password Visibility Toggles
-const toggleLoginPass = document.getElementById('toggle-login-pass');
-const loginPassInput = document.getElementById('login-pass-input');
-if (toggleLoginPass && loginPassInput) {
-  toggleLoginPass.addEventListener('click', () => {
-    const isPass = loginPassInput.type === 'password';
-    loginPassInput.type = isPass ? 'text' : 'password';
-    toggleLoginPass.innerHTML = `<i class="ti ${isPass ? 'ti-eye-off' : 'ti-eye'}"></i>`;
-  });
-}
-
-const toggleSignupPass = document.getElementById('toggle-signup-pass');
-const signupPassInput = document.getElementById('signup-pass-input');
-if (toggleSignupPass && signupPassInput) {
-  toggleSignupPass.addEventListener('click', () => {
-    const isPass = signupPassInput.type === 'password';
-    signupPassInput.type = isPass ? 'text' : 'password';
-    toggleSignupPass.innerHTML = `<i class="ti ${isPass ? 'ti-eye-off' : 'ti-eye'}"></i>`;
-  });
-}
-
-// Auth Submit Buttons & Enter Key Listeners
-const loginSubmitBtn = document.getElementById('auth-login-submit-btn');
-if (loginSubmitBtn) {
-  loginSubmitBtn.addEventListener('click', handleUserLogin);
-}
-
-const signupSubmitBtn = document.getElementById('auth-signup-submit-btn');
-if (signupSubmitBtn) {
-  signupSubmitBtn.addEventListener('click', handleUserRegistration);
-}
-
-const loginPhoneInput = document.getElementById('login-phone-input');
-if (loginPhoneInput && loginPassInput) {
-  loginPhoneInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') loginPassInput.focus();
-  });
-  loginPassInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') handleUserLogin();
-  });
-}
-
-// ---------- Initial App Bootstrap ----------
-updateDateTime();
-setInterval(updateDateTime, 30000);
-checkAuthState();
+// ---------- Akvile Skin Intelligence Initialization ----------
 initAkvileSystem();
 
 // ==========================================================================
@@ -5987,7 +5728,7 @@ function startAcneLuxMonitor(video) {
 
 let isAcneCapturing = false;
 
-function captureAcnePhoto() {
+async function captureAcnePhoto() {
   if (isAcneCapturing) return;
   isAcneCapturing = true;
 

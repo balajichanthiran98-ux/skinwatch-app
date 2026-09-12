@@ -10,5 +10,17 @@
     "dbFile": "user_+916380637145.json",
     "createdAt": "2026-09-07T13:51:30.806Z",
     "lastLoginAt": "2026-09-07T13:51:38.519Z"
+  },
+  "+916382418031": {
+    "phone": "+916382418031",
+    "normalizedPhone": "+916382418031",
+    "passwordHash": "ffcd0b0fa8de5f6a87b45ca35478daeb2abd28bc1acbb89f9c5e6269c63d3de6",
+    "salt": "salt_+916382418031_1789235339716",
+    "name": "Balaji",
+    "city": "Trichy, Tamil Nadu",
+    "skinType": "III",
+    "dbFile": "user_+916382418031.json",
+    "createdAt": "2026-09-12T17:48:59.716Z",
+    "lastLoginAt": "2026-09-12T17:50:05.395Z"
   }
 }
