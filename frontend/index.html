@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<link rel="stylesheet" href="style.css?v=9.0">
+<link rel="stylesheet" href="style.css?v=10.0">
 <script>
   // Force instant favicon & PWA icon cache update
   (function() {
@@ -42,7 +42,7 @@
     });
 
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js?v=55')
+      navigator.serviceWorker.register('sw.js?v=60')
         .then((reg) => {
           reg.update();
           console.log('✓ SkinWatch PWA Service Worker Registered & Checked for Updates', reg.scope);
@@ -742,6 +742,14 @@
               <li>Low redness detected; safe for evening active treatment (Retinol/Exfoliant).</li>
               <li>Maintain SPF 50+ reapplication under today's UV levels.</li>
             </ul>
+          </div>
+
+          <!-- Save to Progression Timeline Action -->
+          <div style="margin-top: 14px;">
+            <button id="save-ai-scan-btn" class="auth-primary-btn" type="button" onclick="window.saveCurrentAIScan()" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:13px 18px; font-weight:600; font-size:13.5px; background:linear-gradient(135deg, #10B981 0%, #059669 100%); border:none; border-radius:12px; color:#fff; box-shadow:0 4px 14px rgba(16,185,129,0.3); cursor:pointer;">
+              <i class="ti ti-device-floppy" style="font-size:18px;"></i>
+              <span>Save Scan to Skin Progression &amp; Barrier Shift</span>
+            </button>
           </div>
         </div>
 
@@ -2111,6 +2119,6 @@
 
 </div>
 
-<script src="app.js?v=9.0"></script>
+<script src="app.js?v=10.0"></script>
 </body>
 </html>
