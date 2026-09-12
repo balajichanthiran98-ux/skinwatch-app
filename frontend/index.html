@@ -1755,36 +1755,42 @@
             <!-- Hero Metrics 2x2 Grid -->
             <div class="redness-metrics-grid">
               <div class="redness-metric-card">
-                <span class="redness-metric-lbl"><i class="ti ti-activity"></i> Redness Index</span>
-                <div class="redness-metric-val-row">
-                  <strong id="redness-hero-score">28 <span
-                      style="font-size:11px; font-weight:normal; color:var(--text-muted);">/ 100</span></strong>
-                  <span id="redness-hero-trend" class="pill-badge sm text-success"><i
-                      class="ti ti-arrow-down-right"></i> -12% vs Base</span>
+                <div class="redness-metric-top">
+                  <span class="redness-metric-lbl"><i class="ti ti-activity"></i> Redness Index</span>
+                </div>
+                <div class="redness-metric-val" id="redness-hero-score">28 <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">/ 100</span></div>
+                <div class="redness-metric-sub">
+                  <span id="redness-hero-trend" class="pill-badge sm text-success"><i class="ti ti-arrow-down-right"></i> -12% vs Base</span>
                 </div>
               </div>
 
               <div class="redness-metric-card">
-                <span class="redness-metric-lbl"><i class="ti ti-dna-2"></i> Vascular Pattern</span>
-                <div class="redness-metric-val-row">
-                  <strong id="redness-hero-pattern" style="font-size:13px;">Transient Flush</strong>
-                  <span class="pill-badge sm text-warning" id="redness-hero-ei-tag">EI: 15.3</span>
+                <div class="redness-metric-top">
+                  <span class="redness-metric-lbl"><i class="ti ti-dna-2"></i> Vascular State</span>
+                </div>
+                <div class="redness-metric-val" id="redness-hero-pattern" style="font-size:12.5px;">Transient Flush</div>
+                <div class="redness-metric-sub">
+                  <span class="pill-badge sm text-warning" id="redness-hero-ei-tag">EI: 14.8</span>
                 </div>
               </div>
 
               <div class="redness-metric-card">
-                <span class="redness-metric-lbl"><i class="ti ti-sun"></i> Ambient Heat / UV</span>
-                <div class="redness-metric-val-row">
-                  <strong id="redness-hero-climate">UV 7.5 · 31°C</strong>
-                  <span class="pill-badge sm" style="background:#FFF1F2; color:#BE123C;">Thermal Load</span>
+                <div class="redness-metric-top">
+                  <span class="redness-metric-lbl"><i class="ti ti-sun"></i> Ambient Heat / UV</span>
+                </div>
+                <div class="redness-metric-val" id="redness-hero-climate" style="font-size:12.5px;">UV 7.5 · 31°C</div>
+                <div class="redness-metric-sub">
+                  <span class="pill-badge sm" style="background:#FFF1F2; color:#BE123C;" id="redness-hero-climate-tag">Thermal Load</span>
                 </div>
               </div>
 
               <div class="redness-metric-card">
-                <span class="redness-metric-lbl"><i class="ti ti-alert-triangle"></i> Top Flagged Trigger</span>
-                <div class="redness-metric-val-row">
-                  <strong id="redness-hero-top-trigger" style="font-size:13px; color:#BE123C;">🌶️ Spicy Food</strong>
-                  <span class="pill-badge sm" style="background:rgba(225,29,72,0.1); color:#BE123C;">80% Match</span>
+                <div class="redness-metric-top">
+                  <span class="redness-metric-lbl"><i class="ti ti-alert-triangle"></i> Top Trigger</span>
+                </div>
+                <div class="redness-metric-val" id="redness-hero-top-trigger" style="font-size:12.5px; color:#BE123C;">🌶️ Spicy Food</div>
+                <div class="redness-metric-sub">
+                  <span class="pill-badge sm" style="background:rgba(225,29,72,0.1); color:#BE123C;" id="redness-hero-trigger-pct">80% Match</span>
                 </div>
               </div>
             </div>

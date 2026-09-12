@@ -7989,11 +7989,18 @@ function renderRednessTracker() {
     sun_exposure: '☀️ Solar UV'
   };
 
+  const heroTriggerPct = document.getElementById('redness-hero-trigger-pct');
   if (heroTopTrigger) {
     if (topTagKey) {
       heroTopTrigger.textContent = tagIcons[topTagKey] || `#${topTagKey}`;
+      if (heroTriggerPct) {
+        const count = tagCounts[topTagKey] || 1;
+        const pct = Math.round((count / Math.max(1, history.length)) * 100);
+        heroTriggerPct.textContent = `${pct}% Match`;
+      }
     } else {
       heroTopTrigger.textContent = 'None Flagged';
+      if (heroTriggerPct) heroTriggerPct.textContent = '0% Match';
     }
   }
 
