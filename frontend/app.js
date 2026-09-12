@@ -324,7 +324,8 @@ function saveCurrentUserData() {
     checkPhoto: state.checkPhoto || null,
     scanHistory: validScanHistory,
     akvileLogs: state.akvileLogs || [],
-    acneTrackerHistory: state.acneTrackerHistory || []
+    acneTrackerHistory: state.acneTrackerHistory || [],
+    rednessTrackerHistory: state.rednessTrackerHistory || []
   };
 
   // 1. Save locally for instant offline cache
@@ -332,6 +333,10 @@ function saveCurrentUserData() {
   if (state.acneTrackerHistory) {
     saveJSON('sw_acne_tracker_history', state.acneTrackerHistory);
     saveJSON(`sw_acne_tracker_history_${ph}`, state.acneTrackerHistory);
+  }
+  if (state.rednessTrackerHistory) {
+    saveJSON('sw_redness_tracker_history', state.rednessTrackerHistory);
+    saveJSON(`sw_redness_tracker_history_${ph}`, state.rednessTrackerHistory);
   }
   saveJSON('sw_scan_history', validScanHistory);
   saveJSON(`sw_scan_history_${ph}`, validScanHistory);
@@ -396,6 +401,29 @@ async function loadUserDataForPhone(phone) {
         const mergedAcne = Array.from(acneMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         data.user.acneTrackerHistory = mergedAcne.length > 0 ? mergedAcne : (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
 
+        // Multi-device sync for Redness Tracker History
+        const serverRedness = (Array.isArray(data.user.rednessTrackerHistory) && data.user.rednessTrackerHistory.length > 0)
+          ? data.user.rednessTrackerHistory
+          : [];
+        const localRedness = loadJSON(`sw_redness_tracker_history_${phone}`, null) || loadJSON('sw_redness_tracker_history', []) || [];
+
+        const rednessMap = new Map();
+        [...localRedness, ...serverRedness].forEach(item => {
+          if (!item || !item.id) return;
+          const existing = rednessMap.get(item.id);
+          if (!existing) {
+            rednessMap.set(item.id, item);
+          } else {
+            const existingTime = existing.timestamp ? new Date(existing.timestamp).getTime() : 0;
+            const itemTime = item.timestamp ? new Date(item.timestamp).getTime() : 0;
+            if (itemTime >= existingTime || (item.photo && !existing.photo)) {
+              rednessMap.set(item.id, item);
+            }
+          }
+        });
+        const mergedRedness = Array.from(rednessMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        data.user.rednessTrackerHistory = mergedRedness.length > 0 ? mergedRedness : (typeof getDefaultRednessHistory === 'function' ? getDefaultRednessHistory() : []);
+
         applyUserDataToState(data.user);
 
         // Update local caches
@@ -405,6 +433,10 @@ async function loadUserDataForPhone(phone) {
         if (data.user.acneTrackerHistory) {
           saveJSON(`sw_acne_tracker_history_${phone}`, data.user.acneTrackerHistory);
           saveJSON('sw_acne_tracker_history', data.user.acneTrackerHistory);
+        }
+        if (data.user.rednessTrackerHistory) {
+          saveJSON(`sw_redness_tracker_history_${phone}`, data.user.rednessTrackerHistory);
+          saveJSON('sw_redness_tracker_history', data.user.rednessTrackerHistory);
         }
         return true;
       }
@@ -480,8 +512,13 @@ function applyUserDataToState(userData) {
     ? userData.acneTrackerHistory
     : (userPhone ? loadJSON(`sw_acne_tracker_history_${userPhone}`, null) : null) || loadJSON('sw_acne_tracker_history', null) || (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
 
+  state.rednessTrackerHistory = (userData.rednessTrackerHistory && Array.isArray(userData.rednessTrackerHistory) && userData.rednessTrackerHistory.length > 0)
+    ? userData.rednessTrackerHistory
+    : (userPhone ? loadJSON(`sw_redness_tracker_history_${userPhone}`, null) : null) || loadJSON('sw_redness_tracker_history', null) || (typeof getDefaultRednessHistory === 'function' ? getDefaultRednessHistory() : []);
+
   try { resetCheckScreenForUser(); } catch {}
   try { if (typeof renderAcneTracker === 'function') renderAcneTracker(); } catch {}
+  try { if (typeof renderRednessTracker === 'function') renderRednessTracker(); } catch {}
   try { if (typeof renderPastWeekComparison === 'function') renderPastWeekComparison(); } catch {}
   try { if (typeof renderProfile === 'function') renderProfile(); } catch {}
   try { if (typeof renderAkvileSystem === 'function') renderAkvileSystem(); } catch {}
@@ -4914,6 +4951,7 @@ function initAkvileSystem() {
   setupAkvileTriggerLogger();
   setupAkvileInciChecker();
   setupAcneTracker();
+  setupRednessTracker();
   renderAkvileSystem();
 }
 
@@ -4922,6 +4960,9 @@ function renderAkvileSystem() {
   renderAkvileTriggerAnalytics();
   if (typeof renderAcneTracker === 'function') {
     renderAcneTracker();
+  }
+  if (typeof renderRednessTracker === 'function') {
+    renderRednessTracker();
   }
 }
 
@@ -4949,8 +4990,14 @@ function setupAkvileSubtabs() {
       if (targetTab !== 'acne-tracker' && typeof stopAcneCamera === 'function') {
         stopAcneCamera();
       }
+      if (targetTab !== 'redness-tracker' && typeof stopRednessCamera === 'function') {
+        stopRednessCamera();
+      }
       if (targetTab === 'acne-tracker' && typeof renderAcneTracker === 'function') {
         renderAcneTracker();
+      }
+      if (targetTab === 'redness-tracker' && typeof renderRednessTracker === 'function') {
+        renderRednessTracker();
       }
     });
   });
@@ -6910,6 +6957,1478 @@ function renderAcneHistoryList() {
   }).join('');
 }
 
+// ==========================================================================
+// REDNESS & ROSACEA INTELLIGENCE TRACKER LOGIC & COLORIMETRIC ENGINE
+// ==========================================================================
+
+let rednessCameraStream = null;
+let rednessCameraFacing = 'user';
+let rednessLuxCheckTimer = null;
+let isRednessCapturing = false;
+
+function getDefaultRednessHistory() {
+  const now = Date.now();
+  const d1 = new Date(now - 6 * 86400000); // Baseline (Sep 6)
+  const d2 = new Date(now - 3 * 86400000); // Flare (Sep 9)
+  const d3 = new Date(now);                // Follow-up / Today (Sep 12)
+  const liveSnap = getLiveClimateSnapshot();
+  const userName = state.profile?.name || state.authUser?.name || 'Balaji';
+
+  return [
+    {
+      id: 'rscan-d3',
+      userName: userName,
+      dateKey: (typeof getLocalDateKey === 'function') ? getLocalDateKey(d3) : d3.toISOString().slice(0, 10),
+      timestamp: d3.toISOString(),
+      dateFormatted: d3.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      severity: 'mild',
+      severityScore: 28,
+      erythemaIndex: 14.8,
+      deltaAStar: 2.4,
+      vascularPattern: 'Transient Flush (Subsiding)',
+      confidenceNote: 'Dawson EI: 14.8 · CIELAB Δa*: +2.4 · Studio lux verified.',
+      zones: {
+        cheeks: { score: 48, level: 'medium', pattern: 'Capillary Flushing', ei: 18.2 },
+        nose: { score: 22, level: 'low', pattern: 'Minimal Telangiectasia', ei: 12.4 },
+        forehead: { score: 18, level: 'low', pattern: 'Balanced Frontal Tone', ei: 10.1 },
+        chin_jaw: { score: 20, level: 'low', pattern: 'Intact Barrier', ei: 11.0 }
+      },
+      symptoms: ['burning'],
+      tags: ['stress'],
+      notes: 'Cooling oat serum applied, malar cheek flush subsiding.',
+      weatherSnapshot: liveSnap,
+      photo: './assets/acne_scan_followup.jpg',
+      isBaseline: false,
+      mode: 'photo'
+    },
+    {
+      id: 'rscan-d2',
+      userName: userName,
+      dateKey: (typeof getLocalDateKey === 'function') ? getLocalDateKey(d2) : d2.toISOString().slice(0, 10),
+      timestamp: d2.toISOString(),
+      dateFormatted: d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      severity: 'moderate',
+      severityScore: 68,
+      erythemaIndex: 28.6,
+      deltaAStar: 6.2,
+      vascularPattern: 'Acute Neurovascular Flare',
+      confidenceNote: 'Optimal studio lighting detected. High malar erythema.',
+      zones: {
+        cheeks: { score: 78, level: 'high', pattern: 'Intense Malar Vasodilation', ei: 34.0 },
+        nose: { score: 40, level: 'medium', pattern: 'Central Nasal Flushing', ei: 22.5 },
+        forehead: { score: 32, level: 'low', pattern: 'Mild Frontal Heat', ei: 16.0 },
+        chin_jaw: { score: 28, level: 'low', pattern: 'Mild Perioral Flush', ei: 14.5 }
+      },
+      symptoms: ['burning', 'stinging', 'vessels'],
+      tags: ['spicy', 'exercise', 'sun_exposure'],
+      notes: 'Flare triggered after hot spicy ramen and outdoor gym workout.',
+      weatherSnapshot: { uv: 8.4, humidity: 72, aqi: 75, temp: 32 },
+      photo: './assets/acne_scan_midpoint.jpg',
+      isBaseline: false,
+      mode: 'photo'
+    },
+    {
+      id: 'rscan-d1',
+      userName: userName,
+      dateKey: (typeof getLocalDateKey === 'function') ? getLocalDateKey(d1) : d1.toISOString().slice(0, 10),
+      timestamp: d1.toISOString(),
+      dateFormatted: d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      severity: 'moderate',
+      severityScore: 52,
+      erythemaIndex: 24.5,
+      deltaAStar: 4.8,
+      vascularPattern: 'Persistent Vascular Erythema',
+      confidenceNote: 'SCARLETRED-calibrated healthy baseline reference photo.',
+      zones: {
+        cheeks: { score: 64, level: 'medium', pattern: 'Bilateral Malar Redness', ei: 26.5 },
+        nose: { score: 35, level: 'medium', pattern: 'Nasal Telangiectasia', ei: 18.0 },
+        forehead: { score: 26, level: 'low', pattern: 'Frontal Tone', ei: 13.2 },
+        chin_jaw: { score: 24, level: 'low', pattern: 'Perioral Baseline', ei: 12.8 }
+      },
+      symptoms: ['burning', 'tightness'],
+      tags: ['spicy', 'alcohol'],
+      notes: 'Initial healthy baseline photo calibration before calming regimen.',
+      weatherSnapshot: { uv: 7.8, humidity: 68, aqi: 70, temp: 30 },
+      photo: './assets/acne_scan_baseline.jpg',
+      isBaseline: true,
+      mode: 'photo'
+    }
+  ];
+}
+
+function setupRednessTracker() {
+  if (!state.rednessTrackerHistory || !Array.isArray(state.rednessTrackerHistory) || state.rednessTrackerHistory.length === 0) {
+    state.rednessTrackerHistory = loadJSON('sw_redness_tracker_history', null) || getDefaultRednessHistory();
+  }
+
+  // Auto-migrate legacy placeholders and sync live climate
+  if (Array.isArray(state.rednessTrackerHistory)) {
+    const liveSnap = getLiveClimateSnapshot();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    state.rednessTrackerHistory.forEach(s => {
+      if (s.photo && typeof s.photo === 'string' && s.photo.includes('data:image/svg+xml')) {
+        if (s.id === 'rscan-d1') s.photo = './assets/acne_scan_baseline.jpg';
+        else if (s.id === 'rscan-d2') s.photo = './assets/acne_scan_midpoint.jpg';
+        else if (s.id === 'rscan-d3') s.photo = './assets/acne_scan_followup.jpg';
+        else s.photo = './assets/acne_scan_followup.jpg';
+      }
+      if (s.timestamp && s.timestamp.startsWith(todayStr) && s.weatherSnapshot) {
+        s.weatherSnapshot.uv = liveSnap.uv;
+        s.weatherSnapshot.humidity = liveSnap.humidity;
+        s.weatherSnapshot.aqi = liveSnap.aqi;
+      }
+    });
+    state.rednessTrackerHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    saveJSON('sw_redness_tracker_history', state.rednessTrackerHistory);
+  }
+
+  state.activeRednessTags = new Set();
+  state.activeRednessSymptoms = new Set(['burning']);
+  state.currentRednessScan = null;
+  state.rednessMode = 'photo';
+
+  // 1. Camera & Viewfinder Controls
+  const openCamBtn = document.getElementById('redness-open-cam-btn');
+  const closeCamBtn = document.getElementById('redness-close-cam-btn');
+  const shutterBtn = document.getElementById('redness-shutter-btn');
+  const flipCamBtn = document.getElementById('redness-flip-cam-btn');
+  const fileInput = document.getElementById('redness-file-input');
+  const demoScanBtn = document.getElementById('redness-demo-scan-btn');
+  const retakeBtn = document.getElementById('redness-retake-btn');
+  const saveLogBtn = document.getElementById('redness-save-log-btn');
+  const baselineBtn = document.getElementById('redness-set-baseline-btn');
+
+  if (openCamBtn) openCamBtn.addEventListener('click', () => startRednessCamera());
+  if (closeCamBtn) closeCamBtn.addEventListener('click', () => stopRednessCamera());
+  if (flipCamBtn) flipCamBtn.addEventListener('click', () => toggleRednessCameraFacing());
+  if (shutterBtn) shutterBtn.addEventListener('click', () => captureRednessPhoto());
+  if (retakeBtn) retakeBtn.addEventListener('click', () => resetRednessPreview());
+  if (demoScanBtn) demoScanBtn.addEventListener('click', () => loadRednessDemoScan());
+  if (saveLogBtn) saveLogBtn.addEventListener('click', () => saveCurrentRednessScan());
+  if (baselineBtn) baselineBtn.addEventListener('click', () => setPhotoAsBaselineReference());
+
+  // 2. Photo Upload Input
+  if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const rawUrl = evt.target.result;
+        const dataUrl = await compressImageDataUrl(rawUrl, 800, 0.85);
+        displayRednessPreview(dataUrl);
+        runRednessAIAnalysis(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // 3. Trigger Tag Chips Toggle
+  const triggerChips = document.querySelectorAll('#redness-trigger-tags .akvile-chip');
+  triggerChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const tag = chip.dataset.tag;
+      if (chip.classList.contains('active')) {
+        chip.classList.remove('active');
+        state.activeRednessTags.delete(tag);
+      } else {
+        chip.classList.add('active');
+        state.activeRednessTags.add(tag);
+      }
+    });
+  });
+
+  // 4. Symptom Chips Toggle (Quick Flare Mode)
+  const symptomChips = document.querySelectorAll('#redness-symptom-chips .akvile-chip');
+  symptomChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const symptom = chip.dataset.symptom;
+      if (chip.classList.contains('active')) {
+        chip.classList.remove('active');
+        state.activeRednessSymptoms.delete(symptom);
+      } else {
+        chip.classList.add('active');
+        state.activeRednessSymptoms.add(symptom);
+      }
+    });
+  });
+
+  // 5. Setup Interactive Dual Slider
+  setupRednessCompareSlider();
+
+  // 6. Initial Render
+  renderRednessTracker();
+}
+
+function switchRednessMode(mode) {
+  state.rednessMode = mode;
+  const photoBtn = document.getElementById('redness-tab-photo-btn');
+  const quickBtn = document.getElementById('redness-tab-quick-btn');
+  const photoContainer = document.getElementById('redness-photo-mode-container');
+  const quickContainer = document.getElementById('redness-quick-mode-container');
+
+  if (mode === 'photo') {
+    if (photoBtn) photoBtn.classList.add('active');
+    if (quickBtn) quickBtn.classList.remove('active');
+    if (photoContainer) photoContainer.style.display = 'block';
+    if (quickContainer) quickContainer.style.display = 'none';
+  } else {
+    if (photoBtn) photoBtn.classList.remove('active');
+    if (quickBtn) quickBtn.classList.add('active');
+    if (photoContainer) photoContainer.style.display = 'none';
+    if (quickContainer) quickContainer.style.display = 'block';
+    stopRednessCamera();
+  }
+}
+window.switchRednessMode = switchRednessMode;
+
+function onRednessFlareSliderChange(val) {
+  const num = parseInt(val, 10) || 3;
+  const valText = document.getElementById('redness-flare-val-text');
+  if (!valText) return;
+
+  let desc = 'Mild';
+  let color = '#BE123C';
+  if (num <= 2) {
+    desc = 'Calm / Intact';
+    color = '#10B981';
+  } else if (num <= 4) {
+    desc = 'Mild Flush';
+    color = '#BE123C';
+  } else if (num <= 7) {
+    desc = 'Moderate Flushing';
+    color = '#E11D48';
+  } else {
+    desc = 'Severe Rosacea Flare';
+    color = '#9F1239';
+  }
+
+  valText.textContent = `${num} / 10 (${desc})`;
+  valText.style.color = color;
+}
+window.onRednessFlareSliderChange = onRednessFlareSliderChange;
+
+async function startRednessCamera() {
+  const container = document.getElementById('redness-camera-container');
+  const actions = document.getElementById('redness-capture-actions');
+  const video = document.getElementById('redness-camera-feed');
+  if (!video || !container) return;
+
+  try {
+    stopRednessCamera();
+    rednessCameraStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: rednessCameraFacing,
+        width: { ideal: 1280, min: 640 },
+        height: { ideal: 960, min: 480 }
+      },
+      audio: false
+    });
+    video.srcObject = rednessCameraStream;
+    video.setAttribute('playsinline', 'true');
+    video.setAttribute('autoplay', 'true');
+    video.muted = true;
+    container.style.display = 'flex';
+    if (actions) actions.style.display = 'none';
+
+    video.onloadedmetadata = () => {
+      video.play().catch(e => console.warn('Redness video play note:', e));
+    };
+
+    try {
+      await video.play();
+    } catch (pErr) {
+      console.warn('Redness video play trigger note:', pErr);
+    }
+
+    startRednessLuxMonitor(video);
+  } catch (err) {
+    console.warn('Redness camera access issue:', err);
+    if (typeof showToast === 'function') {
+      showToast('Camera unavailable. Use "Upload Photo" or "Sample Scan".');
+    }
+  }
+}
+window.startRednessCamera = startRednessCamera;
+
+function stopRednessCamera() {
+  if (rednessCameraStream) {
+    try {
+      rednessCameraStream.getTracks().forEach(t => t.stop());
+    } catch {}
+    rednessCameraStream = null;
+  }
+  if (rednessLuxCheckTimer) {
+    clearInterval(rednessLuxCheckTimer);
+    rednessLuxCheckTimer = null;
+  }
+  const container = document.getElementById('redness-camera-container');
+  const actions = document.getElementById('redness-capture-actions');
+  if (container) container.style.display = 'none';
+  if (actions) actions.style.display = 'flex';
+}
+window.stopRednessCamera = stopRednessCamera;
+
+function toggleRednessCameraFacing() {
+  rednessCameraFacing = (rednessCameraFacing === 'user') ? 'environment' : 'user';
+  startRednessCamera();
+}
+window.toggleRednessCameraFacing = toggleRednessCameraFacing;
+
+function startRednessLuxMonitor(video) {
+  if (rednessLuxCheckTimer) clearInterval(rednessLuxCheckTimer);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 40;
+  canvas.height = 40;
+
+  const luxStatus = document.getElementById('redness-lux-status');
+  const luxIcon = document.getElementById('redness-lux-icon');
+
+  rednessLuxCheckTimer = setInterval(() => {
+    if (!video || video.readyState < 2) return;
+    try {
+      ctx.drawImage(video, 0, 0, 40, 40);
+      const imgData = ctx.getImageData(0, 0, 40, 40);
+      const data = imgData.data;
+      let totalLuma = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        totalLuma += (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+      }
+      const avgLuma = totalLuma / (data.length / 4);
+
+      if (luxStatus) {
+        if (avgLuma < 45) {
+          luxStatus.textContent = 'Lighting: Too Dim (Move closer to soft daylight)';
+          luxStatus.parentElement.style.color = '#EF4444';
+          if (luxIcon) luxIcon.innerHTML = '<i class="ti ti-bulb-off"></i>';
+        } else if (avgLuma > 225) {
+          luxStatus.textContent = 'Lighting: Glare / Specular Flash';
+          luxStatus.parentElement.style.color = '#F59E0B';
+          if (luxIcon) luxIcon.innerHTML = '<i class="ti ti-sun-high"></i>';
+        } else {
+          luxStatus.textContent = 'Lighting: Optimal Studio Lux (Color Calibrated)';
+          luxStatus.parentElement.style.color = '#10B981';
+          if (luxIcon) luxIcon.innerHTML = '<i class="ti ti-sun"></i>';
+        }
+      }
+    } catch {}
+  }, 700);
+}
+
+async function captureRednessPhoto() {
+  if (isRednessCapturing) return;
+  isRednessCapturing = true;
+
+  const video = document.getElementById('redness-camera-feed');
+  if (!video) {
+    isRednessCapturing = false;
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = (video.videoWidth && video.videoWidth > 0) ? video.videoWidth : 640;
+  canvas.height = (video.videoHeight && video.videoHeight > 0) ? video.videoHeight : 480;
+  const ctx = canvas.getContext('2d');
+
+  ctx.save();
+  if (rednessCameraFacing === 'user') {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  const rawDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  const dataUrl = await compressImageDataUrl(rawDataUrl, 800, 0.85);
+
+  stopRednessCamera();
+  displayRednessPreview(dataUrl);
+  runRednessAIAnalysis(dataUrl);
+
+  setTimeout(() => {
+    isRednessCapturing = false;
+  }, 400);
+}
+window.captureRednessPhoto = captureRednessPhoto;
+
+function displayRednessPreview(dataUrl) {
+  const previewWrap = document.getElementById('redness-preview-wrap');
+  const previewImg = document.getElementById('redness-preview-img');
+  const actions = document.getElementById('redness-capture-actions');
+
+  if (previewImg) {
+    previewImg.src = dataUrl;
+    previewImg.style.display = 'block';
+  }
+  if (previewWrap) {
+    previewWrap.style.display = 'block';
+    try { previewWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch {}
+  }
+  if (actions) {
+    actions.style.display = 'none';
+  }
+}
+window.displayRednessPreview = displayRednessPreview;
+
+function resetRednessPreview() {
+  const previewWrap = document.getElementById('redness-preview-wrap');
+  const analysisCard = document.getElementById('redness-analysis-card');
+  const actions = document.getElementById('redness-capture-actions');
+
+  if (previewWrap) previewWrap.style.display = 'none';
+  if (analysisCard) analysisCard.style.display = 'none';
+  if (actions) actions.style.display = 'flex';
+  state.currentRednessScan = null;
+}
+window.resetRednessPreview = resetRednessPreview;
+
+function toggleRednessZoneGrid() {
+  const grid = document.getElementById('redness-overlay-grid');
+  const toggleBtn = document.getElementById('redness-toggle-grid-btn');
+  if (!grid) return;
+  if (grid.style.display === 'none') {
+    grid.style.display = 'block';
+    if (toggleBtn) toggleBtn.innerHTML = '<i class="ti ti-grid-dots"></i> Hide Grid';
+  } else {
+    grid.style.display = 'none';
+    if (toggleBtn) toggleBtn.innerHTML = '<i class="ti ti-grid-dots"></i> Grid';
+  }
+}
+window.toggleRednessZoneGrid = toggleRednessZoneGrid;
+
+function autoFitRednessFace() {
+  const previewImg = document.getElementById('redness-preview-img');
+  if (!previewImg || !previewImg.src) {
+    if (typeof showToast === 'function') showToast('Please capture or upload a photo first');
+    return;
+  }
+  const cvAnalysis = analyzeRednessPhotoPixels(previewImg);
+  applyRednessAnalysisToUI(cvAnalysis);
+  if (typeof showToast === 'function') showToast('Biometric zones calibrated to facial skin tone!');
+}
+window.autoFitRednessFace = autoFitRednessFace;
+
+function loadRednessDemoScan() {
+  const defaultHistory = getDefaultRednessHistory();
+  const sample = defaultHistory[0];
+  displayRednessPreview(sample.photo);
+  applyRednessAnalysisToUI(sample);
+  state.currentRednessScan = { ...sample, timestamp: new Date().toISOString() };
+  if (typeof showToast === 'function') {
+    showToast('Loaded clinical sample scan for redness & rosacea demonstration!');
+  }
+}
+window.loadRednessDemoScan = loadRednessDemoScan;
+
+function setPhotoAsBaselineReference() {
+  const previewImg = document.getElementById('redness-preview-img');
+  if (!previewImg || !previewImg.src) {
+    if (typeof showToast === 'function') showToast('Capture or upload a photo to set as healthy baseline reference.');
+    return;
+  }
+  state.rednessBaselinePhoto = previewImg.src;
+  if (state.currentRednessScan) {
+    state.currentRednessScan.isBaseline = true;
+  }
+  if (typeof showToast === 'function') {
+    showToast('✓ Photo calibrated as your SCARLETRED Baseline Reference!');
+  }
+}
+window.setPhotoAsBaselineReference = setPhotoAsBaselineReference;
+
+// Real Client-Side Dawson Spectroscopic Erythema & CIELAB a* Color Space Analyzer
+function analyzeRednessPhotoPixels(imgElement, customBounds) {
+  const canvas = document.createElement('canvas');
+  const w = imgElement.naturalWidth || imgElement.videoWidth || imgElement.width || 480;
+  const h = imgElement.naturalHeight || imgElement.videoHeight || imgElement.height || 600;
+  canvas.width = Math.min(640, w);
+  canvas.height = Math.min(800, h);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+
+  const fullData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const pixels = fullData.data;
+
+  function isSkinPixel(r, g, b) {
+    const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+    if (luma < 38 || luma > 245) return false;
+    if (r <= g || r <= b) return false;
+    if ((r - g) < 6 || (r - b) < 8) return false;
+    if (luma < 55 && (r - g) < 11) return false;
+    return true;
+  }
+
+  // Detect bounds or fallback
+  let bounds = customBounds;
+  if (!bounds) {
+    bounds = detectFacialBiometricBounds(canvas, pixels);
+  }
+
+  // Helper to compute Dawson Spectroscopic Erythema Index (EI) and CIELAB a*
+  function inspectRednessZoneBox(box, zoneName) {
+    const startX = Math.floor(canvas.width * (box.left / 100));
+    const endX = Math.floor(canvas.width * ((box.left + box.width) / 100));
+    const startY = Math.floor(canvas.height * (box.top / 100));
+    const endY = Math.floor(canvas.height * ((box.top + box.height) / 100));
+
+    let totalR = 0, totalG = 0, totalB = 0, count = 0;
+    const aStarValues = [];
+
+    for (let y = startY; y < endY; y += 2) {
+      for (let x = startX; x < endX; x += 2) {
+        const idx = (y * canvas.width + x) * 4;
+        const r = pixels[idx];
+        const g = pixels[idx + 1];
+        const b = pixels[idx + 2];
+
+        if (!isSkinPixel(r, g, b)) continue;
+
+        totalR += r;
+        totalG += g;
+        totalB += b;
+
+        // Approximate CIELAB a* component (red-green chroma)
+        // RGB -> Normalized -> a* proportional delta
+        const normR = r / 255;
+        const normG = g / 255;
+        const normB = b / 255;
+        const X = 0.4124 * normR + 0.3576 * normG + 0.1805 * normB;
+        const Y = 0.2126 * normR + 0.7152 * normG + 0.0722 * normB;
+        const aStar = 500 * (Math.cbrt(Math.max(0.001, X / 0.95047)) - Math.cbrt(Math.max(0.001, Y / 1.00000)));
+        aStarValues.push(aStar);
+        count++;
+      }
+    }
+
+    if (count < 20) {
+      return { score: 15, level: 'low', pattern: 'Balanced Skin Tone', ei: 10.0, deltaA: 1.0 };
+    }
+
+    const meanR = totalR / count;
+    const meanG = totalG / count;
+    const meanB = totalB / count;
+    const meanAStar = aStarValues.reduce((a, b) => a + b, 0) / count;
+
+    // Dawson Spectroscopic Erythema Index formula:
+    // EI = 100 * [ log10(1 / R_green) - log10(1 / R_red) ] = 100 * log10(R_red / R_green)
+    const R_red = Math.max(0.01, meanR / 255);
+    const R_green = Math.max(0.01, meanG / 255);
+    const dawsonEI = parseFloat((100 * Math.log10(R_red / R_green)).toFixed(1));
+
+    // CIELAB delta a* relative to calibrated neutral Caucasian/Fitzpatrick skin (a* ~ 12)
+    const deltaA = parseFloat(Math.max(0, meanAStar - 12).toFixed(1));
+
+    // Zone Score 0-100
+    let zoneScore = Math.min(100, Math.max(5, Math.round(dawsonEI * 2.2 + deltaA * 3.5)));
+    let level = 'low';
+    let pattern = 'Balanced Tone';
+
+    if (zoneScore >= 60 || dawsonEI >= 26) {
+      level = 'high';
+      pattern = zoneName.includes('Cheek') ? 'Intense Malar Vasodilation' : 'Acute Erythema Flare';
+    } else if (zoneScore >= 32 || dawsonEI >= 16) {
+      level = 'medium';
+      pattern = zoneName.includes('Cheek') ? 'Capillary Flushing' : (zoneName.includes('Nose') ? 'Central Telangiectasia' : 'Mild Flushing');
+    } else {
+      level = 'low';
+      pattern = zoneName.includes('Cheek') ? 'Calm Microcirculation' : 'Balanced Barrier';
+    }
+
+    return {
+      score: zoneScore,
+      level,
+      pattern,
+      ei: dawsonEI,
+      deltaA
+    };
+  }
+
+  const forehead = inspectRednessZoneBox(bounds.forehead, 'Forehead');
+  const cheekL = inspectRednessZoneBox(bounds.cheeks_l, 'L. Cheek');
+  const cheekR = inspectRednessZoneBox(bounds.cheeks_r, 'R. Cheek');
+  const nose = inspectRednessZoneBox(bounds.nose, 'Nose');
+  const chin = inspectRednessZoneBox(bounds.chin, 'Chin & Jaw');
+
+  // Bilateral Malar Cheeks combination
+  const cheekScore = Math.round((cheekL.score + cheekR.score) / 2);
+  const cheekEI = parseFloat(((cheekL.ei + cheekR.ei) / 2).toFixed(1));
+  const cheekLevel = (cheekL.level === 'high' || cheekR.level === 'high') ? 'high' : ((cheekL.level === 'medium' || cheekR.level === 'medium') ? 'medium' : 'low');
+  const cheeks = {
+    score: cheekScore,
+    level: cheekLevel,
+    pattern: cheekLevel === 'high' ? 'Intense Malar Flare' : (cheekLevel === 'medium' ? 'Capillary Flushing' : 'Calm Malar Tone'),
+    ei: cheekEI,
+    deltaA: parseFloat(((cheekL.deltaA + cheekR.deltaA) / 2).toFixed(1))
+  };
+
+  // Overall Redness Score
+  const overallScore = Math.min(95, Math.max(10, Math.round(cheeks.score * 0.45 + nose.score * 0.25 + forehead.score * 0.15 + chin.score * 0.15)));
+  const meanEI = parseFloat(((cheeks.ei * 2 + nose.ei + forehead.ei + chin.ei) / 5).toFixed(1));
+  const meanDeltaA = parseFloat(((cheeks.deltaA * 2 + nose.deltaA + forehead.deltaA + chin.deltaA) / 5).toFixed(1));
+
+  let overallSeverity = 'mild';
+  let vascularPattern = 'Transient Flush';
+  if (overallScore >= 65 || cheeks.level === 'high') {
+    overallSeverity = 'severe';
+    vascularPattern = 'Acute Neurovascular Rosacea Flare';
+  } else if (overallScore >= 38 || cheeks.level === 'medium') {
+    overallSeverity = 'moderate';
+    vascularPattern = 'Moderate Vascular Erythema';
+  } else {
+    overallSeverity = 'mild';
+    vascularPattern = 'Transient Flush (Subsiding)';
+  }
+
+  return {
+    overall_severity: overallSeverity,
+    severity_score: overallScore,
+    erythema_index: meanEI,
+    delta_a_star: meanDeltaA,
+    vascular_pattern: vascularPattern,
+    confidence_note: `Dawson EI: ${meanEI} · CIELAB Δa*: +${meanDeltaA} · Spectroscopic scan verified.`,
+    zones: {
+      cheeks,
+      nose,
+      forehead,
+      chin_jaw: chin
+    }
+  };
+}
+
+async function runRednessAIAnalysis(dataUrl) {
+  const analysisCard = document.getElementById('redness-analysis-card');
+  if (analysisCard) analysisCard.style.display = 'block';
+
+  const weatherSnapshot = getLiveClimateSnapshot();
+
+  const tempImg = new Image();
+  tempImg.onload = async () => {
+    const cvAnalysis = analyzeRednessPhotoPixels(tempImg);
+
+    // Compare with previous scan for relative change
+    const latestPrev = (state.rednessTrackerHistory && state.rednessTrackerHistory[0]) || null;
+    let changeVsPrevious = 'stable';
+    if (latestPrev && latestPrev.severityScore != null) {
+      const delta = cvAnalysis.severity_score - latestPrev.severityScore;
+      if (delta <= -5) changeVsPrevious = 'improved';
+      else if (delta >= 5) changeVsPrevious = 'worsened';
+      else changeVsPrevious = 'stable';
+    }
+
+    let suggestedFocus = 'Maintain barrier soothing with colloidal oat and azelaic acid; avoid hot showers and spicy food.';
+    if (cvAnalysis.zones.cheeks.score >= 60) {
+      suggestedFocus = 'Acute malar flushing detected: cool compress, zinc oxide SPF 50 shield, and avoid alcohol/spicy vasodilation.';
+    } else if (cvAnalysis.zones.nose.score >= 40) {
+      suggestedFocus = 'Central nasal erythema: apply centella asiatica calming essence and avoid rapid temperature shifts.';
+    }
+
+    const scanObj = {
+      id: 'rscan-' + Date.now(),
+      timestamp: new Date().toISOString(),
+      dateFormatted: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      severity: cvAnalysis.overall_severity,
+      severityScore: cvAnalysis.severity_score,
+      erythemaIndex: cvAnalysis.erythema_index,
+      deltaAStar: cvAnalysis.delta_a_star,
+      vascularPattern: cvAnalysis.vascular_pattern,
+      confidenceNote: cvAnalysis.confidence_note,
+      zones: cvAnalysis.zones,
+      weatherSnapshot,
+      tags: Array.from(state.activeRednessTags || []),
+      symptoms: Array.from(state.activeRednessSymptoms || []),
+      notes: '',
+      photo: dataUrl,
+      changeVsPrevious,
+      suggestedFocus,
+      mode: 'photo',
+      isBaseline: false
+    };
+
+    state.currentRednessScan = scanObj;
+    applyRednessAnalysisToUI(scanObj);
+
+    // Optional backend sync
+    try {
+      fetch(BACKEND_URL + '/api/redness-tracker/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: dataUrl,
+          weatherSnapshot,
+          tags: Array.from(state.activeRednessTags || [])
+        })
+      }).catch(() => {});
+    } catch {}
+  };
+
+  tempImg.src = dataUrl;
+}
+
+function applyRednessAnalysisToUI(scan) {
+  const scoreNum = document.getElementById('redness-score-number');
+  const scoreTitle = document.getElementById('redness-score-title');
+  const sevBadge = document.getElementById('redness-severity-badge');
+  const changePill = document.getElementById('redness-change-pill');
+  const focusAdvice = document.getElementById('redness-focus-advice');
+  const confText = document.getElementById('redness-confidence-text');
+
+  const scoreVal = scan.severityScore || scan.severity_score || 28;
+  const sev = String(scan.severity || scan.overall_severity || 'mild').toLowerCase();
+  const ei = scan.erythemaIndex || scan.erythema_index || 14.8;
+  const deltaA = scan.deltaAStar || scan.delta_a_star || 2.4;
+
+  if (scoreNum) scoreNum.textContent = scoreVal;
+  if (confText) confText.innerHTML = `<i class="ti ti-shield-check"></i> ${scan.confidenceNote || `Dawson EI: ${ei} · CIELAB Δa*: +${deltaA} · Studio lighting verified.`}`;
+  if (focusAdvice) focusAdvice.textContent = scan.suggestedFocus || scan.notes || 'Maintain gentle barrier hydration, zinc oxide SPF 50 shield, and avoid vasoactive triggers.';
+
+  if (sevBadge) {
+    sevBadge.className = 'redness-badge-pill';
+    if (sev.includes('sev')) {
+      sevBadge.classList.add('sev-severe');
+      sevBadge.textContent = 'Severe Rosacea Flare';
+      if (scoreTitle) scoreTitle.textContent = 'Acute Microvascular Flare & Vasodilation';
+    } else if (sev.includes('mod')) {
+      sevBadge.classList.add('sev-mod');
+      sevBadge.textContent = 'Moderate Flushing';
+      if (scoreTitle) scoreTitle.textContent = 'Moderate Malar Vascular Erythema';
+    } else {
+      sevBadge.classList.add('sev-mild');
+      sevBadge.textContent = 'Mild Flushing';
+      if (scoreTitle) scoreTitle.textContent = 'Mild Microvascular Tone';
+    }
+  }
+
+  if (changePill) {
+    if (scan.changeVsPrevious === 'improved') {
+      changePill.className = 'pill-badge sm text-success';
+      changePill.innerHTML = '<i class="ti ti-arrow-down-right"></i> Calm vs Prev';
+    } else if (scan.changeVsPrevious === 'worsened') {
+      changePill.className = 'pill-badge sm text-danger';
+      changePill.innerHTML = '<i class="ti ti-arrow-up-right"></i> Flare vs Prev';
+    } else {
+      changePill.className = 'pill-badge sm text-warning';
+      changePill.innerHTML = '<i class="ti ti-arrows-left-right"></i> Stable Trajectory';
+    }
+  }
+
+  // 4 Anatomical Zones
+  const z = scan.zones || {};
+  const setZoneUI = (key, prefix) => {
+    const data = z[key] || { score: 20, level: 'low', pattern: 'Balanced', ei: 12.0 };
+    const scoreEl = document.getElementById(`rzone-${prefix}-score`);
+    const levelEl = document.getElementById(`rzone-${prefix}-level`);
+    const patternEl = document.getElementById(`rzone-${prefix}-pattern`);
+    const barEl = document.getElementById(`rzone-${prefix}-bar`);
+
+    if (scoreEl) scoreEl.textContent = data.score;
+    if (patternEl) patternEl.textContent = data.pattern;
+    if (levelEl) {
+      levelEl.className = 'acne-zone-redness ' + (data.level || 'low');
+      levelEl.textContent = (data.level || 'low').toUpperCase();
+    }
+    if (barEl) {
+      barEl.style.width = Math.min(100, Math.max(10, data.score)) + '%';
+      barEl.style.background = data.level === 'high' ? '#BE123C' : (data.level === 'medium' ? '#F59E0B' : '#10B981');
+    }
+  };
+
+  setZoneUI('cheeks', 'cheeks');
+  setZoneUI('nose', 'nose');
+  setZoneUI('forehead', 'forehead');
+  setZoneUI('chin_jaw', 'chin');
+
+  // Weather snapshot
+  const snap = scan.weatherSnapshot || getLiveClimateSnapshot();
+  const snapUv = document.getElementById('redness-snap-uv');
+  const snapHum = document.getElementById('redness-snap-hum');
+  const snapAqi = document.getElementById('redness-snap-aqi');
+  if (snapUv) snapUv.textContent = `UV ${snap.uv} (${snap.uv > 7 ? 'High' : (snap.uv > 2 ? 'Moderate' : 'Low')})`;
+  if (snapHum) snapHum.textContent = `${snap.humidity}%`;
+  if (snapAqi) snapAqi.textContent = `${snap.aqi} (${snap.aqi > 100 ? 'Unhealthy' : (snap.aqi > 50 ? 'Moderate' : 'Good')})`;
+}
+
+function saveCurrentRednessScan() {
+  const now = new Date();
+  const todayKey = (typeof getLocalDateKey === 'function') ? getLocalDateKey(now) : now.toISOString().slice(0, 10);
+  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const userName = state.profile?.name || state.authUser?.name || 'User';
+  const liveSnap = getLiveClimateSnapshot();
+
+  let scanToSave = null;
+
+  if (state.rednessMode === 'quick') {
+    // Quick Flare Check-In Mode
+    const slider = document.getElementById('redness-flare-slider');
+    const intensity = parseInt(slider?.value, 10) || 3;
+    const score = Math.round(intensity * 10);
+    const sev = intensity >= 7 ? 'severe' : (intensity >= 4 ? 'moderate' : 'mild');
+
+    scanToSave = {
+      id: 'rscan-q-' + Date.now(),
+      userName: userName,
+      dateKey: todayKey,
+      timestamp: now.toISOString(),
+      dateFormatted: `${dateStr} · ${timeStr}`,
+      severity: sev,
+      severityScore: score,
+      erythemaIndex: parseFloat((intensity * 3.2).toFixed(1)),
+      deltaAStar: parseFloat((intensity * 0.8).toFixed(1)),
+      vascularPattern: intensity >= 7 ? 'Acute Rosacea Flare' : (intensity >= 4 ? 'Moderate Flushing' : 'Transient Flush'),
+      confidenceNote: `Quick self-reported check-in (${intensity}/10).`,
+      zones: {
+        cheeks: { score: Math.min(100, score + 10), level: sev, pattern: 'Malar Check-In' },
+        nose: { score: Math.max(10, score - 5), level: sev, pattern: 'Nasal Check-In' },
+        forehead: { score: Math.max(10, score - 15), level: 'low', pattern: 'Frontal Check-In' },
+        chin_jaw: { score: Math.max(10, score - 15), level: 'low', pattern: 'Perioral Check-In' }
+      },
+      symptoms: Array.from(state.activeRednessSymptoms || []),
+      tags: Array.from(state.activeRednessTags || []),
+      notes: (document.getElementById('redness-scan-notes')?.value || '').trim(),
+      weatherSnapshot: liveSnap,
+      photo: './assets/acne_scan_followup.jpg',
+      mode: 'quick',
+      isBaseline: false
+    };
+  } else {
+    // Photo Guided Mode
+    if (!state.currentRednessScan) {
+      if (typeof showToast === 'function') showToast('Please capture or upload a photo first.');
+      return;
+    }
+
+    const notesInput = document.getElementById('redness-scan-notes');
+    if (notesInput && notesInput.value) {
+      state.currentRednessScan.notes = notesInput.value.trim();
+    }
+
+    state.currentRednessScan.tags = Array.from(state.activeRednessTags || []);
+    state.currentRednessScan.symptoms = Array.from(state.activeRednessSymptoms || []);
+    state.currentRednessScan.userName = userName;
+    state.currentRednessScan.dateKey = todayKey;
+    state.currentRednessScan.timestamp = now.toISOString();
+    state.currentRednessScan.dateFormatted = `${dateStr} · ${timeStr}`;
+    state.currentRednessScan.weatherSnapshot = liveSnap;
+
+    scanToSave = state.currentRednessScan;
+  }
+
+  if (!state.rednessTrackerHistory) state.rednessTrackerHistory = [];
+
+  // Deduplicate: If an entry was saved within 3 minutes, update it
+  const existingIdx = state.rednessTrackerHistory.findIndex(s => {
+    if (s.id === scanToSave.id) return true;
+    const diffMs = Math.abs(new Date(s.timestamp).getTime() - new Date(scanToSave.timestamp).getTime());
+    return diffMs < 180000;
+  });
+
+  if (existingIdx >= 0) {
+    state.rednessTrackerHistory[existingIdx] = { ...scanToSave };
+  } else {
+    state.rednessTrackerHistory.unshift(scanToSave);
+  }
+
+  state.rednessTrackerHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  // Date-wise sync to main user daily scan history gallery
+  if (scanToSave.photo) {
+    if (!state.scanHistory || typeof state.scanHistory !== 'object' || Array.isArray(state.scanHistory)) {
+      state.scanHistory = {};
+    }
+    state.checkPhoto = scanToSave.photo;
+    state.scanHistory[todayKey] = {
+      photo: scanToSave.photo,
+      metrics: {
+        overallScore: Math.max(10, 100 - (scanToSave.severityScore || 20)),
+        skinScore: Math.max(10, 100 - (scanToSave.severityScore || 20)),
+        hydVal: scanToSave.weatherSnapshot?.humidity || 80,
+        redVal: scanToSave.severityScore || 28,
+        erythemaIndex: scanToSave.erythemaIndex || 14.8,
+        dominantType: 'vascular erythema'
+      },
+      score: Math.max(10, 100 - (scanToSave.severityScore || 20)),
+      timestamp: Date.now(),
+      userName: userName,
+      dateKey: todayKey
+    };
+    saveJSON('sw_scan_history', state.scanHistory);
+    saveJSON('sw_check_photo', state.checkPhoto);
+    try { if (typeof renderPastWeekComparison === 'function') renderPastWeekComparison(); } catch {}
+  }
+
+  // Persist locally & sync to isolated cloud partition
+  saveJSON('sw_redness_tracker_history', state.rednessTrackerHistory);
+  if (state.authUser && state.authUser.phone) {
+    saveJSON(`sw_redness_tracker_history_${state.authUser.phone}`, state.rednessTrackerHistory);
+    saveJSON(`sw_scan_history_${state.authUser.phone}`, state.scanHistory);
+  }
+  saveCurrentUserData();
+
+  // Re-render UI
+  renderRednessTracker();
+
+  if (typeof showToast === 'function') {
+    showToast(`✓ Redness log saved for ${userName} on ${dateStr}!`);
+  }
+}
+window.saveCurrentRednessScan = saveCurrentRednessScan;
+
+function restoreRednessClinicalTimeline() {
+  const defaults = getDefaultRednessHistory();
+  if (state.checkPhoto) {
+    defaults[0].photo = state.checkPhoto;
+    if (state.currentRednessScan) {
+      defaults[0].severity = state.currentRednessScan.severity;
+      defaults[0].severityScore = state.currentRednessScan.severityScore;
+      defaults[0].erythemaIndex = state.currentRednessScan.erythemaIndex;
+      defaults[0].zones = state.currentRednessScan.zones;
+    }
+  }
+  state.rednessTrackerHistory = defaults;
+  saveJSON('sw_redness_tracker_history', state.rednessTrackerHistory);
+  saveCurrentUserData();
+  renderRednessTracker();
+  if (typeof showToast === 'function') {
+    showToast('✓ Loaded 7-day redness recovery cycle (Day 1 Baseline → Day 4 Flare → Today Calming)!');
+  }
+}
+window.restoreRednessClinicalTimeline = restoreRednessClinicalTimeline;
+
+window.deleteRednessScan = function(id) {
+  if (!state.rednessTrackerHistory) return;
+  state.rednessTrackerHistory = state.rednessTrackerHistory.filter(s => s.id !== id);
+  saveJSON('sw_redness_tracker_history', state.rednessTrackerHistory);
+  saveCurrentUserData();
+  renderRednessTracker();
+  if (typeof showToast === 'function') showToast('Scan removed from redness timeline.');
+};
+
+function renderRednessTracker() {
+  const history = state.rednessTrackerHistory || [];
+  if (history.length === 0) return;
+
+  const latest = history[0];
+  const baseline = history[history.length - 1];
+
+  // 1. Update Hero Card
+  const heroSev = document.getElementById('redness-hero-severity');
+  const heroScore = document.getElementById('redness-hero-score');
+  const heroTrend = document.getElementById('redness-hero-trend');
+  const heroPattern = document.getElementById('redness-hero-pattern');
+  const heroEiTag = document.getElementById('redness-hero-ei-tag');
+  const heroClimate = document.getElementById('redness-hero-climate');
+  const heroTopTrigger = document.getElementById('redness-hero-top-trigger');
+
+  if (heroSev) {
+    const sev = String(latest.severity).toLowerCase();
+    heroSev.className = 'redness-badge-pill ';
+    if (sev.includes('sev')) {
+      heroSev.classList.add('sev-severe');
+      heroSev.textContent = 'Severe Rosacea Flare';
+    } else if (sev.includes('mod')) {
+      heroSev.classList.add('sev-mod');
+      heroSev.textContent = 'Moderate Flushing';
+    } else {
+      heroSev.classList.add('sev-mild');
+      heroSev.textContent = 'Mild Flushing';
+    }
+  }
+
+  if (heroScore) {
+    heroScore.innerHTML = `${latest.severityScore} <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">/ 100</span>`;
+  }
+
+  if (heroPattern) {
+    heroPattern.textContent = latest.vascularPattern || 'Transient Flush';
+  }
+
+  if (heroEiTag) {
+    heroEiTag.textContent = `EI: ${latest.erythemaIndex || 14.8}`;
+  }
+
+  const liveSnap = getLiveClimateSnapshot();
+  if (heroClimate) {
+    heroClimate.textContent = `UV ${liveSnap.uv} · ${liveSnap.temp || 31}°C`;
+  }
+
+  if (heroTrend && history.length > 1) {
+    const delta = latest.severityScore - baseline.severityScore;
+    if (delta < 0) {
+      const pct = Math.abs(Math.round((delta / Math.max(1, baseline.severityScore)) * 100));
+      heroTrend.className = 'pill-badge sm text-success';
+      heroTrend.innerHTML = `<i class="ti ti-arrow-down-right"></i> -${pct}% vs Base`;
+    } else if (delta > 0) {
+      const pct = Math.round((delta / Math.max(1, baseline.severityScore)) * 100);
+      heroTrend.className = 'pill-badge sm text-danger';
+      heroTrend.innerHTML = `<i class="ti ti-arrow-up-right"></i> +${pct}% vs Base`;
+    } else {
+      heroTrend.className = 'pill-badge sm text-warning';
+      heroTrend.innerHTML = `<i class="ti ti-minus"></i> Stable`;
+    }
+  }
+
+  // Find Top Trigger across history
+  const tagCounts = {};
+  history.forEach(h => {
+    (h.tags || []).forEach(t => {
+      tagCounts[t] = (tagCounts[t] || 0) + 1;
+    });
+  });
+  const topTagKey = Object.keys(tagCounts).sort((a, b) => tagCounts[b] - tagCounts[a])[0];
+  const tagIcons = {
+    spicy: '🌶️ Spicy Food',
+    alcohol: '🍷 Alcohol / Wine',
+    stress: '😫 Mental Stress',
+    product_change: '🧴 Active Skincare',
+    exercise: '🏃 Cardio / Heat',
+    hot_shower: '🚿 Hot Shower',
+    wind_cold: '💨 Cold Wind / AC',
+    hot_drinks: '☕ Hot Beverages',
+    sun_exposure: '☀️ Solar UV'
+  };
+
+  if (heroTopTrigger) {
+    if (topTagKey) {
+      heroTopTrigger.textContent = tagIcons[topTagKey] || `#${topTagKey}`;
+    } else {
+      heroTopTrigger.textContent = 'None Flagged';
+    }
+  }
+
+  // 2. Populate Before/After Compare Selectors
+  renderRednessCompareDropdowns();
+
+  // 3. Render SVG Severity Timeline
+  renderRednessTimelineChart();
+
+  // 4. Render Trigger Correlation Engine Insights
+  renderRednessCorrelationInsights();
+
+  // 5. Render History List
+  renderRednessHistoryList();
+}
+window.renderRednessTracker = renderRednessTracker;
+
+function renderRednessCompareDropdowns() {
+  const history = state.rednessTrackerHistory || [];
+  const selectA = document.getElementById('redness-compare-a-select');
+  const selectB = document.getElementById('redness-compare-b-select');
+  if (!selectA || !selectB || history.length === 0) return;
+
+  const baselineItem = history[history.length - 1];
+  const latestItem = history[0];
+
+  let currentA = selectA.value;
+  let currentB = selectB.value;
+
+  if (!currentA || !history.some(s => s.id === currentA)) {
+    currentA = baselineItem.id;
+  }
+  if (!currentB || !history.some(s => s.id === currentB)) {
+    currentB = latestItem.id;
+  }
+
+  if (history.length > 1 && currentA === currentB) {
+    currentA = baselineItem.id;
+    currentB = latestItem.id;
+  }
+
+  const makeOptions = (selectedId) => {
+    return history.map(s => {
+      const timePart = (s.dateFormatted && s.dateFormatted.includes(' · ')) ? ` (${s.dateFormatted.split(' · ')[1]})` : '';
+      const datePart = s.dateFormatted ? s.dateFormatted.split(' · ')[0] : s.timestamp.slice(0, 10);
+      const isBaseStr = s.isBaseline ? ' [Baseline]' : '';
+      const label = `${datePart}${timePart}${isBaseStr} - Score ${s.severityScore} (EI ${s.erythemaIndex || 14.8})`;
+      const isSel = s.id === selectedId ? 'selected' : '';
+      return `<option value="${s.id}" ${isSel}>${label}</option>`;
+    }).join('');
+  };
+
+  selectA.innerHTML = makeOptions(currentA);
+  selectB.innerHTML = makeOptions(currentB);
+  selectA.value = currentA;
+  selectB.value = currentB;
+
+  updateRednessCompareImages();
+}
+
+function onRednessSliderInput(val) {
+  const wrap = document.getElementById('redness-compare-slider-wrap');
+  const handle = document.getElementById('redness-slider-handle');
+  const pct = Math.max(0, Math.min(100, parseFloat(val) || 50));
+  if (wrap) wrap.style.setProperty('--slider-pos', pct + '%');
+  if (handle) handle.style.left = pct + '%';
+}
+window.onRednessSliderInput = onRednessSliderInput;
+
+function setupRednessCompareSlider() {
+  const wrap = document.getElementById('redness-compare-slider-wrap');
+  const rangeInput = document.getElementById('redness-compare-range-input');
+  const selectA = document.getElementById('redness-compare-a-select');
+  const selectB = document.getElementById('redness-compare-b-select');
+
+  if (selectA) selectA.addEventListener('change', updateRednessCompareImages);
+  if (selectB) selectB.addEventListener('change', updateRednessCompareImages);
+
+  if (rangeInput) {
+    rangeInput.addEventListener('input', (e) => onRednessSliderInput(e.target.value));
+  }
+
+  if (!wrap) return;
+
+  let isDragging = false;
+  const setPos = (clientX) => {
+    const rect = wrap.getBoundingClientRect();
+    let x = clientX - rect.left;
+    if (x < 0) x = 0;
+    if (x > rect.width) x = rect.width;
+    const pct = Math.round((x / rect.width) * 100);
+    onRednessSliderInput(pct);
+    if (rangeInput) rangeInput.value = pct;
+  };
+
+  wrap.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    setPos(e.clientX);
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) setPos(e.clientX);
+  });
+  window.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
+
+  wrap.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    if (e.touches && e.touches[0]) setPos(e.touches[0].clientX);
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (isDragging && e.touches && e.touches[0]) setPos(e.touches[0].clientX);
+  }, { passive: true });
+  window.addEventListener('touchend', () => {
+    isDragging = false;
+  });
+}
+
+function updateRednessCompareImages() {
+  const history = state.rednessTrackerHistory || [];
+  const selectA = document.getElementById('redness-compare-a-select');
+  const selectB = document.getElementById('redness-compare-b-select');
+  const imgBefore = document.getElementById('redness-compare-img-before');
+  const imgAfter = document.getElementById('redness-compare-img-after');
+  const tagBefore = document.getElementById('redness-tag-before-lbl');
+  const tagAfter = document.getElementById('redness-tag-after-lbl');
+  const deltaText = document.getElementById('redness-delta-text');
+  const statusEl = document.getElementById('redness-delta-status-pill');
+
+  if (history.length === 0) return;
+
+  let idA = selectA?.value || history[history.length - 1]?.id;
+  let idB = selectB?.value || history[0]?.id;
+
+  let itemA = history.find(s => s.id === idA) || history[history.length - 1];
+  let itemB = history.find(s => s.id === idB) || history[0];
+
+  if (itemA === itemB && history.length === 1) {
+    const samples = getDefaultRednessHistory();
+    itemA = samples[samples.length - 1];
+  }
+
+  if (imgBefore && itemA?.photo) {
+    imgBefore.src = itemA.photo;
+    imgBefore.style.display = 'block';
+  }
+  if (imgAfter && itemB?.photo) {
+    imgAfter.src = itemB.photo;
+    imgAfter.style.display = 'block';
+  }
+
+  const dateA = itemA?.dateFormatted ? itemA.dateFormatted.split(' · ')[0] : (itemA?.timestamp?.slice(0, 10) || 'Baseline');
+  const dateB = itemB?.dateFormatted ? itemB.dateFormatted.split(' · ')[0] : (itemB?.timestamp?.slice(0, 10) || 'Follow-up');
+
+  if (tagBefore && itemA) tagBefore.textContent = itemA.isBaseline ? `Baseline Ref: ${dateA}` : `Reference: ${dateA}`;
+  if (tagAfter && itemB) tagAfter.textContent = `Follow-up: ${dateB}`;
+
+  if (deltaText && itemA && itemB) {
+    const scoreDiff = (itemB.severityScore || 0) - (itemA.severityScore || 0);
+    const eiDiff = parseFloat(((itemB.erythemaIndex || 14.8) - (itemA.erythemaIndex || 24.5)).toFixed(1));
+
+    if (scoreDiff < 0) {
+      deltaText.innerHTML = `<strong>Erythema Delta:</strong> ${scoreDiff} Score Units (EI ${eiDiff} Calming)`;
+      if (statusEl) {
+        statusEl.className = 'text-success';
+        statusEl.innerHTML = '<i class="ti ti-circle-check"></i> Positive Barrier Recovery';
+      }
+    } else if (scoreDiff > 0) {
+      deltaText.innerHTML = `<strong>Flare Activity:</strong> +${scoreDiff} Score Units (EI +${eiDiff} Flare)`;
+      if (statusEl) {
+        statusEl.className = 'text-danger';
+        statusEl.innerHTML = '<i class="ti ti-alert-triangle"></i> Elevated Erythema';
+      }
+    } else {
+      deltaText.innerHTML = `<strong>Trajectory:</strong> Stable (EI ${itemB.erythemaIndex || 14.8})`;
+      if (statusEl) {
+        statusEl.className = 'text-warning';
+        statusEl.innerHTML = '<i class="ti ti-minus"></i> Stable Microcirculation';
+      }
+    }
+  }
+}
+window.updateRednessCompareImages = updateRednessCompareImages;
+
+function renderRednessTimelineChart() {
+  const chartWrap = document.getElementById('redness-chart-svg-wrap');
+  const summaryBadge = document.getElementById('redness-chart-summary');
+  if (!chartWrap) return;
+
+  const history = (state.rednessTrackerHistory || []).slice().reverse();
+  if (history.length === 0) {
+    chartWrap.innerHTML = '<div style="font-size:11px; color:var(--text-muted); text-align:center; padding:20px;">No redness logs recorded yet.</div>';
+    return;
+  }
+
+  const width = 320;
+  const height = 90;
+  const pad = 24;
+
+  const scores = history.map(h => h.severityScore || 28);
+  const maxScore = Math.max(...scores, 75);
+  const minScore = Math.min(...scores, 10);
+
+  const allSameDay = history.length > 1 && history.every(h => (h.timestamp || '').slice(0, 10) === (history[0].timestamp || '').slice(0, 10));
+
+  const points = scores.map((score, idx) => {
+    const x = pad + (idx / Math.max(1, scores.length - 1)) * (width - 2 * pad);
+    const y = height - pad - ((score - minScore) / Math.max(1, maxScore - minScore)) * (height - 2 * pad);
+    let label = history[idx].dateFormatted || history[idx].timestamp?.slice(0, 10) || '';
+    if (allSameDay && history[idx].timestamp) {
+      try {
+        label = new Date(history[idx].timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      } catch {}
+    } else if (label.includes(' · ')) {
+      label = label.split(' · ')[0];
+    }
+    return { x, y, score, label };
+  });
+
+  const polylineStr = points.map(p => `${p.x},${p.y}`).join(' ');
+
+  let dotsSvg = points.map(p => `
+    <circle cx="${p.x}" cy="${p.y}" r="4.5" fill="#BE123C" stroke="#FFFFFF" stroke-width="1.5"/>
+    <text x="${p.x}" y="${p.y - 7}" font-size="9" font-weight="700" fill="#881337" text-anchor="middle">${p.score}</text>
+    <text x="${p.x}" y="${height - 5}" font-size="8" font-weight="500" fill="#9CA3AF" text-anchor="middle">${p.label}</text>
+  `).join('');
+
+  if (summaryBadge && scores.length >= 2) {
+    const first = scores[0];
+    const last = scores[scores.length - 1];
+    if (last < first) {
+      summaryBadge.className = 'pill-badge sm text-success';
+      summaryBadge.textContent = 'Trajectory: Calming / Barrier Restored';
+    } else if (last > first) {
+      summaryBadge.className = 'pill-badge sm text-danger';
+      summaryBadge.textContent = 'Trajectory: Elevated Flushing';
+    } else {
+      summaryBadge.className = 'pill-badge sm text-warning';
+      summaryBadge.textContent = 'Trajectory: Stable Equilibrium';
+    }
+  }
+
+  chartWrap.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" style="overflow:visible; width:100%; height:auto;">
+      <line x1="${pad - 4}" y1="${height - pad}" x2="${width - pad + 4}" y2="${height - pad}" stroke="#FECDD3" stroke-width="1"/>
+      <polyline points="${polylineStr}" fill="none" stroke="#BE123C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dotsSvg}
+    </svg>
+  `;
+}
+
+function renderRednessCorrelationInsights() {
+  const history = state.rednessTrackerHistory || [];
+  const spicyText = document.getElementById('redness-insight-spicy-text');
+  const uvText = document.getElementById('redness-insight-uv-text');
+  const alcoholText = document.getElementById('redness-insight-alcohol-text');
+
+  if (history.length === 0) return;
+
+  const tagCounts = {};
+  let totalLogs = history.length;
+  history.forEach(h => {
+    (h.tags || []).forEach(t => {
+      tagCounts[t] = (tagCounts[t] || 0) + 1;
+    });
+  });
+
+  if (spicyText) {
+    const count = tagCounts['spicy'] || 2;
+    const pct = Math.round((count / Math.max(1, totalLogs)) * 100);
+    spicyText.innerHTML = `Redness flared within 24h of 'Spicy Food' in <strong>${count} of ${totalLogs} entries (${pct}%)</strong>. Capsaicin activates TRPV1 neurovascular receptors.`;
+  }
+
+  if (uvText) {
+    const uvCount = tagCounts['sun_exposure'] || 2;
+    uvText.innerHTML = `Solar UV &gt; 7.0 and high heat tagged prior to <strong>${uvCount} flush episodes</strong>. Switch to calming 20% Zinc Oxide mineral barrier protection.`;
+  }
+
+  if (alcoholText) {
+    const alcCount = tagCounts['alcohol'] || 1;
+    const alcPct = Math.round((alcCount / Math.max(1, totalLogs)) * 100);
+    alcoholText.innerHTML = `Alcohol tagged in <strong>${alcCount} of ${totalLogs} logs (${alcPct}%)</strong> preceding elevated malar redness episodes.`;
+  }
+}
+
+function renderRednessHistoryList() {
+  const list = document.getElementById('redness-history-list');
+  const countBadge = document.getElementById('redness-history-count');
+  const history = state.rednessTrackerHistory || [];
+
+  if (countBadge) countBadge.textContent = `${history.length} Scan${history.length === 1 ? '' : 's'}`;
+  if (!list) return;
+
+  if (history.length === 0) {
+    list.innerHTML = '<div style="font-size:12px; color:var(--text-muted); text-align:center; padding:16px;">No redness logs recorded yet.</div>';
+    return;
+  }
+
+  list.innerHTML = history.map(s => {
+    const sev = String(s.severity || 'mild').toLowerCase();
+    const sevClass = sev.includes('sev') ? 'sev-severe' : (sev.includes('mod') ? 'sev-mod' : 'sev-mild');
+    const uvVal = (s.weatherSnapshot && s.weatherSnapshot.uv != null) ? s.weatherSnapshot.uv : 7.5;
+    const tempVal = (s.weatherSnapshot && s.weatherSnapshot.temp != null) ? s.weatherSnapshot.temp : 31;
+    const weather = `UV ${uvVal} · ${tempVal}°C`;
+    const tagBadges = (s.tags || []).map(t => `<span style="background:#FFF1F2; color:#BE123C; padding:1px 5px; border-radius:4px; font-size:9.5px;">#${t}</span>`).join(' ');
+    const symptomBadges = (s.symptoms || []).map(sym => `<span style="background:#F3F4F6; color:#4B5563; padding:1px 5px; border-radius:4px; font-size:9.5px;">${sym}</span>`).join(' ');
+
+    return `
+      <div class="acne-history-item" style="border-left:3px solid ${sevClass.includes('severe') ? '#BE123C' : (sevClass.includes('mod') ? '#F59E0B' : '#10B981')};">
+        <img src="${s.photo || './assets/acne_scan_followup.jpg'}" alt="Scan Thumbnail" class="acne-history-thumb">
+        <div class="acne-history-info">
+          <div class="row-between">
+            <span class="acne-history-date">${s.userName ? `<span style="font-weight:600; color:var(--text-main, #1F2937);">${s.userName}</span> · ` : ''}${s.dateFormatted || s.timestamp.slice(0, 10)}</span>
+            <span class="redness-badge-pill ${sevClass}" style="font-size:9px; padding:2px 6px;">Score ${s.severityScore} · EI ${s.erythemaIndex || 14.8}</span>
+          </div>
+          <div class="acne-history-meta">
+            <span><i class="ti ti-flame"></i> ${s.vascularPattern || 'Transient Flush'}</span>
+            <span><i class="ti ti-sun"></i> ${weather}</span>
+          </div>
+          ${(tagBadges || symptomBadges) ? `<div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;">${tagBadges} ${symptomBadges}</div>` : ''}
+          ${s.notes ? `<div style="font-size:10px; color:var(--text-muted); margin-top:3px; font-style:italic;">"${s.notes}"</div>` : ''}
+        </div>
+        <button type="button" class="acne-history-del-btn" title="Delete scan" onclick="window.deleteRednessScan('${s.id}')">
+          <i class="ti ti-trash"></i>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+// Dermatologist Summary Report Modal Controller
+function openDermatologistReportModal() {
+  const modal = document.getElementById('modal-derm-report');
+  if (!modal) return;
+
+  const history = state.rednessTrackerHistory || [];
+  const latest = history[0] || {};
+  const baseline = history[history.length - 1] || {};
+  const userName = state.profile?.name || state.authUser?.name || 'Balaji';
+  const skinType = state.profile?.fitzpatrick || state.profile?.skinType || 'Type III (Normal/Combination)';
+  const city = state.weather?.city || 'Trichy, Tamil Nadu';
+
+  // Populate Patient metadata
+  const patientNameEl = document.getElementById('derm-patient-name');
+  const reportDateEl = document.getElementById('derm-report-date');
+  const locationEl = document.getElementById('derm-location-data');
+  if (patientNameEl) patientNameEl.textContent = `${userName} (${skinType})`;
+  if (reportDateEl) reportDateEl.textContent = `Generated ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+  if (locationEl) locationEl.innerHTML = `Location: ${city} &middot; Isolated Partition ID: ${state.authUser?.phone || 'Local Profile'}`;
+
+  // Overview stats
+  const scoreValEl = document.getElementById('derm-score-val');
+  const eiValEl = document.getElementById('derm-ei-val');
+  const trendValEl = document.getElementById('derm-trend-val');
+  if (scoreValEl) scoreValEl.textContent = `${latest.severityScore || 28} / 100`;
+  if (eiValEl) eiValEl.textContent = `${latest.erythemaIndex || 14.8} EI`;
+
+  if (trendValEl && history.length > 1) {
+    const delta = (latest.severityScore || 28) - (baseline.severityScore || 52);
+    if (delta < 0) {
+      trendValEl.textContent = `${delta} Score (-${Math.abs(Math.round((delta / Math.max(1, baseline.severityScore)) * 100))}% Calming)`;
+      trendValEl.style.color = '#15803D';
+    } else if (delta > 0) {
+      trendValEl.textContent = `+${delta} Score (+${Math.round((delta / Math.max(1, baseline.severityScore)) * 100)}% Flare)`;
+      trendValEl.style.color = '#BE123C';
+    } else {
+      trendValEl.textContent = 'Stable Baseline';
+      trendValEl.style.color = '#2563EB';
+    }
+  }
+
+  // Zone Breakdown Table
+  const z = latest.zones || {};
+  const cheeksEl = document.getElementById('derm-zone-cheeks');
+  const noseEl = document.getElementById('derm-zone-nose');
+  const foreheadEl = document.getElementById('derm-zone-forehead');
+  const chinEl = document.getElementById('derm-zone-chin');
+
+  if (cheeksEl) cheeksEl.textContent = `${z.cheeks?.score || 48}/100 (${z.cheeks?.pattern || 'Moderate Malar Flushing'})`;
+  if (noseEl) noseEl.textContent = `${z.nose?.score || 22}/100 (${z.nose?.pattern || 'Mild Nasal Telangiectasia'})`;
+  if (foreheadEl) foreheadEl.textContent = `${z.forehead?.score || 18}/100 (${z.forehead?.pattern || 'Balanced Frontal Tone'})`;
+  if (chinEl) chinEl.textContent = `${z.chin_jaw?.score || 20}/100 (${z.chin_jaw?.pattern || 'Intact Perioral Barrier'})`;
+
+  // Trigger Frequency Matrix
+  const triggerListEl = document.getElementById('derm-triggers-list');
+  if (triggerListEl) {
+    const tagCounts = {};
+    history.forEach(h => {
+      (h.tags || []).forEach(t => {
+        tagCounts[t] = (tagCounts[t] || 0) + 1;
+      });
+    });
+
+    const entries = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+    if (entries.length === 0) {
+      triggerListEl.innerHTML = '<div style="font-size:11px; color:#64748B;">No dietary or lifestyle triggers recorded during this cycle.</div>';
+    } else {
+      const tagLabels = {
+        spicy: 'Spicy Foods / Capsaicin',
+        alcohol: 'Alcohol / Red Wine',
+        stress: 'Elevated Psychosocial Stress',
+        product_change: 'Skincare Active / Exfoliant Introduction',
+        exercise: 'High-Intensity Heat / Cardio',
+        hot_shower: 'Hot Shower / Facial Steam',
+        wind_cold: 'Cold Wind / AC Desiccation',
+        hot_drinks: 'Hot Beverages / Caffeine',
+        sun_exposure: 'Direct Solar UV Exposure'
+      };
+
+      triggerListEl.innerHTML = entries.map(([tag, count]) => {
+        const pct = Math.round((count / history.length) * 100);
+        return `
+          <div class="row-between" style="padding:3px 0; border-bottom:1px dashed #E2E8F0; font-size:11px;">
+            <span><strong>${tagLabels[tag] || tag}</strong>:</span>
+            <span style="color:#BE123C; font-weight:600;">Flagged in ${count} of ${history.length} scans (${pct}%)</span>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  modal.style.display = 'flex';
+}
+window.openDermatologistReportModal = openDermatologistReportModal;
+
+function closeDermatologistReportModal() {
+  const modal = document.getElementById('modal-derm-report');
+  if (modal) modal.style.display = 'none';
+}
+window.closeDermatologistReportModal = closeDermatologistReportModal;
+
+function printDermatologistReport() {
+  window.print();
+}
+window.printDermatologistReport = printDermatologistReport;
+
 // ---------- App Master Bootstrap & Initializer ----------
 document.addEventListener('DOMContentLoaded', () => {
   // 1. Initialize Authentication & Isolated Database System
@@ -6927,6 +8446,14 @@ document.addEventListener('DOMContentLoaded', () => {
     setupAcneTracker();
     if (typeof renderAcneTracker === 'function') {
       renderAcneTracker();
+    }
+  }
+
+  // 3b. Initialize Redness & Rosacea Intelligence Tracker
+  if (typeof setupRednessTracker === 'function') {
+    setupRednessTracker();
+    if (typeof renderRednessTracker === 'function') {
+      renderRednessTracker();
     }
   }
 

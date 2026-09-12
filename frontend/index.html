@@ -602,6 +602,7 @@
         <button type="button" class="akvile-subtab-btn" data-tab="trigger"><i class="ti ti-activity-heartbeat"></i> Daily Log</button>
         <button type="button" class="akvile-subtab-btn" data-tab="inci"><i class="ti ti-flask"></i> Pore Checker</button>
         <button type="button" class="akvile-subtab-btn" data-tab="acne-tracker"><i class="ti ti-chart-dots-3"></i> Acne Tracker</button>
+        <button type="button" class="akvile-subtab-btn" data-tab="redness-tracker"><i class="ti ti-flame"></i> Redness Tracker</button>
       </div>
     </div>
 
@@ -1465,6 +1466,461 @@
 
       </div>
     </div>
+
+    <!-- SUBVIEW 5: Redness & Rosacea Intelligence Tracker -->
+    <div id="akvile-view-redness-tracker" class="akvile-subview" style="display:none;">
+      <div class="section-block">
+        
+        <!-- Redness Hero Telemetry Card -->
+        <div class="redness-hero-card">
+          <div class="akvile-hero-top">
+            <div class="akvile-badge-icon" style="background:rgba(244,63,94,0.18); color:#BE123C;"><i class="ti ti-flame"></i></div>
+            <div style="flex:1;">
+              <div class="row-between">
+                <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Redness &amp; Rosacea Tracker</h3>
+                <span id="redness-hero-severity" class="redness-badge-pill sev-mild">Mild Flushing</span>
+              </div>
+              <p class="muted-note" style="margin:3px 0 0;">AI Color-Space (Dawson EI / CIELAB &Delta;a*) &amp; Climate Telemetry.</p>
+            </div>
+          </div>
+
+          <!-- Hero Metrics 2x2 Grid -->
+          <div class="redness-metrics-grid">
+            <div class="redness-metric-card">
+              <span class="redness-metric-lbl"><i class="ti ti-activity"></i> Redness Index</span>
+              <div class="redness-metric-val-row">
+                <strong id="redness-hero-score">28 <span style="font-size:11px; font-weight:normal; color:var(--text-muted);">/ 100</span></strong>
+                <span id="redness-hero-trend" class="pill-badge sm text-success"><i class="ti ti-arrow-down-right"></i> -12% vs Base</span>
+              </div>
+            </div>
+
+            <div class="redness-metric-card">
+              <span class="redness-metric-lbl"><i class="ti ti-dna-2"></i> Vascular Pattern</span>
+              <div class="redness-metric-val-row">
+                <strong id="redness-hero-pattern" style="font-size:13px;">Transient Flush</strong>
+                <span class="pill-badge sm text-warning" id="redness-hero-ei-tag">EI: 15.3</span>
+              </div>
+            </div>
+
+            <div class="redness-metric-card">
+              <span class="redness-metric-lbl"><i class="ti ti-sun"></i> Ambient Heat / UV</span>
+              <div class="redness-metric-val-row">
+                <strong id="redness-hero-climate">UV 7.5 · 31°C</strong>
+                <span class="pill-badge sm" style="background:#FFF1F2; color:#BE123C;">Thermal Load</span>
+              </div>
+            </div>
+
+            <div class="redness-metric-card">
+              <span class="redness-metric-lbl"><i class="ti ti-alert-triangle"></i> Top Flagged Trigger</span>
+              <div class="redness-metric-val-row">
+                <strong id="redness-hero-top-trigger" style="font-size:13px; color:#BE123C;">🌶️ Spicy Food</strong>
+                <span class="pill-badge sm" style="background:rgba(225,29,72,0.1); color:#BE123C;">80% Match</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode Toggle: Biometric Photo Capture vs Quick Flare Check-In -->
+        <div class="redness-mode-toggle">
+          <button type="button" id="redness-tab-photo-btn" class="redness-mode-btn active" onclick="window.switchRednessMode('photo')">
+            <i class="ti ti-camera"></i> Guided Photo Scan
+          </button>
+          <button type="button" id="redness-tab-quick-btn" class="redness-mode-btn" onclick="window.switchRednessMode('quick')">
+            <i class="ti ti-bolt"></i> Quick Flare Check-In (No Photo)
+          </button>
+        </div>
+
+        <!-- MODE 1: Guided Photo Capture Container -->
+        <div id="redness-photo-mode-container">
+          <div class="akvile-card">
+            <div class="akvile-card-header">
+              <span class="akvile-card-title"><i class="ti ti-aperture" style="color:#BE123C;"></i> Guided Facial Biometric Capture</span>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="pill-btn sm" id="redness-demo-scan-btn" onclick="window.loadRednessDemoScan()"><i class="ti ti-wand"></i> Sample Scan</button>
+                <button type="button" class="pill-btn sm" id="redness-set-baseline-btn" onclick="window.setPhotoAsBaselineReference()" title="Calibrate against healthy baseline photo (SCARLETRED Method)"><i class="ti ti-target"></i> Set Baseline</button>
+              </div>
+            </div>
+
+            <!-- Live Camera Viewfinder -->
+            <div id="redness-camera-container" class="acne-viewfinder-wrap" style="display:none;">
+              <video id="redness-camera-feed" autoplay playsinline muted></video>
+              
+              <!-- Face Oval Guide Overlay -->
+              <div class="acne-face-guide">
+                <div class="acne-guide-oval">
+                  <div class="acne-guide-eyes-line"><span></span><span></span></div>
+                  <div class="acne-guide-nose-cross"></div>
+                  <div class="acne-guide-chin-notch"></div>
+                </div>
+                <div class="acne-guide-hint">Align face in oval &amp; hold steady</div>
+              </div>
+
+              <!-- Real-time Lux Lighting Monitor -->
+              <div class="acne-lighting-bar" id="redness-lighting-bar">
+                <span id="redness-lux-icon"><i class="ti ti-sun"></i></span>
+                <span id="redness-lux-status">Checking Lighting...</span>
+              </div>
+
+              <!-- Camera Controls Bar -->
+              <div class="camera-controls-bar">
+                <button id="redness-close-cam-btn" class="cam-circle-btn sm" title="Close Camera" onclick="window.stopRednessCamera()"><i class="ti ti-x"></i></button>
+                <button id="redness-shutter-btn" class="cam-shutter-btn" title="Capture Face Photo" onclick="window.captureRednessPhoto()"><div class="cam-shutter-inner"></div></button>
+                <button id="redness-flip-cam-btn" class="cam-circle-btn sm" title="Flip Camera" onclick="window.toggleRednessCameraFacing()"><i class="ti ti-switch-camera"></i></button>
+              </div>
+            </div>
+
+            <!-- Action Buttons when Camera is closed -->
+            <div id="redness-capture-actions" class="acne-capture-btn-group" style="margin-top:10px;">
+              <button id="redness-open-cam-btn" class="btn-primary" style="flex:1; background:linear-gradient(135deg, #BE123C, #E11D48);" onclick="window.startRednessCamera()"><i class="ti ti-camera"></i> Open Guided Camera</button>
+              <label class="btn-secondary" style="margin:0; cursor:pointer; display:inline-flex; align-items:center; gap:6px; justify-content:center;">
+                <i class="ti ti-photo-up"></i> Upload Photo
+                <input type="file" id="redness-file-input" accept="image/*" style="display:none;">
+              </label>
+            </div>
+
+            <!-- Image Preview & Colorimetric Calibration Overlay -->
+            <div id="redness-preview-wrap" style="display:none; margin-top:14px; position:relative;">
+              <div class="acne-preview-box">
+                <img id="redness-preview-img" src="" alt="Captured Face Preview" class="acne-preview-img">
+                <canvas id="redness-cv-canvas" style="display:none;"></canvas>
+                <div class="acne-overlay-grid" id="redness-overlay-grid">
+                  <div class="acne-overlay-zone" data-zone="forehead" style="top:13%; left:25%; width:50%; height:16%;"><span>Frontal Tone</span></div>
+                  <div class="acne-overlay-zone" data-zone="cheeks-l" style="top:32%; left:21%; width:23%; height:20%;"><span>L. Malar</span></div>
+                  <div class="acne-overlay-zone" data-zone="nose" style="top:30%; left:40%; width:19%; height:18%;"><span>Nasal</span></div>
+                  <div class="acne-overlay-zone" data-zone="cheeks-r" style="top:32%; left:56%; width:23%; height:20%;"><span>R. Malar</span></div>
+                  <div class="acne-overlay-zone" data-zone="chin" style="top:54%; left:30%; width:41%; height:17%;"><span>Perioral</span></div>
+                </div>
+              </div>
+
+              <!-- Calibration & Actions Bar -->
+              <div class="acne-align-toolbar">
+                <div class="acne-align-info">
+                  <i class="ti ti-color-swatch" style="color:#BE123C;"></i>
+                  <span id="redness-preview-info">Chromatic &amp; Spectroscopic Calibration Active</span>
+                </div>
+                <div class="acne-align-actions">
+                  <button class="pill-btn sm" type="button" onclick="window.autoFitRednessFace()" title="Fit zones to face"><i class="ti ti-sparkles"></i> Auto-Fit</button>
+                  <button id="redness-toggle-grid-btn" class="pill-btn sm" type="button" onclick="window.toggleRednessZoneGrid()" title="Toggle Grid overlay"><i class="ti ti-grid-dots"></i> Grid</button>
+                  <button id="redness-retake-btn" class="pill-btn sm" style="color:var(--danger);" onclick="window.resetRednessPreview()" title="Retake photo"><i class="ti ti-rotate-clockwise"></i></button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Redness Analysis Results Card -->
+          <div id="redness-analysis-card" class="akvile-card" style="margin-top:14px; display:none;">
+            <div class="akvile-card-header">
+              <div class="row-between">
+                <div>
+                  <h4 class="akvile-card-title"><i class="ti ti-scan-eye" style="color:#BE123C;"></i> Erythema &amp; Vascular Breakdown</h4>
+                  <p class="muted-note" id="redness-analysis-timestamp" style="margin:2px 0 0;">Analyzed just now</p>
+                </div>
+                <span id="redness-severity-badge" class="redness-badge-pill sev-mild">Mild Flushing</span>
+              </div>
+            </div>
+
+            <!-- Score Banner -->
+            <div class="acne-score-banner" style="background:linear-gradient(135deg, rgba(255,241,242,0.8), rgba(255,228,230,0.6)); border-color:rgba(244,63,94,0.25);">
+              <div class="acne-score-circle" style="border-color:#BE123C; color:#BE123C; background:#FFFFFF;">
+                <span id="redness-score-number">28</span>
+                <small>/100</small>
+              </div>
+              <div class="acne-score-details">
+                <div class="row-between">
+                  <strong id="redness-score-title" style="color:#881337;">Mild Microvascular Dilatation</strong>
+                  <span id="redness-change-pill" class="pill-badge sm text-success"><i class="ti ti-arrow-down-right"></i> Calm vs Prev</span>
+                </div>
+                <p class="muted-note" id="redness-focus-advice" style="margin:4px 0 0;">Malar cheek flushing: cool compress, zinc oxide SPF 50 shield, and avoid alcohol/spicy vasodilation.</p>
+                <div class="acne-confidence-note" id="redness-confidence-text"><i class="ti ti-shield-check"></i> Dawson EI: 14.8 &middot; CIELAB &Delta;a*: +2.4 &middot; Studio lighting verified.</div>
+              </div>
+            </div>
+
+            <!-- 4 Facial Zones Distribution -->
+            <div class="acne-zones-container" style="margin-top:16px;">
+              <span class="akvile-sub-lbl"><i class="ti ti-layout-grid"></i> Regional Facial Erythema Distribution:</span>
+              <div class="acne-zones-grid">
+                
+                <!-- Zone 1: Cheeks / Malar -->
+                <div class="redness-zone-box" id="rzone-box-cheeks">
+                  <div class="row-between">
+                    <span class="acne-zone-title"><i class="ti ti-circle-half-2"></i> Cheeks (Malar)</span>
+                    <span class="acne-zone-redness medium" id="rzone-cheeks-level">Moderate</span>
+                  </div>
+                  <div class="acne-zone-stat-row">
+                    <span class="acne-zone-stat">Score: <strong id="rzone-cheeks-score">48</strong>/100</span>
+                    <span class="acne-zone-type" id="rzone-cheeks-pattern">Capillary Flushing</span>
+                  </div>
+                  <div class="acne-zone-bar"><div class="acne-zone-fill" id="rzone-cheeks-bar" style="width:48%; background:#BE123C;"></div></div>
+                </div>
+
+                <!-- Zone 2: Nose / Central -->
+                <div class="redness-zone-box" id="rzone-box-nose">
+                  <div class="row-between">
+                    <span class="acne-zone-title"><i class="ti ti-triangle"></i> Nose (Nasal)</span>
+                    <span class="acne-zone-redness low" id="rzone-nose-level">Low Redness</span>
+                  </div>
+                  <div class="acne-zone-stat-row">
+                    <span class="acne-zone-stat">Score: <strong id="rzone-nose-score">22</strong>/100</span>
+                    <span class="acne-zone-type" id="rzone-nose-pattern">Minimal Telangiectasia</span>
+                  </div>
+                  <div class="acne-zone-bar"><div class="acne-zone-fill" id="rzone-nose-bar" style="width:22%; background:#F59E0B;"></div></div>
+                </div>
+
+                <!-- Zone 3: Forehead / Frontal -->
+                <div class="redness-zone-box" id="rzone-box-forehead">
+                  <div class="row-between">
+                    <span class="acne-zone-title"><i class="ti ti-border-top"></i> Forehead (Frontal)</span>
+                    <span class="acne-zone-redness low" id="rzone-forehead-level">Low</span>
+                  </div>
+                  <div class="acne-zone-stat-row">
+                    <span class="acne-zone-stat">Score: <strong id="rzone-forehead-score">18</strong>/100</span>
+                    <span class="acne-zone-type" id="rzone-forehead-pattern">Balanced Tone</span>
+                  </div>
+                  <div class="acne-zone-bar"><div class="acne-zone-fill" id="rzone-forehead-bar" style="width:18%; background:#10B981;"></div></div>
+                </div>
+
+                <!-- Zone 4: Chin & Perioral -->
+                <div class="redness-zone-box" id="rzone-box-chin">
+                  <div class="row-between">
+                    <span class="acne-zone-title"><i class="ti ti-border-bottom"></i> Chin &amp; Perioral</span>
+                    <span class="acne-zone-redness low" id="rzone-chin-level">Low</span>
+                  </div>
+                  <div class="acne-zone-stat-row">
+                    <span class="acne-zone-stat">Score: <strong id="rzone-chin-score">20</strong>/100</span>
+                    <span class="acne-zone-type" id="rzone-chin-pattern">Intact Barrier</span>
+                  </div>
+                  <div class="acne-zone-bar"><div class="acne-zone-fill" id="rzone-chin-bar" style="width:20%; background:#10B981;"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Environmental Telemetry Snapshot -->
+            <div class="acne-weather-snap-box" style="margin-top:14px; background:rgba(255,255,255,0.85);">
+              <span class="akvile-sub-lbl"><i class="ti ti-cloud-storm"></i> Scan-Time Exposure Telemetry:</span>
+              <div class="acne-snap-grid">
+                <div class="acne-snap-item">
+                  <span>Solar UV Index</span>
+                  <strong id="redness-snap-uv">UV 7.5 (High)</strong>
+                </div>
+                <div class="acne-snap-item">
+                  <span>Relative Humidity</span>
+                  <strong id="redness-snap-hum">68%</strong>
+                </div>
+                <div class="acne-snap-item">
+                  <span>Air Quality (AQI)</span>
+                  <strong id="redness-snap-aqi">58 (Moderate)</strong>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- MODE 2: Quick Flare Check-In (No Photo Required) -->
+        <div id="redness-quick-mode-container" class="akvile-card" style="display:none; margin-top:0;">
+          <div class="akvile-card-header">
+            <span class="akvile-card-title"><i class="ti ti-bolt" style="color:#E11D48;"></i> Quick Daily Flare Check-In</span>
+            <span class="pill-badge sm" style="background:#FFF1F2; color:#BE123C;">No Photo Required</span>
+          </div>
+
+          <p class="muted-note" style="margin:4px 0 12px;">Rate your redness sensation and record active symptoms in 5 seconds.</p>
+
+          <!-- Self-Rating Slider -->
+          <div style="margin-bottom:16px;">
+            <div class="row-between" style="margin-bottom:6px;">
+              <label class="akvile-sub-lbl" style="margin:0;">Self-Assessed Redness Intensity (1-10):</label>
+              <strong id="redness-flare-val-text" style="color:#BE123C; font-size:15px;">3 / 10 (Mild)</strong>
+            </div>
+            <input type="range" id="redness-flare-slider" class="redness-flare-slider" min="1" max="10" value="3" oninput="window.onRednessFlareSliderChange(this.value)">
+            <div class="row-between" style="font-size:10px; color:var(--text-muted); margin-top:4px;">
+              <span>1 (Completely Calm)</span>
+              <span>5 (Moderate Flush)</span>
+              <span>10 (Severe Rosacea Flare)</span>
+            </div>
+          </div>
+
+          <!-- Clinical Symptom Checkboxes -->
+          <div>
+            <label class="akvile-sub-lbl">Active Cutaneous Sensations:</label>
+            <div class="redness-symptom-grid" id="redness-symptom-chips">
+              <button type="button" class="akvile-chip active" data-symptom="burning"><i class="ti ti-flame"></i> Burning Sensation</button>
+              <button type="button" class="akvile-chip" data-symptom="stinging"><i class="ti ti-needle"></i> Stinging / Prickling</button>
+              <button type="button" class="akvile-chip" data-symptom="vessels"><i class="ti ti-git-branch"></i> Visible Spider Vessels</button>
+              <button type="button" class="akvile-chip" data-symptom="tightness"><i class="ti ti-shield-off"></i> Tightness / Dryness</button>
+              <button type="button" class="akvile-chip" data-symptom="swelling"><i class="ti ti-circle-dot"></i> Mild Facial Swelling</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shared: Lifestyle & Environmental Trigger Selector -->
+        <div class="akvile-card" style="margin-top:14px;">
+          <div class="akvile-card-header">
+            <span class="akvile-card-title"><i class="ti ti-tag" style="color:#BE123C;"></i> Lifestyle &amp; Dietary Triggers</span>
+            <span class="muted-note" style="font-size:11px;">Select triggers preceding this scan</span>
+          </div>
+
+          <div class="akvile-multi-chips" id="redness-trigger-tags" style="margin-top:8px;">
+            <button type="button" class="akvile-chip" data-tag="spicy">🌶️ Spicy Food</button>
+            <button type="button" class="akvile-chip" data-tag="alcohol">🍷 Alcohol / Red Wine</button>
+            <button type="button" class="akvile-chip" data-tag="stress">😫 Mental Stress / Anxiety</button>
+            <button type="button" class="akvile-chip" data-tag="product_change">🧴 Skincare Active / New Product</button>
+            <button type="button" class="akvile-chip" data-tag="exercise">🏃 Cardio / Heat Workout</button>
+            <button type="button" class="akvile-chip" data-tag="hot_shower">🚿 Hot Shower / Steam</button>
+            <button type="button" class="akvile-chip" data-tag="wind_cold">💨 Cold Wind / AC Draft</button>
+            <button type="button" class="akvile-chip" data-tag="hot_drinks">☕ Hot Beverages / Caffeine</button>
+            <button type="button" class="akvile-chip" data-tag="sun_exposure">☀️ Direct Sun Exposure</button>
+          </div>
+
+          <div style="margin-top:14px;">
+            <span class="akvile-sub-lbl">Clinical Notes &amp; Observations:</span>
+            <input type="text" id="redness-scan-notes" class="input-modern" placeholder="e.g., cheek flushed after hot soup and gym workout..." style="width:100%; margin-top:4px;">
+          </div>
+
+          <!-- Save Button -->
+          <div style="margin-top:16px;">
+            <button id="redness-save-log-btn" class="btn-primary" style="width:100%; background:linear-gradient(135deg, #BE123C, #E11D48);" onclick="window.saveCurrentRednessScan()">
+              <i class="ti ti-device-floppy"></i> Save Scan to Redness Timeline
+            </button>
+          </div>
+        </div>
+
+        <!-- Section: Interactive Before & After / Baseline Slider -->
+        <div class="akvile-card" id="redness-comparison-section" style="margin-top:14px;">
+          <div class="akvile-card-header">
+            <div class="row-between">
+              <div>
+                <h4 class="akvile-card-title"><i class="ti ti-arrows-diff" style="color:#BE123C;"></i> Baseline &amp; Recovery Dual Slider</h4>
+                <p class="muted-note" style="margin:2px 0 0;">Compare vascular erythema recovery against your healthy baseline photo.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selectors -->
+          <div class="acne-compare-selectors">
+            <div class="acne-selector-group">
+              <label>Reference Photo (Baseline / Flare):</label>
+              <select id="redness-compare-a-select" class="input-modern sm" onchange="window.updateRednessCompareImages()"></select>
+            </div>
+            <div class="acne-selector-group">
+              <label>Follow-up Photo (Latest):</label>
+              <select id="redness-compare-b-select" class="input-modern sm" onchange="window.updateRednessCompareImages()"></select>
+            </div>
+          </div>
+
+          <!-- Dual Slider Box -->
+          <div class="acne-compare-slider-wrap" id="redness-compare-slider-wrap" style="--slider-pos: 50%;">
+            <div class="acne-compare-img-box">
+              <img id="redness-compare-img-after" src="" alt="Follow-up Scan" class="acne-compare-img after">
+              <span class="acne-compare-tag tag-after" id="redness-tag-after-lbl">Follow-up</span>
+            </div>
+            <div class="acne-compare-img-box after-box" id="redness-compare-overlay-box">
+              <img id="redness-compare-img-before" src="" alt="Baseline Scan" class="acne-compare-img before">
+              <span class="acne-compare-tag tag-before" id="redness-tag-before-lbl" style="background:#881337;">Baseline Ref</span>
+            </div>
+            <div class="acne-slider-handle" id="redness-slider-handle" style="left:50%;">
+              <div class="acne-handle-line"></div>
+              <div class="acne-handle-circle" style="color:#BE123C;"><i class="ti ti-arrows-left-right"></i></div>
+            </div>
+            <input type="range" min="0" max="100" value="50" class="acne-compare-range-input" id="redness-compare-range-input" aria-label="Before and after comparison slider" oninput="window.onRednessSliderInput(this.value)">
+          </div>
+
+          <!-- Delta Result -->
+          <div class="acne-compare-delta-bar" id="redness-compare-delta-bar" style="margin-top:12px;">
+            <div class="row-between" style="font-size:12px;">
+              <span id="redness-delta-text"><strong>Erythema Delta:</strong> -14 Score Units (&Delta;a* -2.1 Calming)</span>
+              <span id="redness-delta-status-pill" class="text-success"><i class="ti ti-circle-check"></i> Positive Barrier Recovery</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Climate & Trigger Correlation Insights -->
+        <div class="akvile-card" style="margin-top:14px;">
+          <div class="akvile-card-header">
+            <div>
+              <h4 class="akvile-card-title"><i class="ti ti-brain" style="color:#BE123C;"></i> Redness Trigger Correlation Engine</h4>
+              <p class="muted-note" style="margin:2px 0 0;">Explainable statistical patterns correlating environmental &amp; dietary triggers.</p>
+            </div>
+          </div>
+
+          <!-- Redness Trend Chart -->
+          <div class="acne-chart-box" style="margin-top:10px;">
+            <div class="row-between" style="margin-bottom:8px;">
+              <span class="akvile-sub-lbl" style="margin:0;">Redness Index Timeline (Rolling 14-Days):</span>
+              <span id="redness-chart-summary" class="pill-badge sm text-success">Vascular Stability: High</span>
+            </div>
+            <div class="acne-chart-svg-wrap" id="redness-chart-svg-wrap">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+          <!-- Correlation Insights List -->
+          <div class="acne-insights-list" id="redness-insights-list" style="margin-top:14px;">
+            <div class="acne-insight-item">
+              <div class="acne-insight-icon" style="background:rgba(225,29,72,0.12); color:#E11D48;"><i class="ti ti-flame"></i></div>
+              <div class="acne-insight-text">
+                <strong>Spicy Food &amp; Vasodilation:</strong>
+                <p id="redness-insight-spicy-text">Redness flared within 24h of 'Spicy Food' in 4 of 5 entries (80%). Capsaicin activates TRPV1 neurovascular receptors.</p>
+              </div>
+            </div>
+
+            <div class="acne-insight-item" style="margin-top:8px;">
+              <div class="acne-insight-icon" style="background:rgba(245,158,11,0.12); color:#F59E0B;"><i class="ti ti-sun-high"></i></div>
+              <div class="acne-insight-text">
+                <strong>Solar UV &amp; Thermal Flushing:</strong>
+                <p id="redness-insight-uv-text">Erythema markers spike by +32% on days with UV &gt; 7.0 or temperatures &gt; 31&deg;C. Mineral zinc oxide sunscreen recommended.</p>
+              </div>
+            </div>
+
+            <div class="acne-insight-item" style="margin-top:8px;">
+              <div class="acne-insight-icon" style="background:rgba(147,51,234,0.12); color:#9333EA;"><i class="ti ti-wine"></i></div>
+              <div class="acne-insight-text">
+                <strong>Alcohol &amp; Facial Flushing:</strong>
+                <p id="redness-insight-alcohol-text">Alcohol tagged prior to 60% of elevated malar cheek redness episodes. Acetaldehyde triggers rapid vascular dilation.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action: Export Dermatologist Report -->
+          <div style="margin-top:16px;">
+            <button type="button" class="auth-primary-btn" style="background:#0F172A;" onclick="window.openDermatologistReportModal()">
+              <i class="ti ti-file-text"></i> Export Dermatologist Summary Report
+            </button>
+          </div>
+        </div>
+
+        <!-- Section: Chronological Redness Scan History -->
+        <div class="akvile-card" style="margin-top:14px;">
+          <div class="akvile-card-header">
+            <div class="row-between">
+              <div>
+                <h4 class="akvile-card-title"><i class="ti ti-history" style="color:#BE123C;"></i> Redness &amp; Flare Log History</h4>
+                <p class="muted-note" style="margin:2px 0 0;">All facial scans, flare check-ins, and trigger tags.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                <button type="button" class="pill-btn sm" onclick="window.restoreRednessClinicalTimeline()" title="Load sample 7-day recovery timeline"><i class="ti ti-rotate-clockwise"></i> 7-Day Cycle</button>
+                <span id="redness-history-count" class="pill-badge sm">3 Scans</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="acne-history-list" id="redness-history-list" style="margin-top:12px;">
+            <!-- Rendered dynamically by JS -->
+          </div>
+        </div>
+
+        <!-- Non-Diagnostic Medical Disclaimer -->
+        <div class="acne-disclaimer-card" style="margin-top:14px; border-color:rgba(244,63,94,0.25);">
+          <div style="display:flex; gap:10px; align-items:flex-start;">
+            <i class="ti ti-shield-lock" style="font-size:18px; color:#BE123C; flex-shrink:0; margin-top:2px;"></i>
+            <div style="font-size:11px; line-height:1.5; color:var(--text-muted);">
+              <strong>Clinical &amp; Dermatological Disclaimer:</strong>
+              This Redness Tracker is an informational tracking and pattern recognition tool based on colorimetry, not a medical device or diagnostic for rosacea, dermatitis, or lupus. Consult a board-certified dermatologist for clinical diagnosis.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </section>
 
   <!-- ROUTINE -->
@@ -2103,6 +2559,106 @@
         <button class="auth-primary-btn" type="button" onclick="window.closeClimateDetail()">
           <span>Got It · Optimize Routine</span>
           <i class="ti ti-check"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Dermatologist Summary Clinical Export Report -->
+  <div id="modal-derm-report" class="derm-modal-overlay" style="display:none;" onclick="if(event.target===this) window.closeDermatologistReportModal()">
+    <div class="derm-modal-card">
+      <div class="derm-modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:36px; height:36px; border-radius:10px; background:#FFE4E6; color:#BE123C; display:flex; align-items:center; justify-content:center; font-size:18px;">
+            <i class="ti ti-stethoscope"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:16px; color:#0F172A;">Dermatology Clinical Telemetry Summary</h3>
+            <span style="font-size:11px; color:#64748B;">SkinWatch Longitudinal Colorimetric &amp; Climate Record</span>
+          </div>
+        </div>
+        <button type="button" class="pill-btn sm icon-only" onclick="window.closeDermatologistReportModal()"><i class="ti ti-x"></i></button>
+      </div>
+
+      <div class="derm-modal-body" id="derm-report-content">
+        <!-- Patient & Partition Metadata -->
+        <div class="derm-report-box" style="background:#F8FAFC; border-left:4px solid #BE123C;">
+          <div class="row-between">
+            <strong id="derm-patient-name" style="font-size:14px; color:#0F172A;">Balaji (Fitzpatrick Skin Type III)</strong>
+            <span id="derm-report-date" style="font-size:11px; color:#64748B;">Generated Sep 12, 2026</span>
+          </div>
+          <div style="margin-top:4px; font-size:11px; color:#475569;" id="derm-location-data">
+            Location: Trichy, Tamil Nadu &middot; Database Partition: Isolated Cloud Sync
+          </div>
+        </div>
+
+        <!-- Clinical Erythema & Vascular Overview -->
+        <div>
+          <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#334155;">1. Vascular Erythema &amp; Colorimetry Indices</span>
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:6px;">
+            <div style="background:#FFF1F2; border:1px solid #FECDD3; border-radius:10px; padding:8px; text-align:center;">
+              <span style="font-size:10px; color:#9F1239; text-transform:uppercase;">Current Score</span>
+              <div id="derm-score-val" style="font-size:16px; font-weight:700; color:#BE123C; margin-top:2px;">28 / 100</div>
+            </div>
+            <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:10px; padding:8px; text-align:center;">
+              <span style="font-size:10px; color:#166534; text-transform:uppercase;">Dawson EI Mean</span>
+              <div id="derm-ei-val" style="font-size:16px; font-weight:700; color:#15803D; margin-top:2px;">14.8 EI</div>
+            </div>
+            <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:10px; padding:8px; text-align:center;">
+              <span style="font-size:10px; color:#1E40AF; text-transform:uppercase;">Trajectory</span>
+              <div id="derm-trend-val" style="font-size:14px; font-weight:700; color:#2563EB; margin-top:2px;">-18% Calming</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regional Zone Heatmap Summary -->
+        <div>
+          <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#334155;">2. Regional Anatomical Zone Concentrations</span>
+          <div class="derm-report-box" style="margin-top:6px;">
+            <div class="row-between" style="padding:4px 0; border-bottom:1px dashed #CBD5E1;">
+              <span>Malar Cheeks (Bilateral):</span>
+              <strong id="derm-zone-cheeks" style="color:#BE123C;">48/100 (Moderate Vascular Flushing)</strong>
+            </div>
+            <div class="row-between" style="padding:4px 0; border-bottom:1px dashed #CBD5E1;">
+              <span>Central Nasal Zone:</span>
+              <strong id="derm-zone-nose" style="color:#0F172A;">22/100 (Mild / Minimal Telangiectasia)</strong>
+            </div>
+            <div class="row-between" style="padding:4px 0; border-bottom:1px dashed #CBD5E1;">
+              <span>Frontal Forehead:</span>
+              <strong id="derm-zone-forehead" style="color:#15803D;">18/100 (Intact Baseline)</strong>
+            </div>
+            <div class="row-between" style="padding:4px 0;">
+              <span>Perioral / Mandibular:</span>
+              <strong id="derm-zone-chin" style="color:#15803D;">20/100 (Calm Barrier)</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trigger Correlation Statistical Matrix -->
+        <div>
+          <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#334155;">3. Clinical Trigger Frequency Correlation</span>
+          <div class="derm-report-box" style="margin-top:6px;" id="derm-triggers-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Climate Correlation -->
+        <div>
+          <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#334155;">4. Environmental Exposure Telemetry</span>
+          <div class="derm-report-box" style="margin-top:6px;" id="derm-climate-summary">
+            Elevated UV indices (&gt;7.0) and high ambient temperatures (&gt;31&deg;C) correlate with temporary malar flush episodes (+32% intensity).
+          </div>
+        </div>
+
+        <div style="font-size:10px; color:#94A3B8; text-align:center; margin-top:4px;">
+          Certified Personal Telemetry Log &middot; SkinWatch Intelligence &middot; Non-Prescriptive Doctor Brief
+        </div>
+      </div>
+
+      <div style="padding:14px 20px; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC; border-bottom-left-radius:20px; border-bottom-right-radius:20px;">
+        <button type="button" class="pill-btn" onclick="window.closeDermatologistReportModal()">Close Preview</button>
+        <button type="button" class="derm-print-btn" onclick="window.printDermatologistReport()">
+          <i class="ti ti-printer"></i> Print / Save as PDF
         </button>
       </div>
     </div>
