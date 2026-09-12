@@ -4973,6 +4973,7 @@ function setupAkvileSubtabs() {
     btn.addEventListener('click', () => {
       tabBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      try { btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch {}
 
       const targetTab = btn.dataset.tab;
       document.querySelectorAll('.akvile-subview').forEach(view => {
