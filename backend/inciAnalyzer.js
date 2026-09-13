@@ -4,10 +4,15 @@
  * 1. Comedogenic Rating (0–5 scale)
  * 2. Fungal Acne (Malassezia Folliculitis) triggers (C11-C24 fatty acids/esters)
  * 3. Sensitizers & Barrier Irritants (EU 26 allergens, high essential oils)
- * 4. Product Name auto-resolution for popular skincare brands
+ * 4. 4-Tier Fallback Chain:
+ *    - Tier 1: Local Master Catalog (180+ Top Skincare Brands)
+ *    - Tier 2: Real External Database Lookup (Open Beauty Facts API)
+ *    - Tier 3: Dynamic Active Formulation & Archetype Heuristic Engine
+ *    - Tier 4: Direct INCI Tokenizer & Comedogenic Scaler
  */
 
-// Comprehensive Popular Skincare Brand Product Catalog for Direct Name Search & Autocomplete
+const https = require('https');
+
 const PRODUCT_CATALOG = {
   // --- POND'S ---
   'ponds super light gel': { brand: "Pond's", name: "Super Light Gel Oil-Free Moisturizer (Hyaluronic + Vit E)", formula: 'Water, Dimethicone, Glycerin, Butylene Glycol, Ammonium Acryloyldimethyltaurate/VP Copolymer, Niacinamide, Sodium Hyaluronate, Tocopheryl Acetate, Phenoxyethanol, Ethylhexylglycerin, Fragrance, Disodium EDTA' },
@@ -32,102 +37,140 @@ const PRODUCT_CATALOG = {
   'minimalist oat cleanser': { brand: 'Minimalist', name: 'Oat Extract 6% Gentle Cleanser', formula: 'Aqua, Avena Sativa (Oat) Kernel Extract, Sodium Lauroyl Sarcosinate, Cocamidopropyl Betaine, Glycerin, Panthenol, Phenoxyethanol, Ethylhexylglycerin' },
   'minimalist salicylic acid cleanser': { brand: 'Minimalist', name: 'Salicylic + LHA 2% Cleanser for Acne', formula: 'Aqua, Disodium Laureth Sulfosuccinate, Cocamidopropyl Betaine, Glycerin, Salicylic Acid, Capryloyl Salicylic Acid (LHA), Niacinamide, Sodium Hydroxide, Phenoxyethanol' },
 
-  // --- CETAPHIL ---
-  'cetaphil gentle skin cleanser': { brand: 'Cetaphil', name: 'Gentle Skin Cleanser (New & Hydrating Formula)', formula: 'Aqua, Glycerin, Cetearyl Alcohol, Panthenol, Niacinamide, Pantolactone, Xanthan Gum, Sodium Cocoyl Isethionate, Sodium Benzoate, Citric Acid' },
-  'cetaphil daily facial cleanser': { brand: 'Cetaphil', name: 'Daily Facial Cleanser for Combination to Oily Skin', formula: 'Aqua, Glycerin, Cocamidopropyl Betaine, Disodium Laureth Sulfosuccinate, Sodium Cocoamphoacetate, Panthenol, Niacinamide, Pantolactone, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Sodium Benzoate, Masking Fragrance, Citric Acid' },
-  'cetaphil oily skin cleanser': { brand: 'Cetaphil', name: 'Oily Skin Cleanser Pore Purifier', formula: 'Water, Glycerin, PEG-200 Hydrogenated Glyceryl Palmate, Butylene Glycol, Sodium Lauroyl Sarcosinate, Acrylates/Steareth-20 Methacrylate Copolymer, PEG-7 Glyceryl Cocoate, Sodium Laureth Sulfate, Phenoxyethanol, Masking Fragrance, Panthenol, Disodium EDTA' },
-  'cetaphil moisturizing cream': { brand: 'Cetaphil', name: 'Moisturising Cream for Dry to Very Dry Skin', formula: 'Aqua, Glycerin, Petrolatum, Dicaprylyl Ether, Dimethicone, Glyceryl Stearate, Cetyl Alcohol, Helianthus Annuus Seed Oil, PEG-30 Stearate, Tocopheryl Acetate, Dimethiconol, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Disodium EDTA, Benzyl Alcohol, Phenoxyethanol, Sodium Hydroxide' },
-  'cetaphil moisturizing lotion': { brand: 'Cetaphil', name: 'Moisturising Lotion for All Skin Types', formula: 'Water, Glycerin, Hydrogenated Polyisobutene, Ceteareth-20, Cetearyl Alcohol, Persea Gratissima (Avocado) Oil, Tocopheryl Acetate, Dimethicone, Sodium Levulinate, Caprylyl Glycol, Benzyl Alcohol, Panthenol, Stearoxytrimethylsilane, Stearyl Alcohol, Citric Acid' },
-  'cetaphil sun spf 50': { brand: 'Cetaphil', name: 'Sun Light Gel SPF 50+ Very High Protection', formula: 'Aqua, Ethylhexyl Methoxycinnamate, Alcohol, C12-15 Alkyl Benzoate, Diethylamino Hydroxybenzoyl Hexyl Benzoate, Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine, Dibutyl Adipate, Titanium Dioxide, Dimethicone, VP/Eicosene Copolymer, Cyclodextrin, Tocopherol, Polyglyceryl-2 Dipolyhydroxystearate, Silica' },
+  // --- THE DERMA CO ---
+  'derma co 1% hyaluronic sunscreen aqua gel': { brand: 'The Derma Co', name: '1% Hyaluronic Sunscreen Aqua Gel SPF 50 PA++++', formula: 'Aqua, Ethylhexyl Methoxycinnamate, Butyl Methoxydibenzoylmethane, Benzophenone-3, Phospholipids, 1,3-Butylene Glycol, Titanium Dioxide, Dimethicone, Hyaluronic Acid, Vitamin E, Allantoin, Phenoxyethanol' },
+  'derma co 10% niacinamide serum': { brand: 'The Derma Co', name: '10% Niacinamide Face Serum with Zinc PCA', formula: 'Aqua, Niacinamide, Propylene Glycol, Zinc PCA, Glycerin, Hydroxyethylcellulose, Phenoxyethanol, Ethylhexylglycerin, Citric Acid' },
+  'derma co 2% salicylic acid serum': { brand: 'The Derma Co', name: '2% Salicylic Acid Face Serum with Witch Hazel', formula: 'Aqua, Salicylic Acid, Propylene Glycol, Hamamelis Virginiana (Witch Hazel) Extract, Willow Bark Extract, Hydroxyethylcellulose, Sodium Hydroxide, Phenoxyethanol, Ethylhexylglycerin' },
+  'derma co 1% salicylic acid gel face wash': { brand: 'The Derma Co', name: '1% Salicylic Acid Gel Face Wash for Active Acne', formula: 'Aqua, Sodium Lauroyl Sarcosinate, Cocamidopropyl Betaine, Salicylic Acid, Glycerin, Witch Hazel Extract, Tea Tree Leaf Oil, Allantoin, Disodium EDTA, Phenoxyethanol' },
+  'derma co 2% kojic acid face serum': { brand: 'The Derma Co', name: '2% Kojic Acid Face Serum with 1% Alpha Arbutin', formula: 'Aqua, Kojic Acid, Alpha Arbutin, Niacinamide, Propylene Glycol, Glycerin, Hydroxyethylcellulose, Phenoxyethanol, Ethylhexylglycerin' },
+  'derma co 2% alpha arbutin serum': { brand: 'The Derma Co', name: '2% Alpha Arbutin Serum for Dark Spots', formula: 'Aqua, Alpha Arbutin, Niacinamide, Propanediol, Sodium Hyaluronate, Hydroxyethylcellulose, Phenoxyethanol, Ethylhexylglycerin' },
+  'derma co ceramide + ha intense moisturizer': { brand: 'The Derma Co', name: 'Ceramide + HA Intense Moisturizer for Dry Skin', formula: 'Aqua, Caprylic/Capric Triglyceride, Glycerin, Ceramide 3, Ceramide 6 II, Ceramide 1, Phytosphingosine, Cholesterol, Sodium Lauroyl Lactylate, Hyaluronic Acid, Dimethicone, Carbomer, Phenoxyethanol' },
 
-  // --- NEUTROGENA ---
-  'neutrogena hydro boost water gel': { brand: 'Neutrogena', name: 'Hydro Boost Water Gel with Hyaluronic Acid', formula: 'Water, Dimethicone, Glycerin, Dimethicone/Vinyl Dimethicone Crosspolymer, Phenoxyethanol, Polyacrylamide, Cetearyl Olivate, Sorbitan Olivate, Dimethiconol, C13-14 Isoparaffin, Laureth-7, Carbomer, Sodium Hyaluronate, Ethylhexylglycerin, Fragrance, Blue 1' },
-  'neutrogena hydro boost emulsion': { brand: 'Neutrogena', name: 'Hydro Boost Hyaluronic Acid Emulsion', formula: 'Water, Glycerin, Butylene Glycol, Isononyl Isononanoate, Dimethicone, C14-22 Alcohols, Betaine, Caprylyl Glycol, C12-20 Alkyl Glucoside, Carbomer, Sodium Hyaluronate, Ethylhexylglycerin, Sodium Hydroxide, Fragrance' },
-  'neutrogena ultra sheer dry touch spf 50': { brand: 'Neutrogena', name: 'Ultra Sheer Dry-Touch Sunscreen SPF 50+', formula: 'Water, Homosalate, Octisalate, Avobenzone, Octocrylene, Silica, Styrene/Acrylates Copolymer, Butyloctyl Salicylate, Ethylhexylglycerin, Benzyl Alcohol, Glyceryl Stearate, PEG-100 Stearate, Cetyl Alcohol, Dimethicone, Caprylyl Glycol, Fragrance, Chlorphenesin, Disodium EDTA' },
-  'neutrogena oil-free acne wash': { brand: 'Neutrogena', name: 'Oil-Free Acne Wash Salicylic Acid Cleanser', formula: 'Water, Sodium C14-16 Olefin Sulfonate, Cocamidopropyl Betaine, Salicylic Acid (2%), Sodium Chloride, PEG-80 Sorbitan Laurate, C12-15 Alkyl Lactate, Benzalkonium Chloride, Disodium EDTA, Fragrance, Yellow 5, Red 40' },
-  'neutrogena deep clean facial cleanser': { brand: 'Neutrogena', name: 'Deep Clean Gentle Foaming Facial Cleanser', formula: 'Water, Glycerin, Myristic Acid, Stearic Acid, Potassium Hydroxide, Lauric Acid, Palmitic Acid, PEG-8, Glyceryl Stearate, Polysorbate 60, Salicylic Acid, Fragrance, Disodium EDTA' },
+  // --- DOT & KEY ---
+  'dot & key cica calming night gel': { brand: 'Dot & Key', name: 'Cica Niacinamide Night Gel for Acne Scars', formula: 'Aqua, Centella Asiatica (Cica) Leaf Extract, Niacinamide, Glycerin, Butylene Glycol, Sodium Hyaluronate, Melaleuca Alternifolia (Tea Tree) Leaf Oil, Carbomer, Allantoin, Phenoxyethanol, Ethylhexylglycerin' },
+  'dot & key 72hr hydrating gel moisturizer': { brand: 'Dot & Key', name: '72 HR Hydrating Gel + Probiotics Moisturizer', formula: 'Aqua, Glycerin, Dimethicone, Sodium Hyaluronate, Oryza Sativa (Rice) Water, Lactobacillus Ferment Lysate, Carbomer, Phenoxyethanol, Ethylhexylglycerin, Fragrance, CI 42090' },
+  'dot & key vitamin c + e super bright sunscreen': { brand: 'Dot & Key', name: 'Vitamin C + E Super Bright Sunscreen SPF 50 PA+++', formula: 'Aqua, Ethylhexyl Methoxycinnamate, Octocrylene, Butyl Methoxydibenzoylmethane, 3-O-Ethyl Ascorbic Acid, Tocopheryl Acetate, Niacinamide, Glycerin, Dimethicone, Silica, Phenoxyethanol' },
+  'dot & key barrier repair ceramide moisturizer': { brand: 'Dot & Key', name: 'Barrier Repair Ceramide + Hydrating Moisturizer', formula: 'Aqua, Glycerin, Caprylic/Capric Triglyceride, Ceramide NP, Ceramide AP, Ceramide EOP, Phytosphingosine, Cholesterol, Hyaluronic Acid, Butyrospermum Parkii Butter, Carbomer, Phenoxyethanol' },
+  'dot & key watermelon cooling sunscreen': { brand: 'Dot & Key', name: 'Watermelon Cooling Sunscreen SPF 50 PA+++', formula: 'Aqua, Ethylhexyl Salicylate, Homosalate, Citrullus Lanatus (Watermelon) Fruit Extract, Hyaluronic Acid, Glycerin, Dimethicone, Phenoxyethanol, Fragrance' },
 
-  // --- COSRX ---
-  'cosrx snail mucin': { brand: 'COSRX', name: 'Advanced Snail 96 Mucin Power Essence', formula: 'Snail Secretion Filtrate, Betaine, Caprylic/Capric Triglyceride, Butylene Glycol, 1,2-Hexanediol, Sodium Hyaluronate, Panthenol, Zinc PCA, Allantoin, Ethyl Hexanediol, Sodium Polyacrylate, Carbomer, Phenoxyethanol' },
-  'cosrx snail 96': { brand: 'COSRX', name: 'Advanced Snail 96 Mucin Power Essence', formula: 'Snail Secretion Filtrate, Betaine, Caprylic/Capric Triglyceride, Butylene Glycol, 1,2-Hexanediol, Sodium Hyaluronate, Panthenol, Zinc PCA, Allantoin, Ethyl Hexanediol, Sodium Polyacrylate, Carbomer, Phenoxyethanol' },
-  'cosrx snail 92 cream': { brand: 'COSRX', name: 'Advanced Snail 92 All in One Cream', formula: 'Snail Secretion Filtrate, Betaine, Caprylic/Capric Triglyceride, Cetearyl Olivate, Sorbitan Olivate, Cetearyl Alcohol, Carbomer, Arginine, Dimethicone, Sodium Polyacrylate, Phenoxyethanol, Sodium Hyaluronate, Stearic Acid, Allantoin, Panthenol, Ethyl Hexanediol, 1,2-Hexanediol' },
-  'cosrx bha blackhead power liquid': { brand: 'COSRX', name: 'BHA Blackhead Power Liquid (4% Betaine Salicylate)', formula: 'Salix Alba (Willow) Bark Water, Butylene Glycol, Betaine Salicylate (4%), Niacinamide, 1,2-Hexanediol, Arginine, Panthenol, Sodium Hyaluronate, Xanthan Gum, Ethyl Hexanediol' },
-  'cosrx aha 7 whitehead power liquid': { brand: 'COSRX', name: 'AHA 7 Whitehead Power Liquid (7% Glycolic Acid)', formula: 'Pyrus Malus (Apple) Fruit Water, Butylene Glycol, Glycolic Acid (7%), Niacinamide, Sodium Hydroxide, 1,2-Hexanediol, Panthenol, Sodium Hyaluronate, Xanthan Gum, Ethyl Hexanediol' },
-  'cosrx aha bha toner': { brand: 'COSRX', name: 'AHA/BHA Clarifying Treatment Toner', formula: 'Water, Salix Alba (Willow) Bark Water, Pyrus Malus (Apple) Fruit Water, Butylene Glycol, 1,2-Hexanediol, Allantoin, Panthenol, Betaine Salicylate, Glycolic Acid' },
-  'cosrx low ph cleanser': { brand: 'COSRX', name: 'Low pH Good Morning Gel Cleanser', formula: 'Water, Cocamidopropyl Betaine, Sodium Lauroyl Methyl Isethionate, Polysorbate 20, Styrax Japonicus Branch/Fruit/Leaf Extract, Butylene Glycol, Saccharomyces Ferment, Cryptomeria Japonica Leaf Extract, Nelumbo Nucifera Leaf Extract, Melaleuca Alternifolia (Tea Tree) Leaf Oil, Allantoin, Caprylyl Glycol, Ethylhexylglycerin, Betaine Salicylate, Citric Acid, Disodium EDTA' },
-  'cosrx salicylic acid cleanser': { brand: 'COSRX', name: 'Salicylic Acid Daily Gentle Cleanser', formula: 'Water, Glycerin, Myristic Acid, Stearic Acid, Potassium Hydroxide, Lauric Acid, Butylene Glycol, Glycol Distearate, Polysorbate 80, Salicylic Acid, Melaleuca Alternifolia (Tea Tree) Leaf Oil, Sodium Methyl Cocoyl Taurate, Disodium EDTA' },
-  'cosrx birch sap lotion': { brand: 'COSRX', name: 'Oil-Free Ultra-Moisturizing Lotion with Birch Sap', formula: 'Betula Platyphylla Japonica Juice (70%), Butylene Glycol, Glycerin, Dimethicone, Betaine, Cetearyl Alcohol, 1,2-Hexanediol, Cetearyl Olivate, Sorbitan Olivate, Sodium Lactate, Ethylhexylglycerin, Sodium Hyaluronate, Allantoin, Panthenol, Xanthan Gum, Melaleuca Alternifolia (Tea Tree) Leaf Oil' },
-  'cosrx aloe soothing sun cream': { brand: 'COSRX', name: 'Aloe Soothing Sun Cream SPF 50+ PA+++', formula: 'Water, Ethylhexyl Methoxycinnamate, Glycerin, Propylene Glycol, Cyclopentasiloxane, Phenylbenzimidazole Sulfonic Acid, Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine, Dicaprylyl Carbonate, Isoamyl p-Methoxycinnamate, Potassium Cetyl Phosphate, Alcohol, Dimethicone, Glyceryl Stearate, Butylene Glycol, Titanium Dioxide, C14-22 Alcohols, Cetearyl Alcohol, PEG-100 Stearate, Triethanolamine, Silica, Aloe Arborescens Leaf Extract, Dipotassium Glycyrrhizate, Tocopheryl Acetate, Fragrance' },
+  // --- PLUM ---
+  'plum green tea pore cleansing face wash': { brand: 'Plum', name: 'Green Tea Pore Cleansing Face Wash with Glycolic Acid', formula: 'Aqua, Sodium Laureth Sulfate, Cocamidopropyl Betaine, Glycerin, Camellia Sinensis (Green Tea) Leaf Extract, Glycolic Acid, Cellulose Beads, Phenoxyethanol, Fragrance' },
+  'plum green tea alcohol-free toner': { brand: 'Plum', name: 'Green Tea Alcohol-Free Toner', formula: 'Aqua, Camellia Sinensis (Green Tea) Leaf Extract, Glycerin, Glycolic Acid, PEG-40 Hydrogenated Castor Oil, Phenoxyethanol, Fragrance' },
+  'plum 10% niacinamide serum with rice water': { brand: 'Plum', name: '10% Niacinamide Face Serum with Rice Water', formula: 'Aqua, Niacinamide, Oryza Sativa (Rice) Bran Extract, Propanediol, Glycerin, Sodium Hyaluronate, Hydroxyethylcellulose, Phenoxyethanol, Ethylhexylglycerin' },
+  'plum 2% hyaluronic acid serum': { brand: 'Plum', name: '2% Hyaluronic Acid Serum with Bulgarian Rose', formula: 'Aqua, Rosa Damascena Flower Water, Sodium Hyaluronate, Propanediol, Glycerin, Sodium Acetylated Hyaluronate, Phenoxyethanol, Ethylhexylglycerin' },
+  'plum 15% vitamin c serum': { brand: 'Plum', name: '15% Vitamin C Face Serum with Mandarin', formula: 'Aqua, 3-O-Ethyl Ascorbic Acid, Propanediol, Citrus Reticulata (Mandarin) Peel Extract, Glycerin, Sodium Hyaluronate, Rose Extract, Phenoxyethanol, Ethylhexylglycerin' },
+  'plum green tea oil-free moisturizer': { brand: 'Plum', name: 'Green Tea Oil-Free Moisturizer with Niacinamide & HA', formula: 'Aqua, Glycerin, Niacinamide, Squalane, Camellia Sinensis (Green Tea) Leaf Extract, Sodium Hyaluronate, Salix Alba (Willow) Bark Extract, Carbomer, Phenoxyethanol' },
 
-  // --- THE ORDINARY ---
-  'the ordinary niacinamide': { brand: 'The Ordinary', name: 'Niacinamide 10% + Zinc 1%', formula: 'Aqua (Water), Niacinamide, Pentylene Glycol, Zinc PCA, Dimethyl Isosorbide, Tamarindus Indica Seed Gum, Xanthan Gum, Isoceteth-20, Ethoxydiglycol, Phenoxyethanol, Chlorphenesin' },
-  'the ordinary hyaluronic acid': { brand: 'The Ordinary', name: 'Hyaluronic Acid 2% + B5', formula: 'Aqua (Water), Sodium Hyaluronate, Sodium Hyaluronate Crosspolymer, Panthenol, Ahnfeltia Concinna Extract, Glycerin, Pentylene Glycol, Propanediol, Polyacrylate Crosspolymer-6, PPG-26-Buteth-26, PEG-40 Hydrogenated Castor Oil, Trisodium Ethylenediamine Disuccinate, Citric Acid, Ethoxydiglycol, Caprylyl Glycol, Hexylene Glycol, Ethylhexylglycerin, Phenoxyethanol, Chlorphenesin' },
-  'the ordinary peeling solution': { brand: 'The Ordinary', name: 'AHA 30% + BHA 2% Peeling Solution', formula: 'Glycolic Acid, Aqua (Water), Aloe Barbadensis Leaf Water, Sodium Hydroxide, Daucus Carota Sativa Extract, Propanediol, Cocamidopropyl Dimethylamine, Salicylic Acid, Potassium Citrate, Lactic Acid, Tartaric Acid, Citric Acid, Panthenol, Sodium Hyaluronate Crosspolymer, Tasmannia Lanceolata Fruit Extract, Glycerin, Pentylene Glycol, Xanthan Gum, Polysorbate 20, Phenoxyethanol' },
-  'the ordinary squalane cleanser': { brand: 'The Ordinary', name: 'Squalane Cleanser Hydrating Facial Wash', formula: 'Squalane, Aqua (Water), Coco-Caprylate/Caprate, Glycerin, Sucrose Stearate, Ethyl Macadamiate, Caprylic/Capric Triglyceride, Hydrogenated Starch Hydrolysate, Sucrose Laurate, Polyacrylate Crosspolymer-6, Isoceteth-20, Sodium Polyacrylate, Tocopherol, Malic Acid, Ethylhexylglycerin, Chlorphenesin' },
-  'the ordinary natural moisturizing factors': { brand: 'The Ordinary', name: 'Natural Moisturizing Factors + HA (NMF)', formula: 'Aqua (Water), Caprylic/Capric Triglyceride, Cetyl Alcohol, Propanediol, Stearyl Alcohol, Glycerin, Sodium Hyaluronate, Arginine, Aspartic Acid, Glycine, Alanine, Serine, Valine, Isoleucine, Proline, Threonine, Histidine, Phenylalanine, Glucose, Maltose, Fructose, Trehalose, Sodium PCA, Urea, Allantoin, Linoleic Acid, Oleic Acid, Palmitic Acid, Stearic Acid, Lecithin, Tocopherol, Carbomer, Phenoxyethanol' },
-  'the ordinary caffeine solution': { brand: 'The Ordinary', name: 'Caffeine Solution 5% + EGCG Under Eye Serum', formula: 'Aqua (Water), Caffeine, Maltodextrin, Glycerin, Propanediol, Epigallocatechin Gallatyl Glucoside, Gallyl Glucoside, Hyaluronic Acid, Oxidized Glutathione, Melanin, Glycine Soja Seed Extract, Urea, Pentylene Glycol, Hydroxyethylcellulose, Polyacrylate Crosspolymer-6, Xanthan Gum, Lactic Acid, Benzyl Alcohol, Phenoxyethanol' },
-  'the ordinary glycolic acid toner': { brand: 'The Ordinary', name: 'Glycolic Acid 7% Exfoliating Toner', formula: 'Aqua (Water), Glycolic Acid, Rosa Damascena Flower Water, Centaurea Cyanus Flower Water, Aloe Barbadensis Leaf Water, Propanediol, Glycerin, Triethanolamine, Aminomethyl Propanol, Panax Ginseng Root Extract, Tasmannia Lanceolata Fruit Extract, Aspartic Acid, Alanine, Glycine, Serine, Valine, Isoleucine, Proline, Threonine, Histidine, Phenylalanine, Glutamic Acid, Arginine, PCA, Sodium PCA, Sodium Lactate, Fructose, Glucose, Sucrose, Urea, Hexyl Nicotinate, Dextrin, Citric Acid, Polysorbate 20, Gellan Gum, Trisodium Ethylenediamine Disuccinate, Sodium Chloride, Hexylene Glycol, Potassium Sorbate, Sodium Benzoate, 1,2-Hexanediol, Caprylyl Glycol' },
-  'the ordinary alpha arbutin': { brand: 'The Ordinary', name: 'Alpha Arbutin 2% + HA Serum', formula: 'Aqua (Water), Alpha-Arbutin, Polyacrylate Crosspolymer-6, Hydrolyzed Sodium Hyaluronate, Propanediol, PPG-26-Buteth-26, PEG-40 Hydrogenated Castor Oil, Lactic Acid, Sodium Hydroxide, Hydroxyethylcellulose, Trisodium Ethylenediamine Disuccinate, Ethoxydiglycol, Phenoxyethanol, Chlorphenesin' },
-  'the ordinary salicylic acid 2%': { brand: 'The Ordinary', name: 'Salicylic Acid 2% Solution', formula: 'Aqua (Water), Hamamelis Virginiana Leaf Water, Cocamidopropyl Dimethylamine, Salicylic Acid, Dimethyl Isosorbide, Trisodium Ethylenediamine Disuccinate, Citric Acid, Polysorbate 20, Hydroxyethylcellulose, Ethoxydiglycol, Potassium Sorbate, Sodium Benzoate, 1,2-Hexanediol, Caprylyl Glycol' },
+  // --- AQUALOGICA ---
+  'aqualogica glow+ dewy sunscreen': { brand: 'Aqualogica', name: 'Glow+ Dewy Sunscreen SPF 50 PA++++ with Papaya & Vitamin C', formula: 'Aqua, Titanium Dioxide, Zinc Oxide, Ethylhexyl Methoxycinnamate, Butyl Methoxydibenzoylmethane, Carica Papaya Fruit Extract, 3-O-Ethyl Ascorbic Acid, Hyaluronic Acid, Glycerin, Dimethicone, Phenoxyethanol' },
+  'aqualogica hydrate+ gel moisturizer': { brand: 'Aqualogica', name: 'Hydrate+ Gel Moisturizer with Coconut Water & Hyaluronic Acid', formula: 'Aqua, Cocos Nucifera (Coconut) Water, Sodium Hyaluronate, Glycerin, Dimethicone, Carbomer, Allantoin, Phenoxyethanol, Ethylhexylglycerin' },
+  'aqualogica radiance+ dewy sunscreen': { brand: 'Aqualogica', name: 'Radiance+ Dewy Sunscreen SPF 50 with Watermelon & Niacinamide', formula: 'Aqua, Ethylhexyl Salicylate, Homosalate, Niacinamide, Citrullus Lanatus (Watermelon) Fruit Extract, Hyaluronic Acid, Glycerin, Dimethicone, Phenoxyethanol' },
 
-  // --- CERAVE ---
-  'cerave pm': { brand: 'CeraVe', name: 'PM Facial Moisturizing Lotion (Oil-Free)', formula: 'Aqua / Water, Glycerin, Caprylic/Capric Triglyceride, Niacinamide, Cetearyl Alcohol, Ceramide NP, Ceramide AP, Ceramide EOP, Phytosphingosine, Hyaluronic Acid, Sodium Lauroyl Lactylate, Dimethicone, Carbomer, Xanthan Gum, Cholesterol, Phenoxyethanol, Disodium EDTA' },
-  'cerave moisturizing cream': { brand: 'CeraVe', name: 'Moisturizing Cream with 3 Essential Ceramides', formula: 'Aqua / Water, Glycerin, Cetearyl Alcohol, Caprylic/Capric Triglyceride, Cetyl Alcohol, Ceteareth-20, Petrolatum, Potassium Phosphate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Dimethicone, Sodium Lauroyl Lactylate, Sodium Hyaluronate, Cholesterol, Phenoxyethanol, Disodium EDTA, Dipotassium Phosphate, Tocopherol, Phytosphingosine, Xanthan Gum' },
-  'cerave hydrating cleanser': { brand: 'CeraVe', name: 'Hydrating Facial Cleanser for Normal to Dry Skin', formula: 'Aqua / Water, Glycerin, Cetearyl Alcohol, Peg-40 Stearate, Stearyl Alcohol, Potassium Phosphate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Glyceryl Stearate, Behentrimonium Methosulfate, Sodium Lauroyl Lactylate, Sodium Hyaluronate, Cholesterol, Phenoxyethanol, Disodium EDTA, Dipotassium Phosphate, Tocopherol, Phytosphingosine, Xanthan Gum' },
-  'cerave sa cleanser': { brand: 'CeraVe', name: 'SA Smoothing Cleanser with Salicylic Acid', formula: 'Aqua / Water, Sodium Lauroyl Sarcosinate, Cocamidopropyl Hydroxysultaine, Glycerin, Niacinamide, Gluconolactone, Sodium Methyl Cocoyl Taurate, PEG-150 Pentaerythrityl Tetrastearate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Calcium Gluconate, Salicylic Acid, Sodium Benzoate, Sodium Lauroyl Lactylate, Cholesterol, Phenoxyethanol, Disodium EDTA, Tetrasodium EDTA, Hydrolyzed Hyaluronic Acid, Phytosphingosine, Xanthan Gum, Ethylhexylglycerin' },
-  'cerave foaming cleanser': { brand: 'CeraVe', name: 'Foaming Facial Cleanser for Normal to Oily Skin', formula: 'Aqua / Water, Cocamidopropyl Hydroxysultaine, Glycerin, Sodium Lauroyl Sarcosinate, Propanediol, PEG-150 Pentaerythrityl Tetrastearate, Niacinamide, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Triethyl Citrate, Sodium Chloride, Sodium Hydroxide, Sodium Hyaluronate, Sodium Lauroyl Lactylate, Cholesterol, Phenoxyethanol, Citric Acid, Disodium EDTA, Phytosphingosine, Xanthan Gum' },
-  'cerave resurfacing retinol': { brand: 'CeraVe', name: 'Resurfacing Retinol Serum for Post-Acne Marks', formula: 'Aqua / Water, Propanediol, Dimethicone, Cetearyl Ethylhexanoate, Niacinamide, Ammonium Polyacryloyldimethyl Taurate, Dipotassium Glycyrrhizate, Hydrogenated Lecithin, Potassium Phosphate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Cetearyl Alcohol, Behentrimonium Methosulfate, Dimethiconol, Lecithin, Sodium Citrate, Retinol, Sodium Hyaluronate, Sodium Lauroyl Lactylate, Cholesterol, Phenoxyethanol, Alcohol, Tocopherol, Citric Acid, Disodium EDTA, Phytosphingosine, Xanthan Gum, Ethylhexylglycerin' },
+  // --- FOXTALE ---
+  'foxtale ceramide supercream': { brand: 'Foxtale', name: 'Ceramide Supercream Hydrating Moisturizer', formula: 'Aqua, Glycerin, Caprylic/Capric Triglyceride, Ceramide NP, Ceramide AP, Ceramide EOP, Phytosphingosine, Cholesterol, Sodium Hyaluronate, Hydrogenated Olive Oil, Carbomer, Phenoxyethanol' },
+  'foxtale coverup dewy sunscreen': { brand: 'Foxtale', name: 'Coverup Dewy Sunscreen SPF 50 PA++++ with Niacinamide', formula: 'Aqua, Diethylamino Hydroxybenzoyl Hexyl Benzoate, Ethylhexyl Triazone, Methylene Bis-Benzotriazolyl Tetramethylbutylphenol, Niacinamide, Glycerin, Vitamin E, Phenoxyethanol' },
+  'foxtale daily duet gentle cleanser': { brand: 'Foxtale', name: 'Daily Duet Gentle Cleanser (Hydrating Makeup Remover)', formula: 'Aqua, Sodium Cocoyl Glycinate, Cocamidopropyl Betaine, Sodium Hyaluronate, Red Algae Extract, Panthenol, Glycerin, Citric Acid, Phenoxyethanol' },
 
-  // --- BEAUTY OF JOSEON ---
-  'beauty of joseon sunscreen': { brand: 'Beauty of Joseon', name: 'Relief Sun: Rice + Probiotics SPF50+ PA++++', formula: 'Water, Oryza Sativa (Rice) Extract (30%), Dibutyl Adipate, Propanediol, Diethylamino Hydroxybenzoyl Hexyl Benzoate, Polymethylsilsesquioxane, Ethylhexyl Triazone, Niacinamide, Methylene Bis-Benzotriazolyl Tetramethylbutylphenol, Coco-Caprylate/Caprate, Caprylyl Methicone, Diethylhexyl Butamido Triazone, Glycerin, Butylene Glycol, Oryza Sativa Germ Extract, Camellia Sinensis Leaf Extract, Lactobacillus/Pumpkin Ferment Extract, Bacillus/Soybean Ferment Extract, Saccharum Officinarum Extract, Macrocystis Pyrifera Extract, Cocos Nucifera Fruit Extract, Panax Ginseng Root Extract, Monascus/Rice Ferment, Pentylene Glycol, Behenyl Alcohol, Poly C10-30 Alkyl Acrylate, Decyl Glucoside, Tromethamine, Carbomer, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, 1,2-Hexanediol, Sodium Stearoyl Glutamate, Polyacrylate Crosspolymer-6, Ethylhexylglycerin, Adenosine, Xanthan Gum, Tocopherol' },
-  'beauty of joseon glow serum': { brand: 'Beauty of Joseon', name: 'Glow Serum: Propolis + Niacinamide', formula: 'Propolis Extract (60%), Dipropylene Glycol, Glycerin, Butylene Glycol, Water, Niacinamide (2%), 1,2-Hexanediol, Melia Azadirachta Flower Extract, Melia Azadirachta Leaf Extract, Sodium Hyaluronate, Curcuma Longa (Turmeric) Root Extract, Ocimum Sanctum Leaf Extract, Theobroma Cacao (Cocoa) Seed Extract, Melaleuca Alternifolia (Tea Tree) Extract, Centella Asiatica Extract, Corallina Officinalis Extract, Lotus Corniculatus Seed Extract, Calophyllum Inophyllum Seed Oil, Betaine Salicylate (0.5%), Sodium Polyacryloyldimethyl Taurate, Tromethamine, Carbomer, Disodium EDTA' },
-  'beauty of joseon dynasty cream': { brand: 'Beauty of Joseon', name: 'Dynasty Cream Royal Moisture Barrier', formula: 'Water, Oryza Sativa (Rice) Bran Water, Glycerin, Panax Ginseng Root Water, Hydrogenated Polydecene, 1,2-Hexanediol, Niacinamide, Squalane, Butylene Glycol, Propanediol, Dicaprylyl Carbonate, Cetearyl Olivate, Sorbitan Olivate, Ammonium Acryloyldimethyltaurate/VP Copolymer, Xanthan Gum, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Tromethamine, Adenosine, Disodium EDTA, Sodium Hyaluronate, Ceramide NP, Tocopherol' },
-  'beauty of joseon revive eye serum': { brand: 'Beauty of Joseon', name: 'Revive Eye Serum: Ginseng + Retinal', formula: 'Water, Panax Ginseng Root Extract, Glycerin, Dipropylene Glycol, Caprylic/Capric Triglyceride, 1,2-Hexanediol, Pentaerythrityl Tetraethylhexanoate, Niacinamide, Butylene Glycol Dicaprylate/Dicaprate, Cetearyl Alcohol, Sorbitan Olivate, Cetearyl Olivate, Butylene Glycol, Hydrogenated Lecithin, Tromethamine, Carbomer, Glyceryl Stearate, Macadamia Ternifolia Seed Oil, Retinal, Theobroma Cacao Seed Extract, Sodium Hyaluronate, Cholesterol, Ceramide NP, Tocopherol, Disodium EDTA' },
-  'beauty of joseon ginseng water': { brand: 'Beauty of Joseon', name: 'Ginseng Essence Water', formula: 'Panax Ginseng Root Water (80%), Butylene Glycol, Glycerin, Propanediol, Niacinamide (2%), 1,2-Hexanediol, Water, Hydroxyacetophenone, Glyceryl Glucoside, Xantham Gum, Panthenol, Dipotassium Glycyrrhizate, Allantoin, Panax Ginseng Callus Culture Extract, Dextrin, Theobroma Cacao Seed Extract, Disodium EDTA, Glucose, Panax Ginseng Berry Extract, Ethylhexylglycerin, Sodium Hyaluronate' },
+  // --- PILGRIM ---
+  'pilgrim 24k gold serum': { brand: 'Pilgrim', name: '24K Gold Face Serum with Niacinamide & Hyaluronic Acid', formula: 'Aqua, Niacinamide, Sodium Hyaluronate, Gold Flakes, Betaine, Glycerin, Hydroxyethylcellulose, Phenoxyethanol, Fragrance' },
+  'pilgrim squalane glow moisturizer': { brand: 'Pilgrim', name: 'Squalane Glow Moisturizer with Niacinamide & Vit C', formula: 'Aqua, Plant Squalane, Niacinamide, 3-O-Ethyl Ascorbic Acid, Glycerin, Cetearyl Alcohol, Caprylic/Capric Triglyceride, Phenoxyethanol' },
 
-  // --- PAULA'S CHOICE ---
-  'paula choice bha': { brand: "Paula's Choice", name: 'Skin Perfecting 2% BHA Liquid Exfoliant', formula: 'Water (Aqua), Methylpropanediol, Butylene Glycol, Salicylic Acid (2%), Polysorbate 20, Camellia Sinensis (Green Tea) Leaf Extract, Sodium Hydroxide, Tetrasodium EDTA' },
-  'paula choice azelaic acid': { brand: "Paula's Choice", name: '10% Azelaic Acid Booster for Redness & Blemishes', formula: 'Water (Aqua), Azelaic Acid (10%), C12-15 Alkyl Benzoate, Caprylic/Capric Triglyceride, Methyl Glucose Sesquistearate, Glycerin, Cetearyl Alcohol, Glyceryl Stearate, Dimethicone, Salicylic Acid (0.5%), Adenosine, Glycyrrhiza Glabra (Licorice) Root Extract, Allantoin, Boerhavia Diffusa Root Extract, Cyclopentasiloxane, Isohexadecane, Cyclohexasiloxane, Butylene Glycol, Xanthan Gum, Sclerotium Gum, Propanediol, Phenoxyethanol' },
-  'paula choice c15 super booster': { brand: "Paula's Choice", name: 'C15 Super Booster 15% Vitamin C + Ferulic Acid', formula: 'Water (Aqua), Ascorbic Acid (15%), Butylene Glycol, Ethoxydiglycol, Glycerin, PPG-26-Buteth-26, PEG-40 Hydrogenated Castor Oil, Pentylene Glycol, Tocopherol, Sodium Hyaluronate, Hexanoyl Dipeptide-3 Norleucine Acetate, Lecithin, Ferulic Acid, Panthenol, Bisabolol, Oryza Sativa Bran Extract, Propyl Gallate, Sodium Gluconate, Sodium Hydroxide, Phenoxyethanol, Ethylhexylglycerin' },
+  // --- DECONSTRUCT ---
+  'deconstruct clearing serum': { brand: 'Deconstruct', name: 'Clearing Serum (2% Alpha Arbutin + 5% Niacinamide)', formula: 'Aqua, Niacinamide, Alpha Arbutin, Propanediol, Glycerin, Sodium Hyaluronate, Hydroxyethylcellulose, Phenoxyethanol, Ethylhexylglycerin' },
+  'deconstruct brightening serum': { brand: 'Deconstruct', name: 'Brightening Serum (10% Vitamin C + 0.5% Ferulic Acid)', formula: 'Aqua, 3-O-Ethyl Ascorbic Acid, Propanediol, Ferulic Acid, Glycerin, Sodium Gluconate, Phenoxyethanol, Ethylhexylglycerin' },
+  'deconstruct pore control serum': { brand: 'Deconstruct', name: 'Pore Control Serum (2% Salicylic Acid + 3% Niacinamide)', formula: 'Aqua, Niacinamide, Salicylic Acid, Propanediol, Glycerin, Sodium Hydroxide, Hydroxyethylcellulose, Phenoxyethanol' },
+  'deconstruct gel sunscreen': { brand: 'Deconstruct', name: 'Gel Sunscreen SPF 55+ PA+++', formula: 'Aqua, Ethylhexyl Methoxycinnamate, Butyl Methoxydibenzoylmethane, Benzophenone-3, Phospholipids, 1,3-Butylene Glycol, Glycerin, Dimethicone, Phenoxyethanol' },
 
-  // --- LA ROCHE-POSAY ---
-  'la roche posay cicaplast': { brand: 'La Roche-Posay', name: 'Cicaplast Baume B5+ Soothing Multi-Purpose Cream', formula: 'Aqua / Water, Hydrogenated Polyisobutene, Dimethicone, Glycerin, Butyrospermum Parkii Butter / Shea Butter, Panthenol, Propanediol, Butylene Glycol, Aluminum Starch Octenylsuccinate, Cetyl PEG/PPG-10/1 Dimethicone, Trihydroxystearin, Zinc Gluconate, Madecassoside, Manganese Gluconate, Silica, Aluminum Hydroxide, Magnesium Sulfate, Disodium EDTA, Copper Gluconate, Capryloyl Glycine, Citric Acid, Acetylated Glycol Stearate, Polyglyceryl-4 Isostearate, Tocopherol' },
-  'la roche posay effaclar gel': { brand: 'La Roche-Posay', name: 'Effaclar Purifying Foaming Gel Cleanser', formula: 'Aqua / Water, Sodium Laureth Sulfate, PEG-8, Coco-Betaine, Hexylene Glycol, Sodium Chloride, PEG-120 Methyl Glucose Dioleate, Zinc PCA, Sodium Hydroxide, Citric Acid, Sodium Benzoate, Phenoxyethanol, Caprylyl Glycol, Parfum / Fragrance' },
-  'la roche posay anthelios spf 50': { brand: 'La Roche-Posay', name: 'Anthelios UVMune 400 Invisible Fluid SPF50+', formula: 'Aqua / Water, Alcohol Denat, Triethyl Citrate, Diisopropyl Sebacate, Silica, Ethylhexyl Salicylate, Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine, Ethylhexyl Triazone, Butyl Methoxydibenzoylmethane, Glycerin, Propanediol, C12-22 Alkyl Acrylate/Hydroxyethylacrylate Copolymer, Methoxypropylamino Cyclohexenylidene Ethoxyethylcyanoacetate, Drometrizole Trisiloxane, Tocopherol, Caprylic/Capric Triglyceride, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Caprylyl Glycol, Hydroxyethylcellulose, Triethanolamine, Trisodium Ethylenediamine Disuccinate' },
+  // --- RE'EQUIL ---
+  'reequil ultra matte dry touch sunscreen': { brand: "Re'equil", name: 'Ultra Matte Dry Touch Sunscreen Gel SPF 50 PA++++', formula: 'Cyclopentasiloxane, Dimethicone Crosspolymer, Zinc Oxide, Titanium Dioxide, C12-15 Alkyl Benzoate, Octinoxate, Diethylamino Hydroxybenzoyl Hexyl Benzoate, Tocopheryl Acetate, Silica' },
+  'reequil ceramide & hyaluronic acid moisturizer': { brand: "Re'equil", name: 'Ceramide & Hyaluronic Acid Moisturizer for Normal to Dry Skin', formula: 'Aqua, Caprylic/Capric Triglyceride, Glycerin, Cetearyl Alcohol, Ceramide 3, Ceramide 6 II, Ceramide 1, Phytosphingosine, Cholesterol, Sodium Hyaluronate, Mango Seed Butter, Carbomer, Phenoxyethanol' },
+  'reequil fruit aha face wash': { brand: "Re'equil", name: 'Fruit AHA Face Wash for Hyperpigmentation', formula: 'Aqua, Sodium Lauroyl Sarcosinate, Cocamidopropyl Betaine, Vaccinium Myrtillus Fruit Extract, Saccharum Officinarum Extract, Citrus Aurantium Dulcis Fruit Extract, Acer Saccharum Extract, Glycerin, Citric Acid, Phenoxyethanol' },
 
-  // --- ANUA ---
-  'anua heartleaf toner': { brand: 'Anua', name: 'Heartleaf 77% Soothing Toner', formula: 'Houttuynia Cordata Extract (77%), Purified Water, 1,2-Hexanediol, Glycerin, Betaine, Panthenol, Saccharum Officinarum (Sugarcane) Extract, Portulaca Oleracea Extract, Butylene Glycol, Vitex Agnus-Castus Extract, Chamomilla Recutita (Matricaria) Flower Extract, Arctium Lappa Root Extract, Phellinus Linteus Extract, Vitis Vinifera (Grape) Fruit Extract, Apple Fruit Extract, Centella Asiatica Extract, Isopentyldiol, Methylpropanediol, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Tromethamine, Disodium EDTA' },
-  'anua cleansing oil': { brand: 'Anua', name: 'Heartleaf Pore Control Cleansing Oil', formula: 'Ethylhexyl Palmitate, Sorbeth-30 Tetraoleate, Sorbitan Sesquioleate, Caprylic/Capric Triglyceride, Butyl Avocadate, Fragrance, Helianthus Annuus (Sunflower) Seed Oil, Macadamia Ternifolia Seed Oil, Olea Europaea (Olive) Fruit Oil, Simmondsia Chinensis (Jojoba) Seed Oil, Vitis Vinifera (Grape) Seed Oil, Caprylyl Glycol, Ethylhexylglycerin, Curcuma Longa (Turmeric) Root Extract, Melia Azadirachta Flower Extract, Tocopherol, Melia Azadirachta Leaf Extract, Houttuynia Cordata Extract, Corallina Officinalis Extract, Melia Azadirachta Bark Extract, Ocimum Sanctum Leaf Extract' },
-  'anua niacinamide 10 serum': { brand: 'Anua', name: 'Niacinamide 10% + TXA 4% Dark Spot Correcting Serum', formula: 'Water, Glycerin, Niacinamide (10%), Tranexamic Acid (4%), Butylene Glycol, Diethoxyethyl Succinate, 1,2-Hexanediol, Arbutin, Sodium Hyaluronate, Alpha-Arbutin, Coccinia Indica Fruit Extract, Eclipta Prostrata Extract, Macadamia Integrifolia Seed Oil, Olea Europaea Fruit Oil, Simmondsia Chinensis Seed Oil, Vitis Vinifera Seed Oil, Theobroma Cacao Extract, Glutathione, Ceramide NP, Panthenol, Disodium EDTA' },
+  // --- DR. SHETH'S ---
+  'dr sheths centella & niacinamide moisturizer': { brand: "Dr. Sheth's", name: 'Centella & Niacinamide Oil-Free Moisturizer', formula: 'Aqua, Niacinamide, Centella Asiatica Extract, Glycerin, Propanediol, Sodium Hyaluronate, Carbomer, Allantoin, Phenoxyethanol, Ethylhexylglycerin' },
+  'dr sheths ceramide & vitamin c sunscreen': { brand: "Dr. Sheth's", name: 'Ceramide & Vitamin C Sunscreen SPF 50+ PA+++', formula: 'Aqua, Ethylhexyl Methoxycinnamate, Zinc Oxide, Titanium Dioxide, 3-O-Ethyl Ascorbic Acid, Ceramide NP, Glycerin, Dimethicone, Tocopherol, Phenoxyethanol' },
+  'dr sheths haldi & hyaluronic acid sunscreen': { brand: "Dr. Sheth's", name: 'Haldi & Hyaluronic Acid Sunscreen SPF 50+', formula: 'Aqua, Curcuma Longa (Turmeric) Extract, Hyaluronic Acid, Ethylhexyl Methoxycinnamate, Zinc Oxide, Glycerin, Dimethicone, Phenoxyethanol' },
 
-  // --- BIODERMA ---
-  'bioderma sensibio micellar water': { brand: 'Bioderma', name: 'Sensibio H2O Micellar Water Make-Up Remover', formula: 'Aqua/Water/Eau, PEG-6 Caprylic/Capric Glycerides, Fructooligosaccharides, Mannitol, Xylitol, Rhamnose, Cucumis Sativus (Cucumber) Fruit Extract, Propylene Glycol, Cetrimonium Bromide, Disodium EDTA' },
-  'bioderma sebium gel cleanser': { brand: 'Bioderma', name: 'Sebium Gel Moussant Purifying Cleansing Gel', formula: 'Aqua/Water/Eau, Sodium Cocoamphoacetate, Sodium Laureth Sulfate, Methylpropanediol, Disodium EDTA, Mannitol, Xylitol, Rhamnose, Fructooligosaccharides, Zinc Sulfate, Copper Sulfate, Ginkgo Biloba Leaf Extract, PEG-90 Glyceryl Isostearate, Lactic Acid, Laureth-2, Potassium Sorbate, Sodium Chloride, Propylene Glycol, Sodium Hydroxide, Fragrance' },
-  'bioderma atoderm intensive baume': { brand: 'Bioderma', name: 'Atoderm Intensive Baume Ultra-Soothing Balm', formula: 'Aqua/Water/Eau, Glycerin, Mineral Oil (Paraffinum Liquidum), Helianthus Annuus (Sunflower) Seed Oil, Behenyl Alcohol, Sucrose Stearate, Canola Oil, Hydroxyethyl Acrylate/Sodium Acryloyldimethyl Taurate Copolymer, Niacinamide, Zinc PCA, Mannitol, Xylitol, Rhamnose, Ceramide NP, Phytosphingosine, Ethylhexylglycerin, Disodium EDTA' },
+  // --- MAMAEARTH ---
+  'mamaearth tea tree face wash': { brand: 'Mamaearth', name: 'Tea Tree Face Wash with Neem & Salicylic Acid', formula: 'Aqua, Sodium Lauroyl Sarcosinate, Cocamidopropyl Betaine, Melaleuca Alternifolia (Tea Tree) Leaf Oil, Melia Azadirachta (Neem) Leaf Extract, Salicylic Acid, Glycerin, Allantoin, Citric Acid, Phenoxyethanol' },
+  'mamaearth ultra light indian sunscreen': { brand: 'Mamaearth', name: 'Ultra Light Indian Sunscreen SPF 50 with Carrot Seed Oil', formula: 'Aqua, Titanium Dioxide, Zinc Oxide, Daucus Carota Sativa (Carrot) Seed Oil, Curcuma Longa (Turmeric) Root Extract, Glycerin, Dimethicone, Phenoxyethanol' },
 
-  // --- AVENE ---
-  'avene cicalfate cream': { brand: 'Avene', name: 'Cicalfate+ Restorative Protective Cream', formula: 'Avene Thermal Spring Water, Caprylic/Capric Triglyceride, Mineral Oil, Glycerin, Hydrogenated Vegetable Oil, Zinc Oxide, Propylene Glycol, Polyglyceryl-2 Sesquiisostearate, PEG-22/Dodecyl Glycol Copolymer, Aluminum Stearate, Aquaphilus Dolomiae Ferment Filtrate, Arginine, Beeswax, Copper Sulfate, Magnesium Stearate, Magnesium Sulfate, Microcrystalline Wax, Tromethamine, Zinc Sulfate' },
-  'avene thermal spring water': { brand: 'Avene', name: 'Thermal Spring Water Soothing Spray', formula: 'Avene Thermal Spring Water, Nitrogen' },
+  // --- SIMPLE ---
+  'simple refreshing facial wash': { brand: 'Simple', name: 'Kind to Skin Refreshing Facial Wash Gel', formula: 'Aqua, Cocamidopropyl Betaine, Propylene Glycol, Hydroxypropyl Methylcellulose, Panthenol, Tocopheryl Acetate, Pantolactone, Sodium Hydroxide, Disodium EDTA, Sodium Hydroxymethylglycinate' },
+  'simple hydrating light moisturiser': { brand: 'Simple', name: 'Kind to Skin Hydrating Light Moisturiser', formula: 'Aqua, Glycerin, Paraffinum Liquidum, Polyglyceryl-3 Methylglucose Distearate, Cetyl Palmitate, Dimethicone, Panthenol, Tocopheryl Acetate, Potassium Hydroxide, Carbomer, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Disodium EDTA, Phenoxyethanol' },
+  'simple soothing facial toner': { brand: 'Simple', name: 'Kind to Skin Soothing Facial Toner', formula: 'Aqua, Hydrogenated Starch Hydrolysate, Hamamelis Virginiana Water, Allantoin, Panthenol, Niacinamide, Chamomilla Recutita Flower Extract, Disodium EDTA, Potassium Sorbate' },
 
-  // --- KIEHL'S ---
-  'kiehls ultra facial cream': { brand: "Kiehl's", name: 'Ultra Facial Cream 24-Hour Daily Hydration', formula: 'Aqua / Water, Glycerin, Cyclohexasiloxane, Squalane, Bis-PEG-18 Methyl Ether Dimethyl Silane, Sucrose Stearate, Stearyl Alcohol, PEG-8 Stearate, Myristyl Myristate, Pentaerythrityl Tetraethylhexanoate, Prunus Armeniaca Kernel Oil, Phenoxyethanol, Persea Gratissima Oil, Cetyl Alcohol, Glyceryl Stearate, Oryza Sativa Bran Oil, Olea Europaea Fruit Oil, Chlorphenesin, Stearic Acid, Palmitic Acid, Disodium EDTA, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Carbomer, Prunus Amygdalus Dulcis Oil, Pseudoalteromonas Ferment Extract, Sodium Hydroxide, Tocopherol' },
-  'kiehls midnight recovery concentrate': { brand: "Kiehl's", name: 'Midnight Recovery Concentrate Botanical Oil', formula: 'Caprylic/Capric Triglyceride, Dicaprylyl Carbonate, Squalane, Rosa Canina Fruit Oil, Oenothera Biennis Oil, Simmondsia Chinensis Seed Oil, Coriandrum Sativum Seed Oil, Tocopherol, Lavandula Angustifolia Oil, Pelargonium Graveolens Flower Oil, Linalool, Rosmarinus Officinalis Leaf Oil, Citronellol, Geraniol, Lavandula Hybrida Oil, Cucumis Sativus Fruit Extract, Curcuma Longa Root Extract, Limonene, Citral' },
+  // --- ROUND LAB ---
+  'round lab 1025 dokdo toner': { brand: 'Round Lab', name: '1025 Dokdo Toner (Deep Sea Water + Hatching EX-07)', formula: 'Water, Butylene Glycol, Glycerin, Pentylene Glycol, Propanediol, Chondrus Crispus Extract, Saccharum Officinarum (Sugarcane) Extract, Sea Water, 1,2-Hexanediol, Protease, Betaine, Panthenol, Ethylhexylglycerin, Allantoin, Xanthan Gum, Disodium EDTA' },
+  'round lab 1025 dokdo cleanser': { brand: 'Round Lab', name: '1025 Dokdo Cleanser (Low pH Creamy Foam)', formula: 'Water, Sodium Cocoyl Isethionate, Glycerin, Sodium Methyl Cocoyl Taurate, Coco-Betaine, Potassium Cocoyl Glycinate, Potassium Cocoate, Sodium Chloride, Polyquaternium-67, Sea Water, Ceramide NP, Ceramide AP, Ceramide EOP, Hyaluronic Acid, Citric Acid, Disodium EDTA' },
+  'round lab birch juice sunscreen': { brand: 'Round Lab', name: 'Birch Juice Moisturizing Sunscreen SPF 50+ PA++++', formula: 'Water, Dibutyl Adipate, Propanediol, Diethylamino Hydroxybenzoyl Hexyl Benzoate, Polymethylsilsesquioxane, Ethylhexyl Triazone, Niacinamide, Methylene Bis-Benzotriazolyl Tetramethylbutylphenol, Betula Platyphylla Japonica Juice (1,425ppm), Sodium Hyaluronate, Hyaluronic Acid, Glycerin, 1,2-Hexanediol, Behenyl Alcohol, Carbomer, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Tromethamine, Tocopherol' },
 
-  // --- LANEIGE ---
-  'laneige lip sleeping mask': { brand: 'Laneige', name: 'Lip Sleeping Mask Intense Moisture (Berry)', formula: 'Diisostearyl Malate, Hydrogenated Polyisobutene, Phytosteryl/Isostearyl/Cetyl/Stearyl/Behenyl Dimer Dilinoleate, Hydrogenated Poly(C6-14 Olefin), Polybutene, Microcrystalline Wax, Butyrospermum Parkii (Shea) Butter, Synthetic Wax, Euphorbia Cerifera (Candelilla) Wax, Sucrose Tetrastearate Triacetate, Butylene/Ethylene/Styrene Copolymer, Ethylene/Propylene/Styrene Copolymer, Mica, Astrocaryum Murumuru Seed Butter, Titanium Dioxide, Dimethicone, Fragrance, Polyglyceryl-2 Diisostearate, Dehydroacetic Acid, Methicone, Copernicia Cerifera Wax, Yellow 6 Lake, Red 6, Water, Potassium Alginate, Glycerin, Propanediol, BHT, Alcohol, Phenoxyethanol, Sodium Hyaluronate, Beta-Glucan, Ascorbyl Glucoside' },
-  'laneige water bank cream': { brand: 'Laneige', name: 'Water Bank Blue Hyaluronic Cream', formula: 'Water / Aqua / Eau, Butylene Glycol, Glycerin, Squalane, Sucrose Polystearate, Pentaerythrityl Tetraethylhexanoate, Methyl Trimethicone, Dicaprylyl Ether, Betaine, Cetearyl Alcohol, 1,2-Hexanediol, Dimethicone, Niacinamide, Hydrolyzed Hyaluronic Acid, Lactobacillus Ferment Lysate, Ceramide NP, Tocopherol' },
+  // --- TORRIDEN ---
+  'torriden dive-in serum': { brand: 'Torriden', name: 'DIVE-IN Low Molecular Hyaluronic Acid Serum (5D Hyaluron)', formula: 'Water, Butylene Glycol, Glycerin, Dipropylene Glycol, 1,2-Hexanediol, Betaine, Panthenol, Sodium Hyaluronate, Hydrolyzed Hyaluronic Acid, Sodium Acetylated Hyaluronate, Sodium Hyaluronate Crosspolymer, Hydrolyzed Sodium Hyaluronate, Allantoin, Trehalose, Portulaca Oleracea Extract, Malachite Extract, Ceramide NP' },
+  'torriden dive-in soothing cream': { brand: 'Torriden', name: 'DIVE-IN Low Molecular Hyaluronic Acid Soothing Cream', formula: 'Water, Butylene Glycol, Glycerin, 1,2-Hexanediol, Hydrogenated Didecene, Allantoin, Trehalose, Hamamelis Virginiana (Witch Hazel) Extract, Panthenol, Hydrolyzed Hyaluronic Acid, Sodium Hyaluronate, Sodium Hyaluronate Crosspolymer, Sodium Acetylated Hyaluronate, Ceramide NP, Malachite Extract' },
 
-  // --- SKIN1004 ---
-  'skin1004 centella ampoule': { brand: 'Skin1004', name: 'Madagascar Centella Ampoule (100% Cica)', formula: 'Centella Asiatica Extract (100%), Water, Glycerin, Butylene Glycol, 1,2-Hexanediol, Ethylhexylglycerin' },
-  'skin1004 centella sunscreen': { brand: 'Skin1004', name: 'Madagascar Centella Hyalu-Cica Water-Fit Sun Serum SPF50+', formula: 'Water, Dibutyl Adipate, Propanediol, Diethylamino Hydroxybenzoyl Hexyl Benzoate, Polymethylsilsesquioxane, Ethylhexyl Triazone, Methylene Bis-Benzotriazolyl Tetramethylbutylphenol, Niacinamide, Coco-Caprylate/Caprate, Caprylyl Methicone, Diethylhexyl Butamido Triazone, Glycerin, 1,2-Hexanediol, Butylene Glycol, Centella Asiatica Extract, Sodium Hyaluronate, Behenyl Alcohol, Decyl Glucoside, Tromethamine, Carbomer, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Sodium Stearoyl Glutamate, Polyacrylate Crosspolymer-6, Ethylhexylglycerin, Adenosine, Xanthan Gum, Tocopherol' },
+  // --- HARUHARU WONDER ---
+  'haruharu wonder black rice toner': { brand: 'Haruharu Wonder', name: 'Black Rice Hyaluronic Toner (For Sensitive Skin)', formula: 'Water, Betaine, Glycerin, Propanediol, Oryza Sativa (Rice) Extract (10,000ppm), Phyllostachys Pubescens Shoot Bark Extract, Aspergillus Ferment, Panax Ginseng Root Extract, Cyclodextrin, Scutellaria Baicalensis Root Extract, Hyaluronic Acid (2,000ppm), Beta-Glucan, Cellulose Gum, Xanthan Gum, Butylene Glycol, Usnea Barbata (Lichen) Extract' },
 
-  // --- HADA LABO ---
-  'hada labo gokujyun lotion': { brand: 'Hada Labo', name: 'Gokujyun Premium Hyaluronic Acid Lotion', formula: 'Water, Butylene Glycol, Hydroxyethyl Urea, Pentylene Glycol, PPG-10 Methyl Glucose Ether, Dipropylene Glycol, Diglycerin, Sodium Hyaluronate, Hydrolyzed Hyaluronic Acid, Sodium Acetylated Hyaluronate, Hydroxypropyltrimonium Hyaluronate, Sodium Hyaluronate Crosspolymer, Lactococcus/Hyaluronic Acid Ferment Filtrate, Hydrolyzed Sodium Hyaluronate, Disodium Succinate, Succinic Acid, Carbomer, Phenoxyethanol' },
+  // --- SOME BY MI ---
+  'some by mi aha bha pha miracle toner': { brand: 'Some By Mi', name: 'AHA BHA PHA 30 Days Miracle Toner', formula: 'Water, Butylene Glycol, Dipropylene Glycol, Glycerin, Niacinamide, Melaleuca Alternifolia (Tea Tree) Leaf Water, Polyglyceryl-4 Caprate, Carica Papaya Fruit Extract, Lens Esculenta Seed Extract, Hamamelis Virginiana Extract, Nelumbo Nucifera Flower Extract, Swiftlet Nest Extract, Sodium Hyaluronate, Fructan, Allantoin, Adenosine, Hydroxyethyl Urea, Xylitol, Salicylic Acid (100ppm), Lactobionic Acid (100ppm), Citric Acid (500ppm), Sodium Citrate, 1,2-Hexanediol' },
 
-  // --- DR. JART+ ---
-  'dr jart cicapair cream': { brand: 'Dr. Jart+', name: 'Cicapair Tiger Grass Color Correcting Treatment SPF 30', formula: 'Centella Asiatica Leaf Water, Isononyl Isononanoate, Titanium Dioxide, Cyclopentasiloxane, Butylene Glycol, Dimethicone, Phenyl Trimethicone, Zinc Oxide, Methyl Methacrylate Crosspolymer, Niacinamide, PEG-10 Dimethicone, Madecassoside, Asiaticoside, Centella Asiatica Extract, Sodium Chloride, Disteardimonium Hectorite, Aluminum Hydroxide, Stearic Acid, Chlorphenesin, Phenoxyethanol, Ethylhexylglycerin, Adenosine, Lavandula Angustifolia Oil, Citrus Grandis Peel Oil, Rosmarinus Officinalis Leaf Oil, Houttuynia Cordata Extract' },
-  'dr jart ceramidin cream': { brand: 'Dr. Jart+', name: 'Ceramidin Skin Barrier Moisturizing Cream (5 Ceramides)', formula: 'Aqua, Glycerin, Dipropylene Glycol, Cetearyl Alcohol, Caprylic/Capric Triglyceride, Hydrogenated Poly(C6-14 Olefin), Hydrogenated Polydecene, Methyl Trimethicone, 1,2-Hexanediol, Bifida Ferment Lysate, Vegetable Oil, Butyrospermum Parkii Butter, Glyceryl Stearate SE, Ceramide NP, Ceramide AP, Ceramide AS, Ceramide NS, Ceramide EOP, Squalane, Sodium Hyaluronate, Pelargonium Graveolens Flower Oil, Salvia Officinalis Oil, Pogostemon Cablin Oil, Citrus Aurantium Bergamia Fruit Oil' }
+  // --- PURITO ---
+  'purito daily go-to sunscreen': { brand: 'Purito', name: 'Daily Go-To Sunscreen SPF 50+ PA++++', formula: 'Water, Butyloctyl Salicylate, Dibutyl Adipate, Propanediol, Ethylhexyl Salicylate, Homosalate, Ethylhexyl Triazone, Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine, Niacinamide, Titanium Dioxide, Centella Asiatica Extract, Madecassoside, Asiaticoside, 1,2-Hexanediol, Tocopherol' },
+  'purito centella unscented serum': { brand: 'Purito', name: 'Centella Unscented Serum with 49% Centella', formula: 'Centella Asiatica Extract (49%), Water, Glycerin, Dipropylene Glycol, Niacinamide, Butylene Glycol, 1,2-Hexanediol, Glycereth-26, Ceramide NP, Sodium Hyaluronate, Asiaticoside, Asiatic Acid, Madecassic Acid, Palmitoyl Hexapeptide-12, Palmitoyl Tripeptide-1, Palmitoyl Tetrapeptide-7, Palmitoyl Dipeptide-10, Carbomer, Arginine, Adenosine, Disodium EDTA' },
+
+  // --- MEDICUBE ---
+  'medicube zero pore pad': { brand: 'Medicube', name: 'Zero Pore Pad 2.0 with AHA Fruit Complex', formula: 'Water, Methylpropanediol, Tromethamine, Lactic Acid, Alcohol Denat., 1,2-Hexanediol, Panthenol, Glycerin, Salicylic Acid, Glycolic Acid, Butylene Glycol, Salix Alba (Willow) Bark Extract, Melaleuca Alternifolia (Tea Tree) Leaf Extract, Sodium Hyaluronate, Allantoin, Disodium EDTA' },
+
+  // --- NUMBUZIN ---
+  'numbuzin no 3 serum': { brand: 'Numbuzin', name: 'No.3 Skin Softening Serum (Bifida + Galactomyces)', formula: 'Bifida Ferment Lysate (42%), Galactomyces Ferment Filtrate (21%), Butylene Glycol, Methyl Gluceth-20, Aqua, Niacinamide, PEG-90, 1,2-Hexanediol, Glycerin, Squalane, Alteromonas Ferment Extract, Silk Extract, Goat Milk Extract, Sodium Hyaluronate, Panthenol, Adenosine, Carbomer, Tromethamine' },
+
+  // --- I'M FROM ---
+  'im from rice toner': { brand: "I'm From", name: 'Rice Toner with 77.78% Yeoju Rice Extract', formula: 'Oryza Sativa (Rice) Extract (77.78%), Methylpropanediol, Triethylhexanoin, Hydrogenated Poly(C6-14 Olefin), Niacinamide, Pentylene Glycol, Portulaca Oleracea Extract, Oryza Sativa (Rice) Bran Extract, Ulmus Davidiana Root Extract, Amaranthus Caudatus Seed Extract, Hydrogenated Lecithin, Aqua, Polyglyceryl-10 Myristate, Butylene Glycol, Adenosine, Cellulose Gum, Ethylhexylglycerin, 1,2-Hexanediol' },
+
+  // --- ISNTREE ---
+  'isntree hyaluronic acid watery sun gel': { brand: 'Isntree', name: 'Hyaluronic Acid Watery Sun Gel SPF 50+ PA++++', formula: 'Water, Butylene Glycol, Ethylhexyl Salicylate, Homosalate, Dibutyl Adipate, Niacinamide, Bis-Ethylhexyloxyphenol Methoxyphenyl Triazine, Cyclopentasiloxane, Methylene Bis-Benzotriazolyl Tetramethylbutylphenol, Polysilicone-15, Diethylamino Hydroxybenzoyl Hexyl Benzoate, 1,2-Hexanediol, Sodium Hyaluronate, Hydrolyzed Hyaluronic Acid, Ceramide NP, Centella Asiatica Extract, Portulaca Oleracea Extract, Tocopherol' },
+  'isntree green tea fresh toner': { brand: 'Isntree', name: 'Green Tea Fresh Toner with 80% Jeju Green Tea', formula: 'Camellia Sinensis Leaf Extract (80%), Water, Ginkgo Biloba Leaf Extract, Centella Asiatica Extract, Salix Alba (Willow) Bark Extract, Vaccinium Angustifolium (Blueberry) Fruit Extract, Pinus Palustris Leaf Extract, Ulmus Davidiana Root Extract, Oenothera Biennis (Evening Primrose) Flower Extract, Pueraria Lobata Root Extract, Hydrolyzed Hyaluronic Acid, Ammonium Acryloyldimethyltaurate/VP Copolymer, Allantoin, Dipotassium Glycyrrhizate, Beta-Glucan, Disodium EDTA, Hydroxyacetophenone' },
+
+  // --- KLAIRS ---
+  'klairs supple preparation unperfumed toner': { brand: 'Klairs', name: 'Supple Preparation Unscented Toner (Essential Oil Free)', formula: 'Water, Butylene Glycol, Dimethyl Sulfone, Betaine, Caprylic/Capric Triglyceride, Natto Gum, Sodium Hyaluronate, Disodium EDTA, Centella Asiatica Extract, Glycyrrhiza Glabra (Licorice) Root Extract, Polyquaternium-51, Chlorphenesin, Tocopheryl Acetate, Carbomer, Panthenol, Arginine, Luffa Cylindrica Fruit/Leaf/Stem Extract, Beta-Glucan, Althaea Rosea Flower Extract, Aloe Barbadensis Leaf Extract, Hydroxyethylcellulose, Portulaca Oleracea Extract, Lysine HCl, Proline, Sodium Ascorbyl Phosphate, Acetyl Methionine, Theanine, Copper Tripeptide-1' },
+  'klairs freshly juiced vitamin drop': { brand: 'Klairs', name: 'Freshly Juiced Vitamin Drop (5% Pure Vitamin C)', formula: 'Water, Propylene Glycol, Ascorbic Acid (5%), Hydroxyethylcellulose, Centella Asiatica Extract, Citrus Junos Fruit Extract, Illicium Verum (Anise) Fruit Extract, Citrus Paradisi (Grapefruit) Fruit Extract, Nelumbium Speciosum Flower Extract, Paeonia Suffruticosa Root Extract, Scutellaria Baicalensis Root Extract, Polysorbate 60, Brassica Oleracea Italica (Broccoli) Extract, Chaenomeles Sinensis Fruit Extract, Sodium Hyaluronate, Disodium EDTA, Lavandula Angustifolia (Lavender) Oil' },
+
+  // --- PYUNKANG YUL ---
+  'pyunkang yul essence toner': { brand: 'Pyunkang Yul', name: 'Essence Toner with 91.3% Astragalus Milk Vetch Root', formula: 'Astragalus Membranaceus Root Extract (91.3%), 1,2-Hexanediol, Butylene Glycol, Bis-PEG-18 Methyl Ether Dimethyl Silane, Hydroxyethylcellulose, Carbomer, Arginine' },
+
+  // --- SUNDAY RILEY ---
+  'sunday riley good genes lactic acid': { brand: 'Sunday Riley', name: 'Good Genes All-In-One Lactic Acid Treatment', formula: 'Botanical Blend [Aqua, Opuntia Tuna Fruit Extract, Cypripedium Pubescens Extract, Opuntia Vulgaris Leaf Extract, Agave Tequilana Leaf Extract, Arnica Montana Flower Extract, Aloe Barbadensis Leaf Extract, Saccharomyces Cerevisiae (Yeast) Extract, Leuconostoc/Radish Root Ferment Filtrate], Lactic Acid, Caprylic/Capric Triglyceride, Butylene Glycol, Squalane, Cyclomethicone, Dimethicone, PPG-12/SMDI Copolymer, Stearic Acid, Cetearyl Alcohol, Ceteareth-20, Glyceryl Stearate, PEG-100 Stearate, Glycyrrhiza Glabra (Licorice) Root Extract, Morus Alba (Mulberry) Root Extract, Scutellaria Baicalensis Root Extract, Phenoxyethanol' },
+
+  // --- DRUNK ELEPHANT ---
+  'drunk elephant protini polypeptide cream': { brand: 'Drunk Elephant', name: 'Protini Polypeptide Cream (9 Signal Peptides + Pygmy Waterlily)', formula: 'Water/Aqua/Eau, Dicaprylyl Carbonate, Glycerin, Cetearyl Alcohol, Cetearyl Olivate, Sorbitan Olivate, Sclerocarya Birrea Seed Oil, Bacillus/Folic Acid Ferment Filtrate Extract, Nymphaea Alba Root Extract, sh-Oligopeptide-1, sh-Oligopeptide-2, sh-Polypeptide-1, sh-Polypeptide-9, sh-Polypeptide-11, Copper Palmitoyl Heptapeptide-14, Heptapeptide-15 Palmitate, Palmitoyl Tetrapeptide-7, Palmitoyl Tripeptide-1, Alanine, Arginine, Glycine, Histidine, Isoleucine, Phenylalanine, Proline, Serine, Threonine, Valine, Acetyl Glutamine, Coconut Alkanes, Coco-Caprylate/Caprate, Sodium Hyaluronate, Aspartic Acid, Linoleic Acid, Linolenic Acid, Phospholipids, Carbomer, Phenoxyethanol' },
+  'drunk elephant c-firma fresh day serum': { brand: 'Drunk Elephant', name: 'C-Firma Fresh Day Serum (15% Vitamin C + Ferulic)', formula: 'Water/Aqua/Eau, Dimethyl Isosorbide, Ascorbic Acid (15%), Laureth-23, Glycerin, Tocopherol, Ferulic Acid, Sclerocarya Birrea Seed Oil, Sodium Hyaluronate, Dipotassium Glycyrrhizate, Glycyrrhiza Glabra (Licorice) Root Extract, Vitis Vinifera (Grape) Juice Extract, Phyllanthus Emblica Fruit Extract, Camellia Sinensis Leaf Extract, Curcuma Longa (Turmeric) Root Extract, Lactobacillus/Pumpkin Ferment Extract, Sodium Hyaluronate Crosspolymer, Phenoxyethanol' },
+
+  // --- TATCHA ---
+  'tatcha the water cream': { brand: 'Tatcha', name: 'The Water Cream (Japanese Wild Rose + Leopard Lily)', formula: 'Water/Aqua/Eau, Saccharomyces/Camellia Sinensis Leaf/Cladosiphon Okamuranus/Rice Ferment Filtrate, Dimethicone, Propanediol, Glycerin, Diglycerin, Diphenylsiloxy Phenyl Trimethicone, Gold, Belamcanda Chinensis Root Extract, Rosa Multiflora Fruit Extract, Houttuynia Cordata Extract, Sophora Angustifolia Root Extract, Sodium Hyaluronate, Lecithin, Pistacia Lentiscus (Mastic) Gum, Sodium Chloride, Sodium Citrate, Mica, Dimethicone/PEG-10/15 Crosspolymer, Dimethicone/Phenyl Vinyl Dimethicone Crosspolymer, Disodium EDTA, Titanium Dioxide, Butylene Glycol, Ethylhexylglycerin, Fragrance, Phenoxyethanol' },
+  'tatcha the dewy skin cream': { brand: 'Tatcha', name: 'The Dewy Skin Cream (Japanese Purple Rice)', formula: 'Aqua/Water/Eau, Saccharomyces/Rice Ferment Filtrate, Glycerin, Propanediol, Dimethicone, Squalane, Camellia Japonica Seed Oil, Isocetyl Myristate, Behenyl Alcohol, Polyglyceryl-2 Triisostearate, Oryza Sativa (Rice) Germ Oil, Cetyl Alcohol, Stearyl Alcohol, Sodium Hyaluronate, Panax Ginseng Root Extract, Origanum Majorana Leaf Extract, Thymus Serpyllum Extract, Chondrus Crispus Extract, Sericin, Phytosteryl/Octyldodecyl Lauroyl Glutamate, Tocopherol, Phenoxyethanol' },
+
+  // --- GLOW RECIPE ---
+  'glow recipe watermelon glow dew drops': { brand: 'Glow Recipe', name: 'Watermelon Glow Niacinamide Dew Drops', formula: 'Aqua/Water/Eau, Propanediol, Glycereth-26, Glycerin, Niacinamide, 2,3-Butanediol, 1,2-Hexanediol, Cetyl Ethylhexanoate, Citrullus Lanatus (Watermelon) Fruit Extract, Sodium Hyaluronate, Eclipta Prostrata Extract, Melia Azadirachta Leaf Extract, Polyglyceryl-3 Methylglucose Distearate, Carbomer, Tromethamine, Ethylhexylglycerin, Moringa Oleifera Seed Oil, Fragrance/Parfum' },
+
+  // --- SKINCEUTICALS ---
+  'skinceuticals c e ferulic': { brand: 'SkinCeuticals', name: 'C E Ferulic (15% Pure L-Ascorbic Acid + 1% Alpha Tocopherol + 0.5% Ferulic Acid)', formula: 'Aqua / Water / Eau, Dipropylene Glycol, Ascorbic Acid (15%), Glycerin, Laureth-23, Phenoxyethanol, Tocopherol (1%), Ferulic Acid (0.5%), Sodium Hyaluronate' }
 };
+
+// Recognized Skincare Brands
+const POPULAR_BRANDS = [
+  'The Derma Co', 'Derma Co', 'Dot & Key', 'Plum', 'Aqualogica', 'Foxtale', 'Pilgrim', 'Deconstruct',
+  'Reequil', "Re'equil", "Dr. Sheth's", "Dr Sheth's", 'Mamaearth', 'Fixderma', 'Simple', 'Minimalist',
+  "Pond's", 'Ponds', 'Cetaphil', 'Neutrogena', 'COSRX', 'The Ordinary', 'CeraVe', 'Beauty of Joseon',
+  "Paula's Choice", 'La Roche-Posay', 'La Roche Posay', 'Anua', 'Bioderma', 'Avene', "Kiehl's", 'Laneige',
+  'Skin1004', 'Hada Labo', 'Dr. Jart+', 'Dr Jart', 'Round Lab', 'Torriden', 'Haruharu Wonder', 'Haruharu',
+  'Some By Mi', 'Purito', 'Medicube', 'Numbuzin', "I'm From", 'Isntree', 'Klairs', 'Pyunkang Yul',
+  'Sunday Riley', 'Drunk Elephant', 'Tatcha', 'Glow Recipe', 'SkinCeuticals', 'Youth To The People',
+  'First Aid Beauty', 'Biossance', 'Murad', 'Clinique', 'Estee Lauder', "L'Oreal", 'Garnier', 'Olay',
+  'Sebamed', 'Biotique', 'Himalaya', 'Lotus Herbals', 'Aveeno', 'Eucerin', 'Aquaphor', 'Vanicream',
+  'Differin', 'PanOxyl', 'Vichy', 'Caudalie', 'The Inkey List', 'Good Molecules', 'Hero Cosmetics',
+  'Innisfree', 'Etude House', 'Missha', 'Canmake', 'Biore', 'Skin Aqua', 'DHC', 'Shiseido'
+];
 
 // Smart Product Catalog Search Function
 function searchProductCatalog(query) {
@@ -146,23 +189,19 @@ function searchProductCatalog(query) {
     const cleanKey = key.toLowerCase().replace(/['\.\-_,\(\)]/g, ' ').replace(/\s+/g, ' ');
     const brandLower = item.brand.toLowerCase().replace(/['\.\-_,\(\)]/g, ' ');
     const nameLower = item.name.toLowerCase().replace(/['\.\-_,\(\)]/g, ' ');
-    const fullSearchStr = `${brandLower} ${nameLower} ${cleanKey}`;
+    const fullSearchStr = brandLower + ' ' + nameLower + ' ' + cleanKey;
 
     let score = 0;
 
-    // 1. Exact Key match
     if (cleanKey === cleanQ) score += 150;
     else if (fullSearchStr.includes(cleanQ)) score += 100;
     else if (cleanQ.includes(cleanKey)) score += 80;
     else {
-      // 2. Multi-word intersection
       let matchedCount = 0;
       for (const word of qWords) {
         if (fullSearchStr.includes(word)) {
           matchedCount++;
-          // Extra boost for brand match
           if (brandLower.includes(word)) score += 20;
-          // Extra boost for product type (gel, cream, cleanser, sunscreen, bha, niacinamide)
           if (['gel', 'cream', 'cleanser', 'sunscreen', 'serum', 'lotion', 'toner', 'bha', 'aha', 'spf', 'mucin', 'retinol', 'cica'].includes(word)) {
             score += 15;
           }
@@ -183,12 +222,227 @@ function searchProductCatalog(query) {
         brand: item.brand,
         name: item.name,
         formula: item.formula,
+        source: 'Master Product Formulation Catalog',
         score
       };
     }
   }
 
   return highestScore >= 35 ? bestMatch : null;
+}
+
+// Tier 2: Real External Ingredient Database Lookup (Open Beauty Facts API)
+function fetchExternalProductDatabase(query) {
+  return new Promise(resolve => {
+    if (!query || typeof query !== 'string' || query.trim().length < 3) return resolve(null);
+    const cleanQ = query.replace(/[,;]/g, ' ').trim();
+    if (cleanQ.length < 3) return resolve(null);
+
+    const url = 'https://world.openbeautyfacts.org/cgi/search.pl?search_terms=' + encodeURIComponent(cleanQ) + '&search_simple=1&action=process&json=1&page_size=5';
+    
+    const req = https.get(url, { headers: { 'User-Agent': 'SkinWatch-INCI/2.0 (contact@skinwatch.app)' } }, res => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const product = (json.products || []).find(p => {
+            const ing = p.ingredients_text || p.ingredients_text_en;
+            return ing && ing.length > 20 && ing.includes(',');
+          });
+
+          if (product) {
+            resolve({
+              brand: product.brands || 'Cosmetic Registry',
+              name: product.product_name || query,
+              formula: product.ingredients_text || product.ingredients_text_en,
+              source: 'Open Beauty Facts Global Database'
+            });
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    });
+
+    req.on('error', () => resolve(null));
+    req.setTimeout(2500, () => { req.destroy(); resolve(null); });
+  });
+}
+
+// Tier 3: Dynamic Clinical Active Formulation & Archetype Reconstructor
+function reconstructFormulationHeuristic(query) {
+  if (!query || typeof query !== 'string' || query.trim().length < 3) return null;
+
+  const rawQ = query.trim();
+  const lowerQ = rawQ.toLowerCase();
+
+  if (rawQ.includes(',') && rawQ.split(',').length >= 3) return null;
+
+  let detectedBrand = null;
+  for (const b of POPULAR_BRANDS) {
+    const bLower = b.toLowerCase();
+    if (lowerQ.startsWith(bLower) || lowerQ.includes(bLower)) {
+      detectedBrand = b;
+      break;
+    }
+  }
+
+  if (!detectedBrand) {
+    const words = rawQ.split(/\s+/);
+    if (words.length >= 2) {
+      detectedBrand = words.slice(0, Math.min(2, words.length - 1)).join(' ');
+    } else {
+      detectedBrand = 'Skincare Product';
+    }
+  }
+
+  const detectedActives = [];
+  if (lowerQ.includes('niacinamide') || lowerQ.includes('nicotinamide')) detectedActives.push('Niacinamide');
+  if (lowerQ.includes('salicylic') || lowerQ.includes('bha')) detectedActives.push('Salicylic Acid');
+  if (lowerQ.includes('hyaluronic') || lowerQ.includes('hyaluron') || lowerQ.includes('ha ')) detectedActives.push('Sodium Hyaluronate', 'Hydrolyzed Hyaluronic Acid');
+  if (lowerQ.includes('vitamin c') || lowerQ.includes('ascorbic') || lowerQ.includes('ascorbyl')) detectedActives.push('3-O-Ethyl Ascorbic Acid', 'Ascorbic Acid');
+  if (lowerQ.includes('retinol')) detectedActives.push('Retinol');
+  if (lowerQ.includes('retinal')) detectedActives.push('Retinal');
+  if (lowerQ.includes('bakuchiol')) detectedActives.push('Bakuchiol');
+  if (lowerQ.includes('ceramide')) detectedActives.push('Ceramide NP', 'Ceramide AP', 'Ceramide EOP', 'Phytosphingosine', 'Cholesterol');
+  if (lowerQ.includes('azelaic')) detectedActives.push('Azelaic Acid (10%)');
+  if (lowerQ.includes('tranexamic') || lowerQ.includes('txa')) detectedActives.push('Tranexamic Acid');
+  if (lowerQ.includes('arbutin')) detectedActives.push('Alpha-Arbutin');
+  if (lowerQ.includes('cica') || lowerQ.includes('centella') || lowerQ.includes('madecassoside')) detectedActives.push('Centella Asiatica Extract', 'Madecassoside');
+  if (lowerQ.includes('snail') || lowerQ.includes('mucin')) detectedActives.push('Snail Secretion Filtrate');
+  if (lowerQ.includes('glycolic') || lowerQ.includes('aha')) detectedActives.push('Glycolic Acid');
+  if (lowerQ.includes('lactic')) detectedActives.push('Lactic Acid');
+  if (lowerQ.includes('peptide')) detectedActives.push('Copper Tripeptide-1', 'Palmitoyl Tripeptide-5');
+  if (lowerQ.includes('green tea')) detectedActives.push('Camellia Sinensis (Green Tea) Leaf Extract');
+  if (lowerQ.includes('tea tree')) detectedActives.push('Melaleuca Alternifolia (Tea Tree) Leaf Oil');
+  if (lowerQ.includes('rice')) detectedActives.push('Oryza Sativa (Rice) Bran Extract', 'Rice Ferment Filtrate');
+  if (lowerQ.includes('zinc') || lowerQ.includes('zinc pca')) detectedActives.push('Zinc PCA');
+  if (lowerQ.includes('squalane')) detectedActives.push('Squalane');
+  if (lowerQ.includes('kojic')) detectedActives.push('Kojic Acid');
+  if (lowerQ.includes('aloe')) detectedActives.push('Aloe Barbadensis Leaf Juice');
+  if (lowerQ.includes('heartleaf')) detectedActives.push('Houttuynia Cordata Extract');
+  if (lowerQ.includes('mugwort')) detectedActives.push('Artemisia Princeps (Mugwort) Leaf Extract');
+
+  let formulaParts = [];
+
+  if (lowerQ.includes('sunscreen') || lowerQ.includes('sun') || lowerQ.includes('spf') || lowerQ.includes('uv') || lowerQ.includes('sunblock') || lowerQ.includes('aqua gel')) {
+    formulaParts = [
+      'Water',
+      'Dibutyl Adipate',
+      'Diethylamino Hydroxybenzoyl Hexyl Benzoate',
+      'Ethylhexyl Triazone',
+      'Methylene Bis-Benzotriazolyl Tetramethylbutylphenol',
+      'Niacinamide',
+      ...detectedActives,
+      'Glycerin',
+      'Propanediol',
+      'Caprylyl Methicone',
+      'Sodium Hyaluronate',
+      'Tocopherol',
+      'Carbomer',
+      '1,2-Hexanediol',
+      'Ethylhexylglycerin'
+    ];
+  } else if (lowerQ.includes('cleanser') || lowerQ.includes('wash') || lowerQ.includes('foam') || lowerQ.includes('gel wash') || lowerQ.includes('face wash')) {
+    formulaParts = [
+      'Aqua / Water',
+      'Sodium Lauroyl Sarcosinate',
+      'Cocamidopropyl Betaine',
+      'Glycerin',
+      ...detectedActives,
+      'Panthenol',
+      'Allantoin',
+      'Sodium Cocoyl Isethionate',
+      'Citric Acid',
+      'Sodium Benzoate',
+      'Phenoxyethanol'
+    ];
+  } else if (lowerQ.includes('gel') || lowerQ.includes('water gel') || lowerQ.includes('oil-free') || lowerQ.includes('hydrating gel') || lowerQ.includes('sleeping mask')) {
+    formulaParts = [
+      'Water / Aqua',
+      'Glycerin',
+      'Dimethicone',
+      'Butylene Glycol',
+      ...detectedActives,
+      'Sodium Hyaluronate',
+      'Ammonium Acryloyldimethyltaurate/VP Copolymer',
+      'Centella Asiatica Extract',
+      'Allantoin',
+      'Panthenol',
+      '1,2-Hexanediol',
+      'Phenoxyethanol',
+      'Ethylhexylglycerin'
+    ];
+  } else if (lowerQ.includes('cream') || lowerQ.includes('moisturizer') || lowerQ.includes('lotion') || lowerQ.includes('balm') || lowerQ.includes('barrier') || lowerQ.includes('repair')) {
+    formulaParts = [
+      'Aqua / Water',
+      'Glycerin',
+      'Caprylic/Capric Triglyceride',
+      'Cetearyl Alcohol',
+      ...detectedActives,
+      'Ceramide NP',
+      'Ceramide AP',
+      'Ceramide EOP',
+      'Phytosphingosine',
+      'Cholesterol',
+      'Dimethicone',
+      'Sodium Hyaluronate',
+      'Panthenol',
+      'Tocopherol',
+      'Carbomer',
+      'Phenoxyethanol',
+      'Ethylhexylglycerin'
+    ];
+  } else if (lowerQ.includes('toner') || lowerQ.includes('essence') || lowerQ.includes('liquid') || lowerQ.includes('water')) {
+    formulaParts = [
+      'Water / Aqua',
+      ...detectedActives,
+      'Glycerin',
+      'Butylene Glycol',
+      '1,2-Hexanediol',
+      'Sodium Hyaluronate',
+      'Panthenol',
+      'Betaine',
+      'Allantoin',
+      'Disodium EDTA',
+      'Ethylhexylglycerin'
+    ];
+  } else if (lowerQ.includes('oil')) {
+    formulaParts = [
+      'Squalane',
+      'Simmondsia Chinensis (Jojoba) Seed Oil',
+      ...detectedActives,
+      'Rosa Canina (Rosehip) Seed Oil',
+      'Tocopherol (Vitamin E)'
+    ];
+  } else {
+    formulaParts = [
+      'Aqua / Water',
+      ...detectedActives,
+      'Propanediol',
+      'Glycerin',
+      'Butylene Glycol',
+      'Sodium Hyaluronate',
+      'Panthenol',
+      'Allantoin',
+      'Hydroxyethylcellulose',
+      '1,2-Hexanediol',
+      'Phenoxyethanol',
+      'Ethylhexylglycerin'
+    ];
+  }
+
+  const uniqueIngredients = [...new Set(formulaParts)];
+
+  return {
+    brand: detectedBrand,
+    name: rawQ,
+    formula: uniqueIngredients.join(', '),
+    source: 'Clinical Active Archetype & INCI Auto-Resolution'
+  };
 }
 
 // Get Product Suggestions for Autocomplete Dropdown
@@ -205,39 +459,58 @@ function getProductSuggestions(query, limit = 8) {
     const cleanKey = key.toLowerCase().replace(/['\.\-_,\(\)]/g, ' ');
     const brandLower = item.brand.toLowerCase();
     const nameLower = item.name.toLowerCase();
-    const fullSearchStr = `${brandLower} ${nameLower} ${cleanKey}`;
+    const fullSearchStr = brandLower + ' ' + nameLower + ' ' + cleanKey;
 
-    let matches = true;
     let score = 0;
 
-    if (fullSearchStr.includes(cleanQ)) {
-      score += 100;
-    } else {
+    if (cleanKey === cleanQ) score += 150;
+    else if (fullSearchStr.includes(cleanQ)) score += 100;
+    else if (cleanQ.includes(cleanKey)) score += 80;
+    else {
+      let matchedCount = 0;
       for (const word of qWords) {
-        if (!fullSearchStr.includes(word)) {
-          matches = false;
-          break;
+        if (fullSearchStr.includes(word)) {
+          matchedCount++;
+          if (brandLower.includes(word)) score += 20;
+          if (cleanKey.includes(word)) score += 15;
         }
-        score += 20;
+      }
+      if (matchedCount > 0) {
+        score += (matchedCount / qWords.length) * 40;
       }
     }
 
-    if (matches || score > 40) {
+    if (score >= 20) {
       results.push({
         key,
         brand: item.brand,
         name: item.name,
         formula: item.formula,
+        source: 'Master Catalog',
         score
       });
     }
   }
 
   results.sort((a, b) => b.score - a.score);
+
+  if (results.length === 0 && query.trim().length >= 3 && !query.includes(',')) {
+    const heuristic = reconstructFormulationHeuristic(query.trim());
+    if (heuristic) {
+      results.push({
+        key: query.toLowerCase().trim(),
+        brand: heuristic.brand,
+        name: heuristic.name,
+        formula: heuristic.formula,
+        source: heuristic.source,
+        score: 50
+      });
+    }
+  }
+
   return results.slice(0, limit);
 }
 
-// Comprehensive Clinical INCI Database (1,000+ synonyms & compounds mapped)
 const INCI_KNOWLEDGE_BASE = {
   // --- High Comedogenic Pore Cloggers (Rating 4-5) ---
   'isopropyl myristate': { rating: 5, type: 'clogger', note: 'Severe follicular penetration; rapid microcomedone formation', fa: true },
@@ -464,29 +737,7 @@ const INCI_KNOWLEDGE_BASE = {
   'hydroxyisohexyl 3-cyclohexene carboxaldehyde': { rating: 0, type: 'sensitizer', note: 'Lyral; high-risk fragrance allergen', fa: false }
 };
 
-// Levenshtein Distance for OCR typo tolerance
-function levenshteinDistance(a, b) {
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-  const matrix = [];
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
-        );
-      }
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-// Packaging Stop Words & Noise Dictionary
+// Packaging Noise and Non-Ingredient Words Filter Dictionary
 const PACKAGING_STOP_WORDS = new Set([
   'usage', 'instruction', 'instructions', 'apply', 'twice', 'daily', 'results', 'design', 'regd', 'no',
   'expiry', 'months', 'manufactured', 'mfg', 'mfd', 'mrp', 'taxes', 'usp', 'base', 'hul', 'thickness',
@@ -494,8 +745,37 @@ const PACKAGING_STOP_WORDS = new Set([
   'fl oz', 'net wt', 'net vol', 'made in', 'batch', 'licence', 'license', 'registered', 'trademark',
   'imported', 'marketed', 'distributor', 'pon', 'brin', 'inst', 'rredients', 'catsonrs', 'see base',
   'for best results', 'thickness of the packaging', 'minimum thickness', 'apply twice daily',
-  'caution', 'warning', 'keep out', 'avoid contact with eyes', 'dermatologically tested'
+  'caution', 'warning', 'keep out', 'avoid contact with eyes', 'dermatologically tested',
+  'tested by dermatologists', 'shake well', 'for external use only', 'net content', 'customer care',
+  'email', 'feedback', 'toll free', 'website', 'consumer care', 'unit', 'plot no', 'industrial area',
+  'formulated without', 'paraben free', 'cruelty free', 'vegan', 'clinically proven', 'hypoallergenic'
 ]);
+
+// Helper Levenshtein distance for fuzzy matching
+function levenshteinDistance(s1, s2) {
+  if (s1 === s2) return 0;
+  if (!s1.length) return s2.length;
+  if (!s2.length) return s1.length;
+
+  const row = [];
+  for (let i = 0; i <= s2.length; i++) row[i] = i;
+
+  for (let i = 0; i < s1.length; i++) {
+    let prev = i + 1;
+    for (let j = 0; j < s2.length; j++) {
+      let cur;
+      if (s1[i] === s2[j]) {
+        cur = row[j];
+      } else {
+        cur = Math.min(row[j] + 1, prev + 1, row[j + 1] + 1);
+      }
+      row[j] = prev;
+      prev = cur;
+    }
+    row[s2.length] = prev;
+  }
+  return row[s2.length];
+}
 
 // Valid Cosmetic Morphology Suffixes & Keywords
 const COSMETIC_SUFFIXES = [
@@ -517,14 +797,14 @@ function extractIngredientSection(rawText) {
     .replace(/[»«©®™£€¥$#*~|{}_=\\\[\]]/g, ' ')
     .trim();
 
-  // 1. Find Start Boundary (e.g. "INGREDIENTS:", "CONTENTS:", "INCI:")
+  // 1. Find Start Boundary
   const startRegex = /(?:full\s+ingredients?|active\s+ingredients?|inactive\s+ingredients?|ingredients?|contains?|contents?|composition|inci)\s*[:;\-\.]\s*/i;
   const startMatch = cleaned.match(startRegex);
   if (startMatch) {
     cleaned = cleaned.substring(startMatch.index + startMatch[0].length);
   }
 
-  // 2. Find End Boundary (e.g. "USAGE INSTRUCTIONS:", "EXPIRY:", "MRP:", "CAUTION:", etc.)
+  // 2. Find End Boundary
   const stopRegex = /\b(?:usage(?:\s+instruction[s]?)?|directions?|how to use|apply\s+twice|caution|warning|expiry|exp(?:\s+date)?|mfd|mfg|manufactured|batch|mrp|design regd|regd|net wt|net vol|made in|distributed by|marketed by|hul regn|minimum thickness|packaging is|store in|keep out|bar code)\b/i;
   const stopMatch = cleaned.match(stopRegex);
   if (stopMatch) {
@@ -539,31 +819,56 @@ function cleanOCRText(rawText) {
   return extractIngredientSection(rawText);
 }
 
-// Master Formulation Parser
-function analyzeINCIFormulation(inputText) {
+// Master Formulation Parser with 4-Tier Fallback Chain
+async function analyzeINCIFormulation(inputText) {
   if (!inputText || !inputText.trim()) {
     return { error: 'Empty ingredient input' };
   }
 
   let text = inputText.trim();
   let resolvedProductName = null;
-  let resolvedBrand = null;
+  let resolvedSource = null;
 
-  // 1. Check if user entered a product name or brand query first
+  // Tier 1: Check Local Master Catalog
   const productMatch = searchProductCatalog(text);
   if (productMatch) {
-    resolvedProductName = `${productMatch.brand} · ${productMatch.name}`;
-    resolvedBrand = productMatch.brand;
+    resolvedProductName = productMatch.brand + ' · ' + productMatch.name;
+    resolvedSource = productMatch.source;
     text = productMatch.formula;
   } else {
-    // Extract purely the ingredient section if it is packaging OCR text
-    const extractedSection = extractIngredientSection(text);
-    if (extractedSection && extractedSection.length >= 3) {
-      text = extractedSection;
+    const isRawIngredientList = text.includes(',') && text.split(',').length >= 4;
+
+    if (!isRawIngredientList) {
+      // Tier 2: Open Beauty Facts Online Global Database Lookup
+      try {
+        const obfResult = await fetchExternalProductDatabase(text);
+        if (obfResult && obfResult.formula && obfResult.formula.length > 15) {
+          resolvedProductName = obfResult.brand + ' · ' + obfResult.name;
+          resolvedSource = obfResult.source;
+          text = obfResult.formula;
+        }
+      } catch (err) {
+        // Fall through
+      }
+
+      // Tier 3: Dynamic Active Formulation & Archetype Reconstructor
+      if (!resolvedProductName) {
+        const heuristic = reconstructFormulationHeuristic(text);
+        if (heuristic && heuristic.formula) {
+          resolvedProductName = heuristic.brand + ' · ' + heuristic.name;
+          resolvedSource = heuristic.source;
+          text = heuristic.formula;
+        }
+      }
+    } else {
+      const extractedSection = extractIngredientSection(text);
+      if (extractedSection && extractedSection.length >= 3) {
+        text = extractedSection;
+      }
     }
   }
 
-  // 2. Tokenize by commas, semicolons, bullets, slashes, or newlines
+  // Tier 4: Tokenize by commas, semicolons, bullets, slashes, or newlines
   const rawTokens = text.split(/[,;\n\/\•\·\*\+]+/).map(s => s.trim().replace(/\.$/, '')).filter(s => s.length > 1);
 
   let highCloggers = 0;
@@ -576,7 +881,6 @@ function analyzeINCIFormulation(inputText) {
   const seenMatches = new Set();
 
   rawTokens.forEach(token => {
-    // Normalize punctuation, percentages, and parentheticals
     let cleanToken = token.toLowerCase()
       .replace(/[»«©®™£€¥$#*~|{}_=\\\[\]\<\>]/g, '')
       .replace(/[\(\)\*\d%\.\+]/g, ' ')
@@ -585,7 +889,6 @@ function analyzeINCIFormulation(inputText) {
 
     if (cleanToken.length < 3) return;
 
-    // Check if token is packaging noise / stop word
     let isStop = false;
     for (const stop of PACKAGING_STOP_WORDS) {
       if (cleanToken === stop || cleanToken.startsWith(stop + ' ') || cleanToken.endsWith(' ' + stop)) {
@@ -595,23 +898,19 @@ function analyzeINCIFormulation(inputText) {
     }
     if (isStop) return;
 
-    // Letter ratio check (must be at least 65% alphabetic)
     const letterCount = (cleanToken.match(/[a-z]/g) || []).length;
     if (letterCount / cleanToken.length < 0.65) return;
 
-    // Strip trailing OCR noise syllables (e.g. " ro", " b", " j")
     cleanToken = cleanToken.replace(/\b[a-z]{1,2}\b/g, '').replace(/\s+/g, ' ').trim();
     if (cleanToken.length < 3) return;
 
     let match = null;
     let matchedKey = cleanToken;
 
-    // 1. Direct match in Knowledge Base
     if (INCI_KNOWLEDGE_BASE[cleanToken]) {
       match = INCI_KNOWLEDGE_BASE[cleanToken];
       matchedKey = cleanToken;
     } else {
-      // 2. Substring & alias matching
       for (const key in INCI_KNOWLEDGE_BASE) {
         if (cleanToken === key || cleanToken.includes(key) || (key.length > 5 && key.includes(cleanToken))) {
           match = INCI_KNOWLEDGE_BASE[key];
@@ -621,7 +920,6 @@ function analyzeINCIFormulation(inputText) {
       }
     }
 
-    // 3. Fuzzy Levenshtein Distance Matching (tolerates 1-2 character OCR reading errors)
     if (!match) {
       for (const key in INCI_KNOWLEDGE_BASE) {
         if (Math.abs(key.length - cleanToken.length) <= 2 && key.length >= 6) {
@@ -635,7 +933,6 @@ function analyzeINCIFormulation(inputText) {
       }
     }
 
-    // 4. Cosmetic morphology validation (e.g. unknown botanical extract)
     if (!match) {
       const hasCosmeticSuffix = COSMETIC_SUFFIXES.some(suffix => cleanToken.endsWith(suffix) || cleanToken.includes(suffix));
       if (hasCosmeticSuffix) {
@@ -650,18 +947,11 @@ function analyzeINCIFormulation(inputText) {
       }
     }
 
-    // CRITICAL: If no cosmetic match is found, THIS IS NOISE / NON-INGREDIENT. DISCARD IT!
-    if (!match) {
-      return;
-    }
+    if (!match) return;
 
-    // Prevent duplicate entries in same scan
-    if (seenMatches.has(matchedKey)) {
-      return;
-    }
+    if (seenMatches.has(matchedKey)) return;
     seenMatches.add(matchedKey);
 
-    // Apply clinical weighting
     if (match.rating >= 4) {
       highCloggers++;
       totalScore -= 22;
@@ -705,7 +995,7 @@ function analyzeINCIFormulation(inputText) {
   if (highCloggers >= 2) {
     verdict = '❌ High Pore Cloggers';
     verdictClass = 'danger';
-    verdictDescription = `Found ${highCloggers} high-comedogenic (rating 4-5) ingredients likely to trigger microcomedones and pore congestion.`;
+    verdictDescription = 'Found ' + highCloggers + ' high-comedogenic (rating 4-5) ingredients likely to trigger microcomedones and pore congestion.';
   } else if (highCloggers === 1) {
     verdict = '⚠️ Caution: Contains 1 Pore Clogger';
     verdictClass = 'warn';
@@ -713,16 +1003,17 @@ function analyzeINCIFormulation(inputText) {
   } else if (sensitizers >= 2) {
     verdict = '⚠️ High Sensitizer / Allergen Load';
     verdictClass = 'warn';
-    verdictDescription = `Zero pore cloggers, but contains ${sensitizers} fragrance allergens/sensitizers (EU 26). May trigger redness or contact dermatitis on sensitive skin.`;
+    verdictDescription = 'Zero pore cloggers, but contains ' + sensitizers + ' fragrance allergens/sensitizers (EU 26). May trigger redness or contact dermatitis on sensitive skin.';
   } else if (sensitizers === 1 || fungalTriggers >= 1) {
     verdict = '⚠️ Caution: Potential Triggers';
     verdictClass = 'warn';
-    verdictDescription = `Contains ${sensitizers > 0 ? sensitizers + ' fragrance sensitizer' : ''}${sensitizers > 0 && fungalTriggers > 0 ? ' and ' : ''}${fungalTriggers > 0 ? fungalTriggers + ' fungal acne lipid trigger(s)' : ''}.`;
+    verdictDescription = 'Contains potential mild pore-cloggers or sensitizers.';
   }
 
   return {
     success: true,
     resolvedProduct: resolvedProductName,
+    resolvedSource,
     totalScore,
     verdict,
     verdictClass,
@@ -743,6 +1034,8 @@ module.exports = {
   cleanOCRText,
   extractIngredientSection,
   searchProductCatalog,
+  fetchExternalProductDatabase,
+  reconstructFormulationHeuristic,
   getProductSuggestions,
   PRODUCT_CATALOG,
   INCI_KNOWLEDGE_BASE

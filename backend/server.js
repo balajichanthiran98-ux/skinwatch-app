@@ -1377,7 +1377,7 @@ app.post('/api/inci/analyze', async (req, res) => {
       });
     }
 
-    const analysis = analyzeINCIFormulation(inputString);
+    const analysis = await analyzeINCIFormulation(inputString);
     res.json(analysis);
   } catch (err) {
     console.error('INCI Analysis error:', err);
