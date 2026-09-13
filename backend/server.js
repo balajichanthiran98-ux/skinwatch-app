@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const rulesEngine = require('./rulesEngine');
 const historyStore = require('./historyStore');
-const { analyzeINCIFormulation, cleanOCRText } = require('./inciAnalyzer');
+const { analyzeINCIFormulation, cleanOCRText, getProductSuggestions, searchProductCatalog } = require('./inciAnalyzer');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -1385,6 +1385,33 @@ app.post('/api/inci/analyze', async (req, res) => {
       success: false,
       error: 'Formulation analysis failed: ' + err.message
     });
+  }
+});
+
+// ---- GET & POST /api/inci/search ----
+// Autocomplete Skincare Product Search across 120+ Top Formulations
+app.get('/api/inci/search', (req, res) => {
+  try {
+    const q = req.query.q || req.query.query || '';
+    const limit = parseInt(req.query.limit, 10) || 8;
+    const results = getProductSuggestions(q, limit);
+    res.json({ success: true, query: q, count: results.length, results });
+  } catch (err) {
+    console.error('INCI Search error:', err);
+    res.status(500).json({ success: false, error: err.message, results: [] });
+  }
+});
+
+app.post('/api/inci/search', (req, res) => {
+  try {
+    const { query, q, limit } = req.body || {};
+    const searchQuery = query || q || '';
+    const maxLimit = parseInt(limit, 10) || 8;
+    const results = getProductSuggestions(searchQuery, maxLimit);
+    res.json({ success: true, query: searchQuery, count: results.length, results });
+  } catch (err) {
+    console.error('INCI Search POST error:', err);
+    res.status(500).json({ success: false, error: err.message, results: [] });
   }
 });
 

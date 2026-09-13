@@ -5883,6 +5883,140 @@ body {
   background: var(--surface);
 }
 
+/* INCI Product Name Search & Autocomplete UI */
+.inci-search-box-wrap {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.inci-search-input-field {
+  width: 100%;
+  padding: 10px 38px 10px 36px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.inci-search-input-field:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.15);
+}
+
+.inci-search-icon-left {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.inci-search-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: none;
+}
+
+.inci-search-clear-btn:hover {
+  color: var(--text-primary);
+  background: var(--cream);
+}
+
+.inci-suggestions-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 1000;
+  padding: 6px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.inci-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.inci-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.inci-suggestion-item:hover, .inci-suggestion-item.selected {
+  background: var(--gold-tint, rgba(184, 134, 11, 0.08));
+}
+
+.inci-suggestion-brand-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--cream);
+  color: var(--gold, #B8860B);
+  border: 1px solid var(--border-strong);
+  white-space: nowrap;
+}
+
+.inci-suggestion-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.inci-suggestion-snippet {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.inci-suggestion-action {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0284C7;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
 .inci-results-card {
   background: var(--surface);
   border: 1px solid var(--border-strong);
