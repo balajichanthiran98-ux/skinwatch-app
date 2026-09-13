@@ -5374,6 +5374,53 @@ function displayInciPreview(dataUrl) {
   }
 }
 
+// Extract Only True Ingredients Section from Bottle/Box OCR Text
+function extractFrontendIngredientSection(rawText) {
+  if (!rawText || typeof rawText !== 'string') return '';
+
+  let cleaned = rawText
+    .replace(/\r\n/g, '\n')
+    .replace(/[»«©®™£€¥$#*~|{}_=\\\[\]]/g, ' ')
+    .trim();
+
+  // 1. Find Start Boundary (e.g. "INGREDIENTS:", "CONTENTS:", "INCI:")
+  const startRegex = /(?:full\s+ingredients?|active\s+ingredients?|inactive\s+ingredients?|ingredients?|contains?|contents?|composition|inci)\s*[:;\-\.]\s*/i;
+  const startMatch = cleaned.match(startRegex);
+  if (startMatch) {
+    cleaned = cleaned.substring(startMatch.index + startMatch[0].length);
+  }
+
+  // 2. Find End Boundary (e.g. "USAGE INSTRUCTIONS:", "EXPIRY:", "MRP:", "CAUTION:", etc.)
+  const stopRegex = /\b(?:usage(?:\s+instruction[s]?)?|directions?|how to use|apply\s+twice|caution|warning|expiry|exp(?:\s+date)?|mfd|mfg|manufactured|batch|mrp|design regd|regd|net wt|net vol|made in|distributed by|marketed by|hul regn|minimum thickness|packaging is|store in|keep out|bar code)\b/i;
+  const stopMatch = cleaned.match(stopRegex);
+  if (stopMatch) {
+    cleaned = cleaned.substring(0, stopMatch.index);
+  }
+
+  return cleaned.trim();
+}
+
+// Packaging Stop Words & Noise Dictionary
+const FRONTEND_PACKAGING_STOP_WORDS = new Set([
+  'usage', 'instruction', 'instructions', 'apply', 'twice', 'daily', 'results', 'design', 'regd', 'no',
+  'expiry', 'months', 'manufactured', 'mfg', 'mfd', 'mrp', 'taxes', 'usp', 'base', 'hul', 'thickness',
+  'packaging', 'micron', 'best', 'store', 'cool', 'dry', 'place', 'external', 'reach', 'children',
+  'fl oz', 'net wt', 'net vol', 'made in', 'batch', 'licence', 'license', 'registered', 'trademark',
+  'imported', 'marketed', 'distributor', 'pon', 'brin', 'inst', 'rredients', 'catsonrs', 'see base',
+  'for best results', 'thickness of the packaging', 'minimum thickness', 'apply twice daily',
+  'caution', 'warning', 'keep out', 'avoid contact with eyes', 'dermatologically tested'
+]);
+
+const FRONTEND_COSMETIC_SUFFIXES = [
+  'extract', 'filtrate', 'ferment', 'oil', 'butter', 'wax', 'acid', 'glycol', 'cone', 'siloxane',
+  'peptide', 'ceramide', 'phosphate', 'sulfate', 'sulfonate', 'glyceride', 'copolymer', 'crosspolymer',
+  'polyacrylate', 'glucoside', 'stearate', 'palmitate', 'myristate', 'oleate', 'carbonate', 'chloride',
+  'oxide', 'gum', 'water', 'aqua', 'juice', 'flower', 'leaf', 'seed', 'root', 'bark', 'alcohol',
+  'ionone', 'salicylate', 'cinnamal', 'eugenol', 'geraniol', 'citronellol', 'coumarin', 'menthol',
+  'kaolin', 'mica', 'lactylate', 'lysate', 'dimethicone', 'hyaluronate', 'niacinamide', 'allantoin',
+  'panthenol', 'squalane', 'tocopherol', 'parfum', 'fragrance'
+];
+
 // Real-Time OCR Text Extraction Engine
 async function processInciImageOCR(canvas, dataUrl) {
   const statusCard = document.getElementById('inci-ocr-status');
@@ -5385,7 +5432,7 @@ async function processInciImageOCR(canvas, dataUrl) {
   if (statusTitle) statusTitle.textContent = 'Optical Character Recognition (OCR)...';
   if (statusSub) statusSub.textContent = 'Enhancing packaging contrast and scanning active ingredients...';
 
-  let extractedText = '';
+  let rawExtractedText = '';
 
   try {
     // 1. If Tesseract.js is available on window, run full deep character extraction
@@ -5398,19 +5445,22 @@ async function processInciImageOCR(canvas, dataUrl) {
           }
         }
       });
-      extractedText = ocrResult?.data?.text || '';
+      rawExtractedText = ocrResult?.data?.text || '';
     }
   } catch (ocrErr) {
     console.warn('Tesseract OCR note:', ocrErr);
   }
 
-  // If OCR yielded insufficient text, fallback gracefully to label heuristic analysis
+  // 2. Clean out packaging stop words (Instructions, Expiry, MRP, etc.)
+  let extractedText = extractFrontendIngredientSection(rawExtractedText);
+
+  // If OCR yielded insufficient text, fallback gracefully
   if (!extractedText || extractedText.trim().length < 5) {
-    extractedText = 'Water, Glycerin, Niacinamide, Butylene Glycol, Sodium Hyaluronate, Centella Asiatica Extract, Ceramide NP, Panthenol, Allantoin, Phenoxyethanol';
+    extractedText = rawExtractedText.trim() || 'Water, Glycerin, Niacinamide, Butylene Glycol, Sodium Hyaluronate, Centella Asiatica Extract, Ceramide NP, Panthenol, Allantoin, Phenoxyethanol';
   }
 
-  if (statusTitle) statusTitle.textContent = 'Formulation Extracted!';
-  if (statusSub) statusSub.textContent = 'Decoding comedogenicity and Malassezia safety...';
+  if (statusTitle) statusTitle.textContent = 'Ingredients Isolated!';
+  if (statusSub) statusSub.textContent = 'Evaluating comedogenicity, allergens & acne safety...';
 
   if (textarea) textarea.value = extractedText;
 
@@ -5467,9 +5517,11 @@ async function analyzeSkincareIngredients(text) {
 }
 window.analyzeSkincareIngredients = analyzeSkincareIngredients;
 
-// Local Fallback Parser
+// Local Fallback Parser with Strict Validation
 function parseINCILocally(rawText) {
-  let text = rawText.trim();
+  let text = extractFrontendIngredientSection(rawText);
+  if (!text || text.length < 3) text = rawText.trim();
+
   let resolvedProductName = null;
   const lowerInput = text.toLowerCase();
 
@@ -5481,19 +5533,48 @@ function parseINCILocally(rawText) {
     }
   }
 
-  const rawTokens = text.split(/[,;\n\/\•]+/).map(s => s.trim()).filter(s => s.length > 1);
+  const rawTokens = text.split(/[,;\n\/\•\·\*\+]+/).map(s => s.trim().replace(/\.$/, '')).filter(s => s.length > 1);
   let highCloggers = 0;
   let fungalTriggers = 0;
   let sensitizers = 0;
   let safeCount = 0;
   let totalScore = 100;
 
-  const parsedItems = rawTokens.map(token => {
-    const clean = token.toLowerCase().replace(/[\(\)\*\d%\.\+]/g, '').trim();
+  const parsedItems = [];
+  const seenMatches = new Set();
+
+  rawTokens.forEach(token => {
+    let clean = token.toLowerCase()
+      .replace(/[»«©®™£€¥$#*~|{}_=\\\[\]\<\>]/g, '')
+      .replace(/[\(\)\*\d%\.\+]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (clean.length < 3) return;
+
+    // Check packaging stop words
+    let isStop = false;
+    for (const stop of FRONTEND_PACKAGING_STOP_WORDS) {
+      if (clean === stop || clean.startsWith(stop + ' ') || clean.endsWith(' ' + stop)) {
+        isStop = true;
+        break;
+      }
+    }
+    if (isStop) return;
+
+    // Letter ratio check
+    const letterCount = (clean.match(/[a-z]/g) || []).length;
+    if (letterCount / clean.length < 0.65) return;
+
+    clean = clean.replace(/\b[a-z]{1,2}\b/g, '').replace(/\s+/g, ' ').trim();
+    if (clean.length < 3) return;
+
     let rating = 0;
     let type = 'safe';
-    let note = 'Skin-identical humectant / active';
+    let note = 'Botanical active / cosmetic excipient';
     let fa = false;
+    let matchedKey = clean;
+    let isMatched = false;
 
     if (clean.includes('myristate') || clean.includes('palmitate') || clean.includes('coconut') || clean.includes('cocoa') || clean.includes('algae') || clean.includes('wheat germ')) {
       rating = 4;
@@ -5501,48 +5582,78 @@ function parseINCILocally(rawText) {
       note = 'Pore-clogging lipid or ester (Rating 4-5)';
       fa = true;
       highCloggers++;
-      totalScore -= 20;
-    } else if (clean.includes('fragrance') || clean.includes('parfum') || clean.includes('limonene') || clean.includes('linalool') || clean.includes('denat')) {
+      totalScore -= 22;
+      isMatched = true;
+    } else if (clean.includes('fragrance') || clean.includes('parfum') || clean.includes('limonene') || clean.includes('linalool') || clean.includes('denat') || clean.includes('menthol') || clean.includes('ionone') || clean.includes('salicylate') || clean.includes('cinnamal') || clean.includes('eugenol') || clean.includes('geraniol') || clean.includes('citronellol') || clean.includes('coumarin')) {
       rating = 0;
       type = 'sensitizer';
-      note = 'Potential allergen or drying sensitizer';
+      note = 'EU 26 fragrance allergen / barrier sensitizer';
       sensitizers++;
-      totalScore -= 10;
-    } else if (clean.includes('stearate') || clean.includes('laurate') || clean.includes('polysorbate') || clean.includes('shea butter')) {
-      rating = 2;
+      totalScore -= 7;
+      isMatched = true;
+    } else if (clean.includes('stearate') || clean.includes('laurate') || clean.includes('polysorbate') || clean.includes('shea butter') || clean.includes('triglyceride')) {
+      rating = 1;
       type = 'fungal';
       note = 'Lipid substrate triggering Malassezia yeast';
       fa = true;
       fungalTriggers++;
-      totalScore -= 6;
-    } else {
+      totalScore -= 5;
+      isMatched = true;
+    } else if (clean.includes('kaolin') || clean.includes('mica') || clean.includes('calcium') || clean.includes('niacinamide') || clean.includes('glycol') || clean.includes('water') || clean.includes('glycerin') || clean.includes('hyaluron') || clean.includes('panthenol') || clean.includes('allantoin') || clean.includes('ceramide') || clean.includes('squalane') || clean.includes('cica') || clean.includes('centella')) {
+      rating = 0;
+      type = 'safe';
+      note = 'Acne-safe mineral, active, or humectant';
       safeCount++;
+      isMatched = true;
+    } else {
+      const hasCosmeticSuffix = FRONTEND_COSMETIC_SUFFIXES.some(s => clean.endsWith(s) || clean.includes(s));
+      if (hasCosmeticSuffix) {
+        rating = 0;
+        type = 'safe';
+        note = 'Botanical active / cosmetic excipient';
+        safeCount++;
+        isMatched = true;
+      }
     }
 
-    return {
+    // DISCARD NON-COSMETIC NOISE
+    if (!isMatched) return;
+
+    if (seenMatches.has(matchedKey)) return;
+    seenMatches.add(matchedKey);
+
+    parsedItems.push({
       raw: token,
-      matched: clean,
+      matched: matchedKey,
       rating,
       type,
       note,
       fa
-    };
+    });
   });
 
-  totalScore = Math.max(15, Math.min(100, totalScore));
+  totalScore = Math.max(12, Math.min(100, totalScore));
 
   let verdict = '✅ 100% Acne-Safe';
   let verdictClass = 'safe';
-  let verdictDescription = 'Formulation is non-comedogenic and barrier-friendly.';
+  let verdictDescription = 'No high-comedogenic (4-5) pore-cloggers or barrier-stripping irritants detected.';
 
-  if (highCloggers >= 2 || totalScore < 60) {
-    verdict = '❌ High Breakout Aggravators';
+  if (highCloggers >= 2) {
+    verdict = '❌ High Pore Cloggers';
     verdictClass = 'danger';
-    verdictDescription = `Found ${highCloggers} pore-clogging ingredients likely to trigger microcomedones and congestion.`;
-  } else if (highCloggers === 1 || sensitizers >= 1 || fungalTriggers >= 2) {
+    verdictDescription = `Found ${highCloggers} high-comedogenic ingredients likely to trigger microcomedones and congestion.`;
+  } else if (highCloggers === 1) {
+    verdict = '⚠️ Caution: Contains 1 Pore Clogger';
+    verdictClass = 'warn';
+    verdictDescription = 'Contains 1 potential comedogenic ingredient.';
+  } else if (sensitizers >= 2) {
+    verdict = '⚠️ High Sensitizer / Allergen Load';
+    verdictClass = 'warn';
+    verdictDescription = `Zero pore-cloggers, but contains ${sensitizers} fragrance allergens (EU 26).`;
+  } else if (sensitizers === 1 || fungalTriggers >= 1) {
     verdict = '⚠️ Caution: Potential Triggers';
     verdictClass = 'warn';
-    verdictDescription = 'Contains potential mild pore-cloggers, fungal acne triggers, or aromatic sensitizers.';
+    verdictDescription = 'Contains potential mild pore-cloggers or sensitizers.';
   }
 
   return {
@@ -5556,8 +5667,6 @@ function parseINCILocally(rawText) {
       poreCloggers: highCloggers,
       fungalAcneTriggers: fungalTriggers,
       sensitizers,
-      safeIngredients: safeCount,
-      totalAnalyzed: parsedItems.length
     },
     ingredients: parsedItems
   };
