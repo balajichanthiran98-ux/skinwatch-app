@@ -5489,7 +5489,357 @@ body {
   border: 1px solid var(--border);
 }
 
-/* INCI Pore Checker Styles */
+/* INCI Pore Checker & Camera OCR Scanner Styles */
+.inci-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.inci-mode-tab-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.inci-mode-tab-btn.active {
+  background: #0284C7;
+  color: #FFFFFF;
+  border-color: #0284C7;
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.25);
+}
+
+/* Camera Scanner Studio */
+.inci-scanner-studio {
+  width: 100%;
+}
+
+.inci-camera-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 380px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.inci-video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* OCR Viewfinder Targeting Guide Box */
+.inci-ocr-guide-box {
+  position: absolute;
+  top: 15%;
+  left: 10%;
+  right: 10%;
+  bottom: 22%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.6);
+  border-radius: 12px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 8px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
+
+.ocr-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: #38BDF8;
+  border-style: solid;
+}
+
+.ocr-corner.tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-top-left-radius: 6px; }
+.ocr-corner.tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-top-right-radius: 6px; }
+.ocr-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; border-bottom-left-radius: 6px; }
+.ocr-corner.br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-bottom-right-radius: 6px; }
+
+.ocr-scan-laser {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #38BDF8, #60A5FA, #38BDF8, transparent);
+  box-shadow: 0 0 8px #38BDF8;
+  animation: ocrLaserScan 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes ocrLaserScan {
+  0% { top: 4%; opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { top: 96%; opacity: 0.3; }
+}
+
+.ocr-guide-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: #FFFFFF;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  padding: 3px 10px;
+  border-radius: 12px;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inci-camera-overlay-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 5;
+}
+
+.inci-lux-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #34D399;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.inci-icon-circle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.inci-camera-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 5;
+}
+
+.inci-cancel-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #FFF;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.inci-shutter-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: transparent;
+  border: 3.5px solid #FFFFFF;
+  padding: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.inci-shutter-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #38BDF8;
+  transition: transform 0.15s ease;
+}
+
+.inci-shutter-btn:active .inci-shutter-inner {
+  transform: scale(0.85);
+  background: #0284C7;
+}
+
+.inci-upload-quick-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #FFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Launcher Card */
+.inci-launcher-card {
+  background: var(--surface);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: 16px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.inci-launcher-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.inci-launcher-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #E0F2FE;
+  color: #0284C7;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+/* Real-Time OCR Status Indicator */
+.inci-ocr-status-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #F0F9FF;
+  border: 1px solid #BAE6FD;
+  border-radius: 12px;
+  margin-top: 12px;
+  animation: fadeIn 0.25s ease;
+}
+
+.inci-ocr-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid #BAE6FD;
+  border-top-color: #0284C7;
+  border-radius: 50%;
+  animation: ocrSpin 0.7s linear infinite;
+}
+
+@keyframes ocrSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Preview Wrap */
+.inci-preview-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.inci-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 8px;
+}
+
+.inci-retake-btn {
+  background: var(--cream);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.inci-preview-img-box {
+  width: 100%;
+  height: 140px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111;
+}
+
+.inci-preview-img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Resolved Product Banner */
+.inci-resolved-banner {
+  background: #F0FDF4;
+  border: 1px solid #86EFAC;
+  color: #166534;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+/* Filter Chips Bar */
+.inci-filter-chip {
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--cream);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.inci-filter-chip.active {
+  background: var(--text-main);
+  color: #FFF;
+  border-color: var(--text-main);
+}
+
 .akvile-preset-pills {
   display: flex;
   gap: 6px;
@@ -5614,6 +5964,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.inci-stat-item:hover {
+  transform: translateY(-1px);
+  border-color: var(--gold);
 }
 
 .inci-stat-val {
@@ -5637,7 +5994,7 @@ body {
   flex-direction: column;
   gap: 6px;
   margin-top: 8px;
-  max-height: 220px;
+  max-height: 280px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -5646,16 +6003,27 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 7px 10px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: var(--cream);
   font-size: 11.5px;
   border: 1px solid var(--border);
+  transition: all 0.15s ease;
 }
 
 .inci-item-row.clogger {
   background: #FEF2F2;
   border-color: rgba(185, 28, 28, 0.3);
+}
+
+.inci-item-row.fungal {
+  background: #FFFBEB;
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+.inci-item-row.sensitizer {
+  background: #FFF7ED;
+  border-color: rgba(194, 65, 12, 0.25);
 }
 
 .inci-item-name {
@@ -5689,6 +6057,13 @@ body {
   background: #FEE2E2;
   color: #B91C1C;
 }
+
+.inci-rating-badge.rating-5 { background: #7F1D1D; color: #FEF2F2; font-weight: 700; }
+.inci-rating-badge.rating-4 { background: #DC2626; color: #FFFFFF; font-weight: 700; }
+.inci-rating-badge.rating-3 { background: #F59E0B; color: #78350F; }
+.inci-rating-badge.rating-2 { background: #FDE68A; color: #854D0E; }
+.inci-rating-badge.rating-1 { background: #ECFCCB; color: #3F6212; }
+.inci-rating-badge.rating-0 { background: #DCFCE7; color: #15803D; }
 
 /* =========================================================================
    Akvile Acne Tracker & Facial Zone Mapping Styles

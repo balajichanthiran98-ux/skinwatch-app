@@ -9,6 +9,7 @@ require('dotenv').config();
 
 const rulesEngine = require('./rulesEngine');
 const historyStore = require('./historyStore');
+const { analyzeINCIFormulation, cleanOCRText } = require('./inciAnalyzer');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -1359,6 +1360,31 @@ app.post('/api/redness-tracker/analyze', (req, res) => {
   } catch (err) {
     console.error('Redness Tracker analysis error:', err);
     res.status(500).json({ success: false, error: 'Redness analysis failed: ' + err.message });
+  }
+});
+
+// ---- POST /api/inci/analyze ----
+// Clinical AI INCI Formulation Analyzer & Comedogenicity Evaluator
+app.post('/api/inci/analyze', async (req, res) => {
+  try {
+    const { text, productName, rawOCR } = req.body || {};
+    const inputString = text || productName || rawOCR || '';
+
+    if (!inputString || typeof inputString !== 'string' || !inputString.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide skincare ingredient text, an OCR scan, or a product name.'
+      });
+    }
+
+    const analysis = analyzeINCIFormulation(inputString);
+    res.json(analysis);
+  } catch (err) {
+    console.error('INCI Analysis error:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Formulation analysis failed: ' + err.message
+    });
   }
 });
 

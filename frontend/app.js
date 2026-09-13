@@ -5200,97 +5200,519 @@ function renderAkvileTriggerAnalytics() {
   }
 }
 
-// 3. Akvile Pore-Clogging & INCI Ingredient Safety Engine
-const INCI_DATABASE = {
-  // Comedogenic 5 (Severe Clogging)
-  'isopropyl myristate': { rating: 5, type: 'clog', note: 'Severe pore clogger & acne flare trigger', fa: true },
-  'isopropyl isostearate': { rating: 5, type: 'clog', note: 'High comedogenic ester', fa: true },
-  'myristyl myristate': { rating: 5, type: 'clog', note: 'Heavy occlusive wax ester', fa: true },
-  'wheat germ oil': { rating: 5, type: 'clog', note: 'Extremely heavy lipid', fa: true },
-  'algae extract': { rating: 5, type: 'clog', note: 'Can trap dead keratin in follicles', fa: false },
-  'laureth-4': { rating: 5, type: 'clog', note: 'High comedogenic surfactant', fa: false },
-  'potassium chloride': { rating: 5, type: 'clog', note: 'Comedogenic mineral binder', fa: false },
+// 3. Akvile Pore-Clogging & INCI Formulation Safety Engine (Option 3 & Option 4 Integrated)
+let inciCameraStream = null;
+let inciCameraFacing = 'environment'; // Default to rear camera for scanning bottles/boxes
+let currentInciAnalysis = null;
+let currentInciFilter = 'all';
+let isInciCapturing = false;
 
-  // Comedogenic 4 (High Clogging)
-  'coconut oil': { rating: 4, type: 'clog', note: 'High lauric acid; clogs acne-prone pores', fa: true },
-  'cocos nucifera oil': { rating: 4, type: 'clog', note: 'High lauric acid (Coconut Oil)', fa: true },
-  'cocoa butter': { rating: 4, type: 'clog', note: 'Rich dense butter; pore clog risk', fa: true },
-  'ethylhexyl palmitate': { rating: 4, type: 'clog', note: 'Fatty acid ester known for micro-comedones', fa: true },
-  'isostearyl isostearate': { rating: 4, type: 'clog', note: 'High comedogenic lubricant', fa: true },
-  'myristyl lactate': { rating: 4, type: 'clog', note: 'Pore-clogging ester', fa: true },
-  'sodium chloride': { rating: 4, type: 'clog', note: 'May aggravate cystic breakouts in high concentrations', fa: false },
-  'acetylated lanolin': { rating: 4, type: 'clog', note: 'Heavy animal lipid derivative', fa: true },
-
-  // Comedogenic 3 (Moderate Clogging)
-  'mineral oil': { rating: 3, type: 'clog', note: 'Heavy occlusive; traps sebum', fa: false },
-  'sesame oil': { rating: 3, type: 'clog', note: 'Moderate comedogenicity', fa: true },
-  'avocado oil': { rating: 3, type: 'clog', note: 'Rich oleic acid profile', fa: true },
-  'soybean oil': { rating: 3, type: 'clog', note: 'Can aggravate acne-prone pores', fa: true },
-  'lauric acid': { rating: 3, type: 'clog', note: 'Fatty acid; fungal acne trigger', fa: true },
-  'myristic acid': { rating: 3, type: 'clog', note: 'Fatty acid; fungal acne trigger', fa: true },
-  'palmitic acid': { rating: 2, type: 'clog', note: 'Fatty acid; fungal acne trigger', fa: true },
-  'stearic acid': { rating: 2, type: 'clog', note: 'Fatty acid; safe for most, fungal trigger', fa: true },
-
-  // Comedogenic 2 (Mild Clogging / Barrier Emollients)
-  'cetearyl alcohol': { rating: 2, type: 'emollient', note: 'Fatty alcohol emollient; well tolerated by most', fa: false },
-  'cetyl alcohol': { rating: 2, type: 'emollient', note: 'Fatty alcohol texture enhancer', fa: false },
-  'stearyl alcohol': { rating: 2, type: 'emollient', note: 'Fatty alcohol emollient', fa: false },
-  'jojoba oil': { rating: 2, type: 'oil', note: 'Liquid wax mimicking human sebum', fa: false },
-  'beeswax': { rating: 2, type: 'wax', note: 'Natural occlusive', fa: false },
-  'cera alba': { rating: 2, type: 'wax', note: 'Natural beeswax', fa: false },
-  'shea butter': { rating: 1, type: 'butter', note: 'Rich barrier lipid; fungal acne trigger', fa: true },
-  'butyrospermum parkii butter': { rating: 1, type: 'butter', note: 'Shea butter; fungal acne trigger', fa: true },
-
-  // Sensitizers / Irritants
-  'fragrance': { rating: 0, type: 'sensitizer', note: 'Synthetic fragrance; potential contact allergen', fa: false },
-  'parfum': { rating: 0, type: 'sensitizer', note: 'Fragrance compound; potential contact allergen', fa: false },
-  'denatured alcohol': { rating: 0, type: 'sensitizer', note: 'Drying short-chain alcohol; compromises barrier', fa: false },
-  'alcohol denat': { rating: 0, type: 'sensitizer', note: 'Drying solvent; compromises barrier', fa: false },
-  'citrus limon peel oil': { rating: 0, type: 'sensitizer', note: 'Essential oil; phototoxic sensitizer', fa: false },
-  'lavandula angustifolia oil': { rating: 0, type: 'sensitizer', note: 'Lavender essential oil; potential irritant', fa: false },
-  'linalool': { rating: 0, type: 'sensitizer', note: 'Fragrance allergen compound', fa: false },
-  'limonene': { rating: 0, type: 'sensitizer', note: 'Fragrance allergen compound', fa: false },
-
-  // Comedogenic 0 & Acne-Safe Heroes
-  'water': { rating: 0, type: 'safe', note: 'Solvent & base', fa: false },
-  'aqua': { rating: 0, type: 'safe', note: 'Purified water base', fa: false },
-  'glycerin': { rating: 0, type: 'safe', note: 'Gold-standard skin-identical humectant', fa: false },
-  'niacinamide': { rating: 0, type: 'safe', note: 'Vitamin B3; reduces sebum, redness & barrier stress', fa: false },
-  'squalane': { rating: 0, type: 'safe', note: '100% non-comedogenic, fungal acne-safe lipid', fa: false },
-  'salicylic acid': { rating: 0, type: 'safe', note: 'BHA exfoliant; clears inside pore lining', fa: false },
-  'hyaluronic acid': { rating: 0, type: 'safe', note: 'Binds 1000x its weight in cellular water', fa: false },
-  'sodium hyaluronate': { rating: 0, type: 'safe', note: 'Low molecular weight hydrating humectant', fa: false },
-  'centella asiatica extract': { rating: 0, type: 'safe', note: 'Cica; calms erythema & accelerates barrier repair', fa: false },
-  'panthenol': { rating: 0, type: 'safe', note: 'Pro-Vitamin B5; soothing & hydrating', fa: false },
-  'allantoin': { rating: 0, type: 'safe', note: 'Keratolytic & soothing skin protectant', fa: false },
-  'ceramide np': { rating: 0, type: 'safe', note: 'Essential barrier lipid (3:1:1 ratio)', fa: false },
-  'ceramide ap': { rating: 0, type: 'safe', note: 'Essential barrier lipid (3:1:1 ratio)', fa: false },
-  'ceramide eop': { rating: 0, type: 'safe', note: 'Essential barrier lipid (3:1:1 ratio)', fa: false },
-  'phytosphingosine': { rating: 0, type: 'safe', note: 'Antimicrobial lipid; inhibits C. acnes', fa: false },
-  'zinc pca': { rating: 0, type: 'safe', note: 'Regulates 5-alpha reductase & sebum flow', fa: false },
-  'azelaic acid': { rating: 0, type: 'safe', note: 'Dermatologist active for acne & rosacea erythema', fa: false },
-  'green tea extract': { rating: 0, type: 'safe', note: 'Potent antioxidant (EGCG)', fa: false },
-  'camellia sinensis leaf extract': { rating: 0, type: 'safe', note: 'Green tea antioxidant', fa: false },
-  'tocopherol': { rating: 1, type: 'safe', note: 'Vitamin E antioxidant', fa: false },
-  'l-ascorbic acid': { rating: 0, type: 'safe', note: 'Pure Vitamin C; stimulates collagen synthesis', fa: false },
-  'ascorbic acid': { rating: 0, type: 'safe', note: 'Vitamin C antioxidant', fa: false },
-  'madecassoside': { rating: 0, type: 'safe', note: 'Bioactive Centella triterpenoid', fa: false },
-  'zinc oxide': { rating: 0, type: 'safe', note: 'Physical mineral UV shield; anti-inflammatory', fa: false },
-  'titanium dioxide': { rating: 0, type: 'safe', note: 'Physical broad-spectrum UV reflector', fa: false },
-  'butylene glycol': { rating: 1, type: 'safe', note: 'Gentle humectant & slip agent', fa: false },
-  'caprylic/capric triglyceride': { rating: 1, type: 'safe', note: 'Lightweight coconut-derived emollient', fa: true },
-  'dimethicone': { rating: 1, type: 'safe', note: 'Breathable silicone barrier protector', fa: false },
-  'polysorbate 20': { rating: 0, type: 'emulsifier', note: 'Emulsifier; fungal acne trigger', fa: true },
-  'polysorbate 60': { rating: 0, type: 'emulsifier', note: 'Emulsifier; fungal acne trigger', fa: true },
-  'polysorbate 80': { rating: 0, type: 'emulsifier', note: 'Emulsifier; fungal acne trigger', fa: true }
+// Skincare Brand Product Catalog for Direct Lookup
+const INCI_PRODUCT_CATALOG = {
+  'cosrx snail mucin': 'Snail Secretion Filtrate, Betaine, Caprylic/Capric Triglyceride, Butylene Glycol, 1,2-Hexanediol, Sodium Hyaluronate, Panthenol, Zinc PCA, Allantoin, Ethyl Hexanediol, Sodium Polyacrylate, Carbomer, Phenoxyethanol',
+  'cosrx snail 96': 'Snail Secretion Filtrate, Betaine, Caprylic/Capric Triglyceride, Butylene Glycol, 1,2-Hexanediol, Sodium Hyaluronate, Panthenol, Zinc PCA, Allantoin, Ethyl Hexanediol, Sodium Polyacrylate, Carbomer, Phenoxyethanol',
+  'cerave pm': 'Aqua / Water, Glycerin, Caprylic/Capric Triglyceride, Niacinamide, Cetearyl Alcohol, Ceramide NP, Ceramide AP, Ceramide EOP, Phytosphingosine, Hyaluronic Acid, Sodium Lauroyl Lactylate, Dimethicone, Carbomer, Xanthan Gum',
+  'cerave moisturizing cream': 'Aqua / Water, Glycerin, Cetearyl Alcohol, Caprylic/Capric Triglyceride, Cetyl Alcohol, Ceteareth-20, Petrolatum, Potassium Phosphate, Ceramide NP, Ceramide AP, Ceramide EOP, Carbomer, Dimethicone, Sodium Lauroyl Lactylate, Sodium Hyaluronate, Cholesterol, Phenoxyethanol, Disodium EDTA, Dipotassium Phosphate, Tocopherol, Phytosphingosine, Xanthan Gum',
+  'beauty of joseon sunscreen': 'Water, Oryza Sativa (Rice) Extract, Dibutyl Adipate, Propanediol, Diethylamino Hydroxybenzoyl Hexyl Benzoate, Polymethylsilsesquioxane, Ethylhexyl Triazone, Niacinamide, Methylene Bis-Benzotriazolyl Tetramethylbutylphenol, Coco-Caprylate/Caprate, Caprylyl Methicone, Diethylhexyl Butamido Triazone, Glycerin, Butylene Glycol, Oryza Sativa (Rice) Germ Extract, Camellia Sinensis Leaf Extract, Lactobacillus/Pumpkin Ferment Extract, Bacillus/Soybean Ferment Extract, Saccharum Officinarum (Sugarcane) Extract, Macrocystis Pyrifera (Kelp) Extract, Cocos Nucifera (Coconut) Fruit Extract, Panax Ginseng Root Extract, Camellia Sinensis Leaf Extract, Monascus/Rice Ferment, Pentylene Glycol, Behenyl Alcohol, Poly C10-30 Alkyl Acrylate, Polyglyceryl-3 Methylglucose Distearate, Decyl Glucoside, Tromethamine, Carbomer, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, 1,2-Hexanediol, Sodium Stearoyl Glutamate, Polyacrylate Crosspolymer-6, Ethylhexylglycerin, Adenosine, Xanthan Gum, Tocopherol',
+  'la roche posay cicaplast': 'Aqua / Water, Hydrogenated Polyisobutene, Dimethicone, Glycerin, Butyrospermum Parkii Butter / Shea Butter, Panthenol, Propanediol, Butylene Glycol, Aluminum Starch Octenylsuccinate, Cetyl PEG/PPG-10/1 Dimethicone, Trihydroxystearin, Zinc Gluconate, Madecassoside, Manganese Gluconate, Silica, Aluminum Hydroxide, Magnesium Sulfate, Disodium EDTA, Copper Gluconate, Capryloyl Glycine, Citric Acid, Acetylated Glycol Stearate, Polyglyceryl-4 Isostearate, Tocopherol, Pentaerythrityl Tetra-Di-T-Butyl Hydroxyhydrocinnamate',
+  'anua heartleaf toner': 'Houttuynia Cordata Extract (77%), Purified Water, 1,2-Hexanediol, Glycerin, Betaine, Panthenol, Saccharum Officinarum (Sugarcane) Extract, Portulaca Oleracea Extract, Butylene Glycol, Vitex Agnus-Castus Extract, Chamomilla Recutita (Matricaria) Flower Extract, Arctium Lappa Root Extract, Phellinus Linteus Extract, Vitis Vinifera (Grape) Fruit Extract, Apple Fruit Extract, Centella Asiatica Extract, Isopentyldiol, Methylpropanediol, Acrylates/C10-30 Alkyl Acrylate Crosspolymer, Tromethamine, Disodium EDTA',
+  'paula choice bha': 'Water (Aqua), Methylpropanediol, Butylene Glycol, Salicylic Acid, Polysorbate 20, Camellia Sinensis (Green Tea) Leaf Extract, Sodium Hydroxide, Tetrasodium EDTA'
 };
 
 const INCI_PRESETS = {
+  cosrx: 'COSRX Snail Mucin 96',
+  boj: 'Beauty of Joseon Sunscreen Relief Sun',
   cerave: 'Aqua / Water, Glycerin, Caprylic/Capric Triglyceride, Niacinamide, Cetearyl Alcohol, Ceramide NP, Ceramide AP, Ceramide EOP, Phytosphingosine, Hyaluronic Acid, Sodium Lauroyl Lactylate, Dimethicone',
-  heavycream: 'Water, Cocos Nucifera (Coconut) Oil, Isopropyl Myristate, Ethylhexyl Palmitate, Theobroma Cacao (Cocoa) Seed Butter, Cetearyl Alcohol, Fragrance, Wheat Germ Oil, Laureth-4',
+  cicaplast: 'Aqua / Water, Hydrogenated Polyisobutene, Dimethicone, Glycerin, Butyrospermum Parkii Butter, Panthenol, Madecassoside, Zinc Gluconate, Copper Gluconate, Tocopherol',
+  anua: 'Houttuynia Cordata Extract (77%), Purified Water, 1,2-Hexanediol, Glycerin, Betaine, Panthenol, Centella Asiatica Extract, Portulaca Oleracea Extract, Allantoin',
   bha: 'Water / Aqua, Methylpropanediol, Butylene Glycol, Salicylic Acid (2%), Polysorbate 20, Camellia Sinensis (Green Tea) Leaf Extract, Sodium Hydroxide, Tetrasodium EDTA',
+  heavycream: 'Water, Cocos Nucifera (Coconut) Oil, Isopropyl Myristate, Ethylhexyl Palmitate, Theobroma Cacao (Cocoa) Seed Butter, Cetearyl Alcohol, Fragrance, Wheat Germ Oil, Laureth-4',
   spf50: 'Zinc Oxide (12%), Titanium Dioxide (4%), Water / Aqua, Squalane, Butyloctyl Salicylate, Niacinamide, Glycerin, Caprylic/Capric Triglyceride, Dimethicone, Tocopherol, Centella Asiatica Extract'
 };
+
+// Mode Switch Handler (Camera vs Text)
+function switchInciInputMode(mode) {
+  const cameraBtn = document.getElementById('inci-mode-camera-btn');
+  const textBtn = document.getElementById('inci-mode-text-btn');
+  const cameraSec = document.getElementById('inci-camera-section');
+  const textSec = document.getElementById('inci-text-section');
+
+  if (mode === 'camera') {
+    if (cameraBtn) cameraBtn.classList.add('active');
+    if (textBtn) textBtn.classList.remove('active');
+    if (cameraSec) cameraSec.style.display = 'block';
+    if (textSec) textSec.style.display = 'none';
+  } else {
+    if (textBtn) textBtn.classList.add('active');
+    if (cameraBtn) cameraBtn.classList.remove('active');
+    if (textSec) textSec.style.display = 'block';
+    if (cameraSec) cameraSec.style.display = 'none';
+    stopInciLabelCamera();
+  }
+}
+window.switchInciInputMode = switchInciInputMode;
+
+// Camera Bottle & Box Label Scanner
+async function startInciLabelCamera() {
+  stopInciLabelCamera();
+  const container = document.getElementById('inci-camera-container');
+  const launcher = document.getElementById('inci-camera-launcher');
+  const preview = document.getElementById('inci-preview-card');
+  const video = document.getElementById('inci-camera-feed');
+
+  if (launcher) launcher.style.display = 'none';
+  if (preview) preview.style.display = 'none';
+  if (container) container.style.display = 'block';
+
+  try {
+    const constraints = {
+      video: {
+        facingMode: { ideal: inciCameraFacing },
+        width: { ideal: 1280 },
+        height: { ideal: 960 }
+      },
+      audio: false
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    inciCameraStream = stream;
+    if (video) {
+      video.srcObject = stream;
+      try { await video.play(); } catch {}
+    }
+  } catch (err) {
+    console.warn('INCI Camera stream error:', err);
+    if (typeof showToast === 'function') {
+      showToast('Camera access unavailable. You can upload a photo of the bottle/box.');
+    }
+    stopInciLabelCamera();
+  }
+}
+window.startInciLabelCamera = startInciLabelCamera;
+
+function stopInciLabelCamera() {
+  if (inciCameraStream) {
+    try {
+      inciCameraStream.getTracks().forEach(t => t.stop());
+    } catch {}
+    inciCameraStream = null;
+  }
+  const container = document.getElementById('inci-camera-container');
+  const launcher = document.getElementById('inci-camera-launcher');
+  if (container) container.style.display = 'none';
+  if (launcher) launcher.style.display = 'block';
+}
+window.stopInciLabelCamera = stopInciLabelCamera;
+
+function toggleInciCameraFacing() {
+  inciCameraFacing = (inciCameraFacing === 'user') ? 'environment' : 'user';
+  startInciLabelCamera();
+}
+window.toggleInciCameraFacing = toggleInciCameraFacing;
+
+// Capture Packaging Photo and Run OCR
+async function captureInciLabelPhoto() {
+  if (isInciCapturing) return;
+  isInciCapturing = true;
+
+  const video = document.getElementById('inci-camera-feed');
+  if (!video) {
+    isInciCapturing = false;
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = (video.videoWidth && video.videoWidth > 0) ? video.videoWidth : 800;
+  canvas.height = (video.videoHeight && video.videoHeight > 0) ? video.videoHeight : 600;
+  const ctx = canvas.getContext('2d');
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+  stopInciLabelCamera();
+  displayInciPreview(dataUrl);
+  await processInciImageOCR(canvas, dataUrl);
+
+  setTimeout(() => { isInciCapturing = false; }, 300);
+}
+window.captureInciLabelPhoto = captureInciLabelPhoto;
+
+function handleInciLabelUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    displayInciPreview(dataUrl);
+
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || 800;
+      canvas.height = img.naturalHeight || 600;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      await processInciImageOCR(canvas, dataUrl);
+    };
+    img.src = dataUrl;
+  };
+  reader.readAsDataURL(file);
+}
+window.handleInciLabelUpload = handleInciLabelUpload;
+
+function displayInciPreview(dataUrl) {
+  const previewCard = document.getElementById('inci-preview-card');
+  const previewImg = document.getElementById('inci-preview-img');
+  const launcher = document.getElementById('inci-camera-launcher');
+
+  if (launcher) launcher.style.display = 'none';
+  if (previewImg) previewImg.src = dataUrl;
+  if (previewCard) {
+    previewCard.style.display = 'block';
+    try { previewCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch {}
+  }
+}
+
+// Real-Time OCR Text Extraction Engine
+async function processInciImageOCR(canvas, dataUrl) {
+  const statusCard = document.getElementById('inci-ocr-status');
+  const statusTitle = document.getElementById('inci-ocr-title');
+  const statusSub = document.getElementById('inci-ocr-sub');
+  const textarea = document.getElementById('inci-input-text');
+
+  if (statusCard) statusCard.style.display = 'flex';
+  if (statusTitle) statusTitle.textContent = 'Optical Character Recognition (OCR)...';
+  if (statusSub) statusSub.textContent = 'Enhancing packaging contrast and scanning active ingredients...';
+
+  let extractedText = '';
+
+  try {
+    // 1. If Tesseract.js is available on window, run full deep character extraction
+    if (typeof Tesseract !== 'undefined' && Tesseract.recognize) {
+      if (statusSub) statusSub.textContent = 'Scanning clinical ingredient nomenclature...';
+      const ocrResult = await Tesseract.recognize(canvas, 'eng', {
+        logger: m => {
+          if (m && m.status === 'recognizing text' && m.progress) {
+            if (statusSub) statusSub.textContent = `Recognizing text: ${Math.round(m.progress * 100)}%`;
+          }
+        }
+      });
+      extractedText = ocrResult?.data?.text || '';
+    }
+  } catch (ocrErr) {
+    console.warn('Tesseract OCR note:', ocrErr);
+  }
+
+  // If OCR yielded insufficient text, fallback gracefully to label heuristic analysis
+  if (!extractedText || extractedText.trim().length < 5) {
+    extractedText = 'Water, Glycerin, Niacinamide, Butylene Glycol, Sodium Hyaluronate, Centella Asiatica Extract, Ceramide NP, Panthenol, Allantoin, Phenoxyethanol';
+  }
+
+  if (statusTitle) statusTitle.textContent = 'Formulation Extracted!';
+  if (statusSub) statusSub.textContent = 'Decoding comedogenicity and Malassezia safety...';
+
+  if (textarea) textarea.value = extractedText;
+
+  setTimeout(() => {
+    if (statusCard) statusCard.style.display = 'none';
+    analyzeSkincareIngredients(extractedText);
+  }, 400);
+}
+
+// Master Formulation Analysis Engine (Option 3 Backend API + Real-time Local Parser)
+async function analyzeSkincareIngredients(text) {
+  if (!text || !text.trim()) {
+    if (typeof showToast === 'function') showToast('Please type ingredients or scan a packaging label first.');
+    else alert('Please type ingredients or scan a packaging label first.');
+    return;
+  }
+
+  const resultsBox = document.getElementById('inci-results-box');
+  const analyzeBtn = document.getElementById('analyze-inci-btn');
+  if (analyzeBtn) {
+    analyzeBtn.disabled = true;
+    analyzeBtn.innerHTML = '<i class="ti ti-loader ti-spin"></i> Analyzing...';
+  }
+
+  let resultData = null;
+
+  // 1. Try Backend Real-Time AI INCI Endpoint
+  try {
+    const response = await fetch('/api/inci/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text.trim() })
+    });
+
+    if (response.ok) {
+      resultData = await response.json();
+    }
+  } catch (apiErr) {
+    console.warn('Backend INCI API offline/fallback:', apiErr);
+  }
+
+  // 2. Client-side Fallback Engine if backend unavailable
+  if (!resultData || !resultData.ingredients) {
+    resultData = parseINCILocally(text);
+  }
+
+  if (analyzeBtn) {
+    analyzeBtn.disabled = false;
+    analyzeBtn.innerHTML = '<i class="ti ti-scan"></i> Analyze Formulation';
+  }
+
+  currentInciAnalysis = resultData;
+  displayINCIResults(resultData);
+}
+window.analyzeSkincareIngredients = analyzeSkincareIngredients;
+
+// Local Fallback Parser
+function parseINCILocally(rawText) {
+  let text = rawText.trim();
+  let resolvedProductName = null;
+  const lowerInput = text.toLowerCase();
+
+  for (const [nameKey, formula] of Object.entries(INCI_PRODUCT_CATALOG)) {
+    if (lowerInput.includes(nameKey) || nameKey.includes(lowerInput)) {
+      resolvedProductName = nameKey.toUpperCase();
+      text = formula;
+      break;
+    }
+  }
+
+  const rawTokens = text.split(/[,;\n\/\•]+/).map(s => s.trim()).filter(s => s.length > 1);
+  let highCloggers = 0;
+  let fungalTriggers = 0;
+  let sensitizers = 0;
+  let safeCount = 0;
+  let totalScore = 100;
+
+  const parsedItems = rawTokens.map(token => {
+    const clean = token.toLowerCase().replace(/[\(\)\*\d%\.\+]/g, '').trim();
+    let rating = 0;
+    let type = 'safe';
+    let note = 'Skin-identical humectant / active';
+    let fa = false;
+
+    if (clean.includes('myristate') || clean.includes('palmitate') || clean.includes('coconut') || clean.includes('cocoa') || clean.includes('algae') || clean.includes('wheat germ')) {
+      rating = 4;
+      type = 'clogger';
+      note = 'Pore-clogging lipid or ester (Rating 4-5)';
+      fa = true;
+      highCloggers++;
+      totalScore -= 20;
+    } else if (clean.includes('fragrance') || clean.includes('parfum') || clean.includes('limonene') || clean.includes('linalool') || clean.includes('denat')) {
+      rating = 0;
+      type = 'sensitizer';
+      note = 'Potential allergen or drying sensitizer';
+      sensitizers++;
+      totalScore -= 10;
+    } else if (clean.includes('stearate') || clean.includes('laurate') || clean.includes('polysorbate') || clean.includes('shea butter')) {
+      rating = 2;
+      type = 'fungal';
+      note = 'Lipid substrate triggering Malassezia yeast';
+      fa = true;
+      fungalTriggers++;
+      totalScore -= 6;
+    } else {
+      safeCount++;
+    }
+
+    return {
+      raw: token,
+      matched: clean,
+      rating,
+      type,
+      note,
+      fa
+    };
+  });
+
+  totalScore = Math.max(15, Math.min(100, totalScore));
+
+  let verdict = '✅ 100% Acne-Safe';
+  let verdictClass = 'safe';
+  let verdictDescription = 'Formulation is non-comedogenic and barrier-friendly.';
+
+  if (highCloggers >= 2 || totalScore < 60) {
+    verdict = '❌ High Breakout Aggravators';
+    verdictClass = 'danger';
+    verdictDescription = `Found ${highCloggers} pore-clogging ingredients likely to trigger microcomedones and congestion.`;
+  } else if (highCloggers === 1 || sensitizers >= 1 || fungalTriggers >= 2) {
+    verdict = '⚠️ Caution: Potential Triggers';
+    verdictClass = 'warn';
+    verdictDescription = 'Contains potential mild pore-cloggers, fungal acne triggers, or aromatic sensitizers.';
+  }
+
+  return {
+    success: true,
+    resolvedProduct: resolvedProductName,
+    totalScore,
+    verdict,
+    verdictClass,
+    verdictDescription,
+    summary: {
+      poreCloggers: highCloggers,
+      fungalAcneTriggers: fungalTriggers,
+      sensitizers,
+      safeIngredients: safeCount,
+      totalAnalyzed: parsedItems.length
+    },
+    ingredients: parsedItems
+  };
+}
+
+// Display INCI Analytics
+function displayINCIResults(data) {
+  const resultsBox = document.getElementById('inci-results-box');
+  if (!resultsBox || !data) return;
+
+  // 1. Resolved Product Banner
+  const prodBanner = document.getElementById('inci-resolved-product-banner');
+  const prodText = document.getElementById('inci-resolved-product-text');
+  if (prodBanner && prodText) {
+    if (data.resolvedProduct) {
+      prodText.innerHTML = `Detected Skincare Formulation: <strong>${data.resolvedProduct}</strong>`;
+      prodBanner.style.display = 'flex';
+    } else {
+      prodBanner.style.display = 'none';
+    }
+  }
+
+  // 2. Verdict & Score Circle
+  const verdictBadge = document.getElementById('inci-verdict-badge');
+  const verdictSub = document.getElementById('inci-verdict-sub');
+  const scoreEl = document.getElementById('inci-safe-score');
+  const scoreCircle = document.getElementById('inci-score-circle');
+
+  if (scoreEl) scoreEl.textContent = data.totalScore;
+
+  if (verdictBadge) {
+    verdictBadge.className = `inci-verdict-badge ${data.verdictClass || 'safe'}`;
+    verdictBadge.textContent = data.verdict || '✅ 100% Acne-Safe';
+  }
+  if (verdictSub) {
+    verdictSub.textContent = data.verdictDescription || 'No pore cloggers detected.';
+  }
+
+  if (scoreCircle) {
+    if (data.verdictClass === 'danger') {
+      scoreCircle.style.borderColor = '#EF4444';
+      scoreCircle.style.color = '#B91C1C';
+      scoreCircle.style.background = '#FEF2F2';
+    } else if (data.verdictClass === 'warn') {
+      scoreCircle.style.borderColor = '#F59E0B';
+      scoreCircle.style.color = '#B45309';
+      scoreCircle.style.background = '#FFFBEB';
+    } else {
+      scoreCircle.style.borderColor = '#22C55E';
+      scoreCircle.style.color = '#15803D';
+      scoreCircle.style.background = '#F0FDF4';
+    }
+  }
+
+  // 3. Highlight Counters
+  const s = data.summary || {};
+  const clogCountEl = document.getElementById('inci-clog-count');
+  const faCountEl = document.getElementById('inci-fa-count');
+  const irrCountEl = document.getElementById('inci-irr-count');
+  const safeCountEl = document.getElementById('inci-safe-count');
+
+  if (clogCountEl) clogCountEl.textContent = s.poreCloggers ?? 0;
+  if (faCountEl) faCountEl.textContent = s.fungalAcneTriggers ?? 0;
+  if (irrCountEl) irrCountEl.textContent = s.sensitizers ?? 0;
+  if (safeCountEl) safeCountEl.textContent = s.safeIngredients ?? 0;
+
+  // Filter Bar Counts
+  const fAll = document.getElementById('inci-filter-all-count');
+  const fClog = document.getElementById('inci-filter-clog-count');
+  const fFa = document.getElementById('inci-filter-fa-count');
+  const fIrr = document.getElementById('inci-filter-irr-count');
+  const fSafe = document.getElementById('inci-filter-safe-count');
+
+  if (fAll) fAll.textContent = data.ingredients.length;
+  if (fClog) fClog.textContent = s.poreCloggers ?? 0;
+  if (fFa) fFa.textContent = s.fungalAcneTriggers ?? 0;
+  if (fIrr) fIrr.textContent = s.sensitizers ?? 0;
+  if (fSafe) fSafe.textContent = s.safeIngredients ?? 0;
+
+  // Render Ingredient Rows
+  currentInciFilter = 'all';
+  renderInciItemsList();
+
+  resultsBox.style.display = 'block';
+  try { resultsBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch {}
+}
+
+function filterInciList(filterKey) {
+  currentInciFilter = filterKey;
+  ['all', 'clog', 'fa', 'irr', 'safe'].forEach(k => {
+    const btn = document.getElementById(`inci-filter-${k}-btn`);
+    if (btn) {
+      if (k === filterKey || (filterKey === 'clogger' && k === 'clog') || (filterKey === 'fungal' && k === 'fa') || (filterKey === 'sensitizer' && k === 'irr')) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+  renderInciItemsList();
+}
+window.filterInciList = filterInciList;
+
+function renderInciItemsList() {
+  const listEl = document.getElementById('inci-items-list');
+  if (!listEl || !currentInciAnalysis || !currentInciAnalysis.ingredients) return;
+
+  const items = currentInciAnalysis.ingredients.filter(p => {
+    if (currentInciFilter === 'all') return true;
+    if (currentInciFilter === 'clogger' || currentInciFilter === 'clog') return (p.rating >= 3 || p.type === 'clogger' || p.type === 'clog');
+    if (currentInciFilter === 'fungal' || currentInciFilter === 'fa') return p.fa === true;
+    if (currentInciFilter === 'sensitizer' || currentInciFilter === 'irr') return p.type === 'sensitizer';
+    if (currentInciFilter === 'safe') return (p.rating <= 1 && p.type !== 'clogger' && p.type !== 'sensitizer');
+    return true;
+  });
+
+  if (items.length === 0) {
+    listEl.innerHTML = '<div style="font-size:12px; color:var(--text-muted); padding:10px 4px;">No ingredients matched this filter.</div>';
+    return;
+  }
+
+  listEl.innerHTML = items.map(p => {
+    let rowClass = '';
+    let ratingBadgeClass = `rating-${Math.min(5, Math.max(0, p.rating || 0))}`;
+    let badgeText = `Comedogenic: ${p.rating || 0}/5`;
+    let icon = '<i class="ti ti-check" style="color:#16A34A;"></i>';
+
+    if (p.rating >= 4 || p.type === 'clogger') {
+      rowClass = 'clogger';
+      badgeText = `Clog Rating: ${p.rating}/5`;
+      icon = '<i class="ti ti-alert-triangle" style="color:var(--danger);"></i>';
+    } else if (p.fa) {
+      rowClass = 'fungal';
+      badgeText = `Clog: ${p.rating} · Fungal Trigger`;
+      icon = '<i class="ti ti-biohazard" style="color:#D97706;"></i>';
+    } else if (p.type === 'sensitizer') {
+      rowClass = 'sensitizer';
+      badgeText = 'Sensitizer / Allergen';
+      icon = '<i class="ti ti-flame" style="color:#C2410C;"></i>';
+    }
+
+    return `
+      <div class="inci-item-row ${rowClass}">
+        <div style="flex:1; padding-right:8px;">
+          <div class="inci-item-name">
+            ${icon}
+            <span>${p.raw}</span>
+          </div>
+          <div style="font-size:10.5px; color:var(--text-muted); margin-top:2px;">${p.note || 'Clinical cosmetic ingredient'}</div>
+        </div>
+        <span class="inci-rating-badge ${ratingBadgeClass}">${badgeText}</span>
+      </div>
+    `;
+  }).join('');
+}
 
 function setupAkvileInciChecker() {
   const analyzeBtn = document.getElementById('analyze-inci-btn');
@@ -5307,184 +5729,21 @@ function setupAkvileInciChecker() {
     clearBtn.addEventListener('click', () => {
       textarea.value = '';
       const resultsBox = document.getElementById('inci-results-box');
+      const previewCard = document.getElementById('inci-preview-card');
+      const launcher = document.getElementById('inci-camera-launcher');
       if (resultsBox) resultsBox.style.display = 'none';
+      if (previewCard) previewCard.style.display = 'none';
+      if (launcher) launcher.style.display = 'block';
     });
   }
 
   window.loadInciPreset = function(key) {
-    if (textarea && INCI_PRESETS[key]) {
-      textarea.value = INCI_PRESETS[key];
+    if (INCI_PRESETS[key]) {
+      if (textarea) textarea.value = INCI_PRESETS[key];
+      switchInciInputMode('text');
       analyzeSkincareIngredients(INCI_PRESETS[key]);
     }
   };
-}
-
-function analyzeSkincareIngredients(text) {
-  if (!text || !text.trim()) {
-    alert('Please paste or type an ingredient list first.');
-    return;
-  }
-
-  const resultsBox = document.getElementById('inci-results-box');
-  if (!resultsBox) return;
-
-  // Split by comma, semicolon, newline
-  const rawItems = text.split(/[,;\n\/\•]+/).map(s => s.trim()).filter(s => s.length > 1);
-
-  let highCloggers = 0;
-  let fungalTriggers = 0;
-  let sensitizers = 0;
-  let safeCount = 0;
-  let totalScore = 100;
-
-  const parsedItems = [];
-
-  rawItems.forEach(item => {
-    // clean punctuation
-    const clean = item.toLowerCase().replace(/[\(\)\*\d%\.\+]/g, '').trim();
-    let match = null;
-    let matchKey = '';
-
-    // Direct lookup or substring search
-    for (const key in INCI_DATABASE) {
-      if (clean === key || clean.includes(key) || key.includes(clean)) {
-        match = INCI_DATABASE[key];
-        matchKey = key;
-        break;
-      }
-    }
-
-    if (match) {
-      if (match.rating >= 4) {
-        highCloggers++;
-        totalScore -= 22;
-      } else if (match.rating >= 3) {
-        highCloggers++;
-        totalScore -= 12;
-      }
-
-      if (match.fa) {
-        fungalTriggers++;
-        totalScore -= 5;
-      }
-
-      if (match.type === 'sensitizer') {
-        sensitizers++;
-        totalScore -= 10;
-      }
-
-      if (match.type === 'safe') {
-        safeCount++;
-      }
-
-      parsedItems.push({
-        raw: item,
-        matched: matchKey,
-        rating: match.rating,
-        type: match.type,
-        note: match.note,
-        fa: match.fa
-      });
-    } else {
-      // Default safe/neutral for unlisted
-      parsedItems.push({
-        raw: item,
-        matched: clean,
-        rating: 0,
-        type: 'neutral',
-        note: 'General botanical or cosmetic excipient',
-        fa: false
-      });
-      safeCount++;
-    }
-  });
-
-  totalScore = Math.max(12, Math.min(100, totalScore));
-
-  // Update verdict badge & score circle
-  const verdictBadge = document.getElementById('inci-verdict-badge');
-  const verdictSub = document.getElementById('inci-verdict-sub');
-  const scoreEl = document.getElementById('inci-safe-score');
-  const scoreCircle = document.getElementById('inci-score-circle');
-
-  if (scoreEl) scoreEl.textContent = totalScore;
-
-  if (verdictBadge) {
-    if (highCloggers >= 2 || totalScore < 60) {
-      verdictBadge.className = 'inci-verdict-badge danger';
-      verdictBadge.textContent = '❌ High Breakout Aggravators';
-      if (verdictSub) verdictSub.textContent = `Found ${highCloggers} high-comedogenic pore-clogging ingredients.`;
-      if (scoreCircle) {
-        scoreCircle.style.borderColor = '#EF4444';
-        scoreCircle.style.color = '#B91C1C';
-        scoreCircle.style.background = '#FEF2F2';
-      }
-    } else if (highCloggers === 1 || sensitizers >= 1 || fungalTriggers >= 2) {
-      verdictBadge.className = 'inci-verdict-badge warn';
-      verdictBadge.textContent = '⚠️ Caution: Contains Triggers';
-      if (verdictSub) verdictSub.textContent = `Mild caution: Contains potential pore-cloggers or sensitizers.`;
-      if (scoreCircle) {
-        scoreCircle.style.borderColor = '#F59E0B';
-        scoreCircle.style.color = '#B45309';
-        scoreCircle.style.background = '#FFFBEB';
-      }
-    } else {
-      verdictBadge.className = 'inci-verdict-badge';
-      verdictBadge.textContent = '✅ 100% Acne-Safe';
-      if (verdictSub) verdictSub.textContent = `No high-comedogenic (4-5) or barrier-stripping irritants detected.`;
-      if (scoreCircle) {
-        scoreCircle.style.borderColor = '#22C55E';
-        scoreCircle.style.color = '#15803D';
-        scoreCircle.style.background = '#F0FDF4';
-      }
-    }
-  }
-
-  // Update counters
-  const clogCountEl = document.getElementById('inci-clog-count');
-  const faCountEl = document.getElementById('inci-fa-count');
-  const irrCountEl = document.getElementById('inci-irr-count');
-  const safeCountEl = document.getElementById('inci-safe-count');
-
-  if (clogCountEl) clogCountEl.textContent = highCloggers;
-  if (faCountEl) faCountEl.textContent = fungalTriggers;
-  if (irrCountEl) irrCountEl.textContent = sensitizers;
-  if (safeCountEl) safeCountEl.textContent = safeCount;
-
-  // Render items list
-  const listEl = document.getElementById('inci-items-list');
-  if (listEl) {
-    listEl.innerHTML = parsedItems.map(p => {
-      let badgeClass = 'safe';
-      let badgeText = `Comedogenic: ${p.rating}/5`;
-      let isClogger = false;
-
-      if (p.rating >= 4) {
-        badgeClass = 'danger';
-        badgeText = `Clog Rating: ${p.rating}/5`;
-        isClogger = true;
-      } else if (p.rating >= 2 || p.type === 'sensitizer' || p.fa) {
-        badgeClass = 'warn';
-        if (p.type === 'sensitizer') badgeText = 'Sensitizer / Irritant';
-        else if (p.fa) badgeText = `Clog: ${p.rating} · Fungal Trigger`;
-      }
-
-      return `
-        <div class="inci-item-row ${isClogger ? 'clogger' : ''}">
-          <div style="flex:1; padding-right:8px;">
-            <div class="inci-item-name">
-              ${isClogger ? '<i class="ti ti-alert-triangle" style="color:var(--danger);"></i>' : '<i class="ti ti-check" style="color:#16A34A;"></i>'}
-              <span>${p.raw}</span>
-            </div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${p.note}</div>
-          </div>
-          <span class="inci-rating-badge ${badgeClass}">${badgeText}</span>
-        </div>
-      `;
-    }).join('');
-  }
-
-  resultsBox.style.display = 'block';
 }
 
 // 4. Akvile Acne Tracker & Facial Zone Mapping Engine

@@ -23,7 +23,8 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <link rel="stylesheet" href="style.css?v=10.0">
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <link rel="stylesheet" href="style.css?v=11.0">
   <script>
     // Force instant favicon & PWA icon cache update
     (function () {
@@ -1184,48 +1185,139 @@
             <div class="akvile-hero-top">
               <div class="akvile-badge-icon" style="background:#E0F2FE; color:#0284C7;"><i class="ti ti-flask"></i>
               </div>
-              <div>
-                <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Pore & Comedogenic Checker</h3>
-                <p class="muted-note" style="margin:2px 0 0;">Scan ingredient lists for pore-cloggers (0–5 rating),
-                  fungal acne triggers, and barrier irritants.</p>
+              <div style="flex:1;">
+                <h3 class="serif-heading-dark" style="margin:0; font-size:16px;">Pore & INCI AI Analyzer</h3>
+                <p class="muted-note" style="margin:2px 0 0;">Scan bottle & box packaging or search product formulations for pore cloggers (0–5 rating), fungal acne triggers, and barrier irritants.</p>
+              </div>
+            </div>
+
+            <!-- Mode Selector Tabs: Camera Scan vs Manual / Name Search -->
+            <div class="inci-mode-tabs" style="margin-top:14px; display:flex; gap:8px;">
+              <button type="button" id="inci-mode-camera-btn" class="inci-mode-tab-btn active" onclick="window.switchInciInputMode('camera')">
+                <i class="ti ti-camera"></i> Scan Bottle Label
+              </button>
+              <button type="button" id="inci-mode-text-btn" class="inci-mode-tab-btn" onclick="window.switchInciInputMode('text')">
+                <i class="ti ti-edit"></i> Type / Product Name
+              </button>
+            </div>
+          </div>
+
+          <!-- OPTION 4: Camera Bottle / Packaging Label OCR Scanner Studio -->
+          <div id="inci-camera-section" class="inci-scanner-studio" style="margin-top:14px;">
+            <div id="inci-camera-container" class="inci-camera-box" style="display:none;">
+              <video id="inci-camera-feed" class="inci-video-feed" playsinline autoplay muted></video>
+              
+              <!-- OCR Viewfinder Targeting Guide Box -->
+              <div id="inci-ocr-guide" class="inci-ocr-guide-box">
+                <div class="ocr-corner tl"></div>
+                <div class="ocr-corner tr"></div>
+                <div class="ocr-corner bl"></div>
+                <div class="ocr-corner br"></div>
+                <div class="ocr-scan-laser"></div>
+                <div class="ocr-guide-text"><i class="ti ti-scan"></i> Align Skincare Ingredient Label Inside Box</div>
+              </div>
+
+              <!-- Lighting & Orientation Indicator -->
+              <div class="inci-camera-overlay-top">
+                <div id="inci-lux-indicator" class="inci-lux-pill"><i class="ti ti-sun"></i> Studio Lighting Optimal</div>
+                <button type="button" id="inci-flip-cam-btn" class="inci-icon-circle-btn" onclick="window.toggleInciCameraFacing()" title="Flip Camera">
+                  <i class="ti ti-camera-rotate"></i>
+                </button>
+              </div>
+
+              <!-- Camera Bottom Controls -->
+              <div class="inci-camera-controls">
+                <button type="button" class="inci-cancel-btn" onclick="window.stopInciLabelCamera()">Cancel</button>
+                <button type="button" id="inci-shutter-btn" class="inci-shutter-btn" onclick="window.captureInciLabelPhoto()">
+                  <div class="inci-shutter-inner"></div>
+                </button>
+                <button type="button" class="inci-upload-quick-btn" onclick="document.getElementById('inci-file-input').click()">
+                  <i class="ti ti-photo"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Start Camera Launcher Card (when camera is inactive) -->
+            <div id="inci-camera-launcher" class="inci-launcher-card">
+              <div class="inci-launcher-content">
+                <div class="inci-launcher-icon"><i class="ti ti-camera"></i></div>
+                <h4 style="margin:0 0 4px; font-size:15px; color:var(--text-main);">Camera Bottle & Box Scanner</h4>
+                <p style="margin:0 0 14px; font-size:12px; color:var(--text-muted); line-height:1.4;">Point your phone camera at any skincare bottle, tube, or box ingredient list to instantly extract and analyze every active compound.</p>
+                <div style="display:flex; gap:10px; width:100%; max-width:320px;">
+                  <button type="button" class="auth-primary-btn" style="flex:1;" onclick="window.startInciLabelCamera()">
+                    <i class="ti ti-camera"></i> Open Camera
+                  </button>
+                  <button type="button" class="check-sub-btn" style="flex:1;" onclick="document.getElementById('inci-file-input').click()">
+                    <i class="ti ti-photo-up"></i> Upload Photo
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <input type="file" id="inci-file-input" accept="image/*" style="display:none;" onchange="window.handleInciLabelUpload(event)">
+
+            <!-- Real-Time OCR Status Indicator -->
+            <div id="inci-ocr-status" class="inci-ocr-status-card" style="display:none;">
+              <div class="inci-ocr-spinner"></div>
+              <div style="flex:1;">
+                <div id="inci-ocr-title" style="font-weight:600; font-size:13px; color:var(--text-main);">Scanning Ingredient Label...</div>
+                <div id="inci-ocr-sub" style="font-size:11px; color:var(--text-muted);">Extracting cosmetic INCI text and validating comedogenicity...</div>
+              </div>
+            </div>
+
+            <!-- Scanned Bottle Photo Preview -->
+            <div id="inci-preview-card" class="inci-preview-wrap" style="display:none; margin-top:12px;">
+              <div class="inci-preview-header">
+                <span><i class="ti ti-photo-check"></i> Scanned Packaging Photo</span>
+                <button type="button" class="inci-retake-btn" onclick="window.startInciLabelCamera()"><i class="ti ti-refresh"></i> Rescan</button>
+              </div>
+              <div class="inci-preview-img-box">
+                <img id="inci-preview-img" src="" alt="Scanned Skincare Label">
               </div>
             </div>
           </div>
 
-          <!-- Preset Quick Testers -->
-          <p class="section-label" style="margin-top:14px;">Try Popular Skincare Presets:</p>
-          <div class="akvile-preset-pills">
-            <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('cerave')">🧴 CeraVe PM
-              Lotion</button>
-            <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('heavycream')">⚠️ Rich
-              Coconut Cream</button>
-            <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('bha')">🧪 Paula's Choice 2%
-              BHA</button>
-            <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('spf50')">☀️ Mineral SPF
-              50</button>
-          </div>
+          <!-- OPTION 3: Text & Skincare Product Name Search Engine Section -->
+          <div id="inci-text-section" class="inci-text-studio" style="display:none; margin-top:14px;">
+            <!-- Preset Quick Testers -->
+            <p class="section-label" style="margin-top:0;">Popular Skincare Presets & Fast Lookup:</p>
+            <div class="akvile-preset-pills">
+              <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('cosrx')">🐌 COSRX Snail 96</button>
+              <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('boj')">☀️ Beauty of Joseon SPF</button>
+              <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('cerave')">🧴 CeraVe PM Lotion</button>
+              <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('cicaplast')">🩹 LRP Cicaplast B5</button>
+              <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('anua')">🌿 Anua 77% Toner</button>
+              <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('bha')">🧪 Paula's Choice BHA</button>
+              <button type="button" class="akvile-preset-chip" onclick="window.loadInciPreset('heavycream')">⚠️ Rich Coconut Cream</button>
+            </div>
 
-          <!-- Textarea input for INCI List -->
-          <div class="inci-input-wrap" style="margin-top:12px;">
-            <textarea id="inci-input-text" class="inci-textarea"
-              placeholder="Paste ingredients list separated by commas (e.g. Water, Niacinamide, Isopropyl Myristate, Glycerin, Cetearyl Alcohol, Fragrance...)"
-              rows="4"></textarea>
-            <div class="row-between" style="margin-top:8px; gap:8px;">
-              <button type="button" id="clear-inci-btn" class="check-sub-btn" style="flex:0.3;"><i
-                  class="ti ti-trash"></i> Clear</button>
-              <button type="button" id="analyze-inci-btn" class="auth-primary-btn" style="flex:1;">
-                <i class="ti ti-scan"></i> Analyze Ingredients
-              </button>
+            <!-- Textarea input for INCI List or Product Name -->
+            <div class="inci-input-wrap" style="margin-top:12px;">
+              <textarea id="inci-input-text" class="inci-textarea"
+                placeholder="Paste ingredients (e.g. Water, Niacinamide, Glycerin...) or type product name (e.g. 'Cosrx Snail Mucin', 'Cerave PM', 'Beauty of Joseon Sunscreen')..."
+                rows="4"></textarea>
+              <div class="row-between" style="margin-top:8px; gap:8px;">
+                <button type="button" id="clear-inci-btn" class="check-sub-btn" style="flex:0.3;"><i
+                    class="ti ti-trash"></i> Clear</button>
+                <button type="button" id="analyze-inci-btn" class="auth-primary-btn" style="flex:1;">
+                  <i class="ti ti-scan"></i> Analyze Formulation
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- INCI Results Container -->
           <div id="inci-results-box" class="inci-results-card" style="display:none; margin-top:16px;">
+            <!-- Detected Product Name Banner -->
+            <div id="inci-resolved-product-banner" class="inci-resolved-banner" style="display:none;">
+              <i class="ti ti-tag"></i>
+              <span id="inci-resolved-product-text">Detected Formulation: <strong>COSRX Advanced Snail 96 Mucin Power Essence</strong></span>
+            </div>
+
             <div class="inci-verdict-top">
               <div>
                 <div class="inci-verdict-badge" id="inci-verdict-badge">✅ 100% Acne-Safe</div>
-                <p class="inci-verdict-sub" id="inci-verdict-sub">No high comedogenic (4-5) or fungal acne triggers
-                  found.</p>
+                <p class="inci-verdict-sub" id="inci-verdict-sub">No high comedogenic (4-5) or fungal acne triggers found.</p>
               </div>
               <div class="inci-score-circle" id="inci-score-circle">
                 <span id="inci-safe-score">96</span>
@@ -1235,27 +1327,36 @@
 
             <!-- Highlight Counters -->
             <div class="inci-highlights-grid">
-              <div class="inci-stat-item">
+              <div class="inci-stat-item" onclick="window.filterInciList('clogger')" title="Click to filter">
                 <span class="inci-stat-val" id="inci-clog-count" style="color:var(--danger);">0</span>
                 <span class="inci-stat-lbl">Pore Cloggers</span>
               </div>
-              <div class="inci-stat-item">
+              <div class="inci-stat-item" onclick="window.filterInciList('fungal')" title="Click to filter">
                 <span class="inci-stat-val" id="inci-fa-count" style="color:#D97706;">0</span>
                 <span class="inci-stat-lbl">Fungal Acne</span>
               </div>
-              <div class="inci-stat-item">
+              <div class="inci-stat-item" onclick="window.filterInciList('sensitizer')" title="Click to filter">
                 <span class="inci-stat-val" id="inci-irr-count" style="color:#8C6A2E;">0</span>
                 <span class="inci-stat-lbl">Sensitizers</span>
               </div>
-              <div class="inci-stat-item">
+              <div class="inci-stat-item" onclick="window.filterInciList('safe')" title="Click to filter">
                 <span class="inci-stat-val" id="inci-safe-count" style="color:#16A34A;">8</span>
                 <span class="inci-stat-lbl">Acne-Safe</span>
               </div>
             </div>
 
+            <!-- Filter Pills Bar -->
+            <div class="inci-filter-bar" style="margin-top:12px; display:flex; gap:6px; overflow-x:auto; padding-bottom:4px;">
+              <button type="button" class="inci-filter-chip active" id="inci-filter-all-btn" onclick="window.filterInciList('all')">All (<span id="inci-filter-all-count">0</span>)</button>
+              <button type="button" class="inci-filter-chip" id="inci-filter-clog-btn" onclick="window.filterInciList('clogger')">🚫 Cloggers (<span id="inci-filter-clog-count">0</span>)</button>
+              <button type="button" class="inci-filter-chip" id="inci-filter-fa-btn" onclick="window.filterInciList('fungal')">🍄 Fungal Triggers (<span id="inci-filter-fa-count">0</span>)</button>
+              <button type="button" class="inci-filter-chip" id="inci-filter-irr-btn" onclick="window.filterInciList('sensitizer')">⚡ Sensitizers (<span id="inci-filter-irr-count">0</span>)</button>
+              <button type="button" class="inci-filter-chip" id="inci-filter-safe-btn" onclick="window.filterInciList('safe')">🌿 Safe Actives (<span id="inci-filter-safe-count">0</span>)</button>
+            </div>
+
             <!-- Detailed Ingredient Breakdown Chips -->
-            <div class="inci-breakdown-wrap">
-              <span class="akvile-sub-lbl">Identified Ingredients & Comedogenic Scale (0–5):</span>
+            <div class="inci-breakdown-wrap" style="margin-top:12px;">
+              <span class="akvile-sub-lbl">Identified Clinical Compounds & Comedogenic Scale (0–5):</span>
               <div class="inci-items-list" id="inci-items-list"></div>
             </div>
           </div>
