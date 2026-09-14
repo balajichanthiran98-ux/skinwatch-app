@@ -2,15 +2,25 @@
 console.log('%c✓ SkinWatch v10.0 Active | Cross-Device Cloud Sync & Timeline Saver', 'background: #0f172a; color: #10b981; font-weight: bold; padding: 4px 8px; border-radius: 4px;');
 
 
-// Auto-detect Backend API URL regardless of host port or Live Server
+// Google Cloud Run production backend URL
+const CLOUD_RUN_BACKEND_URL = 'https://skinwatch-app-131780735186.asia-south1.run.app';
+
+// Auto-detect Backend API URL regardless of host port, Live Server, or Capacitor Android Native
 const BACKEND_URL = (function() {
-  if (typeof window === 'undefined') return 'http://localhost:3001';
+  if (typeof window === 'undefined') return CLOUD_RUN_BACKEND_URL;
+  // If running inside Capacitor Native App (Android / iOS)
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+    return CLOUD_RUN_BACKEND_URL;
+  }
   // If loaded directly from the backend server on port 3001 or standard cloud port
   if (window.location.port === '3001' || (window.location.port === '' && window.location.protocol.startsWith('http') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')) {
     return '';
   }
-  // If loaded via Live Server (5500), Vite (5173), or file:// protocol
-  return `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//${window.location.hostname || 'localhost'}:3001`;
+  // If loaded via Live Server (5500), Vite (5173), or file:// protocol on localhost
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return `${window.location.protocol === 'https:' ? 'https:' : 'http:'}//${window.location.hostname || 'localhost'}:3001`;
+  }
+  return CLOUD_RUN_BACKEND_URL;
 })();
 const DEFAULT_LOCATION = { lat: 10.299423, lon: 79.074082, name: 'Trichy, Tamil Nadu' };
 
