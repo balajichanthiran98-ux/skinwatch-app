@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.run.asia_south1.skinwatch_app_131780735186.twa",
+      "sha256_cert_fingerprints": [
+        "BA:AD:C5:0F:BD:04:BB:18:2B:45:F6:2F:0D:06:69:85:9B:4C:E8:5D:D8:16:A6:4E:3B:83:DE:E5:0A:96:08:1E"
+      ]
+    }
+  }
+]

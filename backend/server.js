@@ -1444,7 +1444,28 @@ app.get([
   next();
 });
 
+// Explicit Digital Asset Links for Google Play TWA verification
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  const assetLinksPath = path.join(frontendDir, '.well-known/assetlinks.json');
+  if (fs.existsSync(assetLinksPath)) {
+    return res.sendFile(assetLinksPath);
+  }
+  return res.json([
+    {
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.run.asia_south1.skinwatch_app_131780735186.twa",
+        "sha256_cert_fingerprints": ["BA:AD:C5:0F:BD:04:BB:18:2B:45:F6:2F:0D:06:69:85:9B:4C:E8:5D:D8:16:A6:4E:3B:83:DE:E5:0A:96:08:1E"]
+      }
+    }
+  ]);
+});
+
 app.use(express.static(frontendDir, {
+  dotfiles: 'allow',
   setHeaders: (res, filePath) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
