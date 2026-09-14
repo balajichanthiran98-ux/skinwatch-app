@@ -240,7 +240,7 @@ function fetchExternalProductDatabase(query) {
 
     const url = 'https://world.openbeautyfacts.org/cgi/search.pl?search_terms=' + encodeURIComponent(cleanQ) + '&search_simple=1&action=process&json=1&page_size=5';
     
-    const req = https.get(url, { headers: { 'User-Agent': 'SkinWatch-INCI/2.0 (contact@skinwatch.app)' } }, res => {
+    const req = https.get(url, { headers: { 'User-Agent': 'SkinWatch-INCI/2.0 (bala@pristinemedsolutions.com)' } }, res => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
