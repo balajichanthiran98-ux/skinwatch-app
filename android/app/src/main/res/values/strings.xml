@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SkinWatch</string>
+    <string name="title_activity_main">SkinWatch</string>
+    <string name="package_name">com.skinwatch.app</string>
+    <string name="custom_url_scheme">com.skinwatch.app</string>
+</resources>
