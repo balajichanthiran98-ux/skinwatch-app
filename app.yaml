@@ -1,0 +1,11 @@
+# Google App Engine Standard Configuration for SkinWatch
+runtime: nodejs20
+instance_class: F1
+
+env_variables:
+  NODE_ENV: 'production'
+
+handlers:
+  - url: /.*
+    script: auto
+    secure: always
