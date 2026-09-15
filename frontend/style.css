@@ -3803,6 +3803,7 @@ body {
   gap: 2px;
   transition: all 0.2s ease;
   font-family: inherit;
+  user-select: none;
 }
 
 .onboard-pill-card strong {
@@ -3816,13 +3817,49 @@ body {
 }
 
 .onboard-pill-card.active {
-  background: var(--surface);
-  border-color: var(--gold);
-  box-shadow: 0 0 0 2px var(--gold);
+  background: var(--gold) !important;
+  border-color: var(--gold) !important;
+  box-shadow: 0 3px 12px rgba(138, 106, 47, 0.3) !important;
 }
 
-.onboard-pill-card.active strong {
-  color: var(--gold);
+.onboard-pill-card.active strong,
+.onboard-pill-card.active span {
+  color: #FFFFFF !important;
+}
+
+.onboarding-screen .pill,
+.onboarding-screen .cpill,
+.onboarding-screen .lpill {
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #FFFFFF;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-strong);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.onboarding-screen .pill:hover,
+.onboarding-screen .cpill:hover,
+.onboarding-screen .lpill:hover {
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.onboarding-screen .pill.active,
+.onboarding-screen .cpill.active,
+.onboarding-screen .lpill.active {
+  background: var(--gold) !important;
+  color: #FFFFFF !important;
+  border-color: var(--gold) !important;
+  box-shadow: 0 3px 10px rgba(138, 106, 47, 0.3) !important;
+  transform: translateY(-1px);
 }
 
 .onboard-summary-box {

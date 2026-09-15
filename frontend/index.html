@@ -218,15 +218,15 @@
 
         <label class="auth-field-label" style="margin-top:16px;">Fitzpatrick Phototype (Sun Sensitivity)</label>
         <div class="onboard-pills-grid" id="onboard-phototype-pills">
-          <button type="button" class="onboard-pill-card" data-val="Type I-II">
+          <button type="button" class="onboard-pill-card" data-val="Type I-II" onclick="window.setOnboardPhototype(this)">
             <strong>Type I–II (Fair / Light)</strong>
             <span>Burns easily, freckles, high UV sensitivity</span>
           </button>
-          <button type="button" class="onboard-pill-card active" data-val="Type III-IV">
+          <button type="button" class="onboard-pill-card active" data-val="Type III-IV" onclick="window.setOnboardPhototype(this)">
             <strong>Type III–IV (Medium / Olive)</strong>
             <span>Tans gradually, uniform tone, moderate burn risk</span>
           </button>
-          <button type="button" class="onboard-pill-card" data-val="Type V-VI">
+          <button type="button" class="onboard-pill-card" data-val="Type V-VI" onclick="window.setOnboardPhototype(this)">
             <strong>Type V–VI (Deep / Melanin-Rich)</strong>
             <span>Never burns, deeply pigmented, PIH focus</span>
           </button>
@@ -234,20 +234,20 @@
 
         <label class="auth-field-label" style="margin-top:16px;">Base Skin Barrier Type</label>
         <div class="pill-group" id="onboard-skintype-pills">
-          <button type="button" class="pill active" data-val="Normal">🌱 Normal / Balanced</button>
-          <button type="button" class="pill" data-val="Oily">✨ Oily</button>
-          <button type="button" class="pill" data-val="Dry">🌵 Dry</button>
-          <button type="button" class="pill" data-val="Combination">⚖️ Combination</button>
-          <button type="button" class="pill" data-val="Sensitive">⚡ Sensitive</button>
+          <button type="button" class="pill active" data-val="Normal" onclick="window.setOnboardSkinType(this)">🌱 Normal / Balanced</button>
+          <button type="button" class="pill" data-val="Oily" onclick="window.setOnboardSkinType(this)">✨ Oily</button>
+          <button type="button" class="pill" data-val="Dry" onclick="window.setOnboardSkinType(this)">🌵 Dry</button>
+          <button type="button" class="pill" data-val="Combination" onclick="window.setOnboardSkinType(this)">⚖️ Combination</button>
+          <button type="button" class="pill" data-val="Sensitive" onclick="window.setOnboardSkinType(this)">⚡ Sensitive</button>
         </div>
 
         <label class="auth-field-label" style="margin-top:16px;">Age Demographic</label>
         <div class="pill-group" id="onboard-age-pills">
-          <button type="button" class="pill" data-val="Under 20">&lt; 20</button>
-          <button type="button" class="pill active" data-val="20-29">20–29</button>
-          <button type="button" class="pill" data-val="30-39">30–39</button>
-          <button type="button" class="pill" data-val="40-49">40–49</button>
-          <button type="button" class="pill" data-val="50+">50+</button>
+          <button type="button" class="pill" data-val="Under 20" onclick="window.setOnboardAge(this)">&lt; 20</button>
+          <button type="button" class="pill active" data-val="20-29" onclick="window.setOnboardAge(this)">20–29</button>
+          <button type="button" class="pill" data-val="30-39" onclick="window.setOnboardAge(this)">30–39</button>
+          <button type="button" class="pill" data-val="40-49" onclick="window.setOnboardAge(this)">40–49</button>
+          <button type="button" class="pill" data-val="50+" onclick="window.setOnboardAge(this)">50+</button>
         </div>
 
         <div class="row-between" style="margin-top:22px; gap:8px;">
@@ -267,21 +267,21 @@
 
         <label class="auth-field-label" style="margin-top:16px;">Primary Concerns (Select all that apply)</label>
         <div class="pill-group" id="onboard-concern-pills">
-          <button type="button" class="cpill active" data-val="Acne">⚡ Acne & Blemishes</button>
-          <button type="button" class="cpill" data-val="Dryness">💧 Dryness & Dehydration</button>
-          <button type="button" class="cpill" data-val="Pigmentation">☀️ Dark Spots & Sun Damage</button>
-          <button type="button" class="cpill" data-val="Sensitivity">🌿 Redness & Reactive Barrier</button>
-          <button type="button" class="cpill" data-val="Fine Lines">✨ Fine Lines & Elasticity</button>
-          <button type="button" class="cpill" data-val="Pores">🔬 Clogged Pores & Texture</button>
+          <button type="button" class="cpill active" data-val="Acne" onclick="window.toggleOnboardConcern(this)">⚡ Acne & Blemishes</button>
+          <button type="button" class="cpill" data-val="Dryness" onclick="window.toggleOnboardConcern(this)">💧 Dryness & Dehydration</button>
+          <button type="button" class="cpill" data-val="Pigmentation" onclick="window.toggleOnboardConcern(this)">☀️ Dark Spots & Sun Damage</button>
+          <button type="button" class="cpill" data-val="Sensitivity" onclick="window.toggleOnboardConcern(this)">🌿 Redness & Reactive Barrier</button>
+          <button type="button" class="cpill" data-val="Fine Lines" onclick="window.toggleOnboardConcern(this)">✨ Fine Lines & Elasticity</button>
+          <button type="button" class="cpill" data-val="Pores" onclick="window.toggleOnboardConcern(this)">🔬 Clogged Pores & Texture</button>
         </div>
 
         <label class="auth-field-label" style="margin-top:16px;">Daily Sun & Lifestyle Exposure</label>
         <div class="pill-group" id="onboard-lifestyle-pills">
-          <button type="button" class="lpill active" data-val="AC Office">❄️ Mostly Indoors / AC</button>
-          <button type="button" class="lpill active" data-val="Blue Light">🖥️ Screen Blue Light</button>
-          <button type="button" class="lpill" data-val="Outdoor Commute">🏃 Moderate Commute (1-2h Sun)</button>
-          <button type="button" class="lpill" data-val="High Sun">☀️ High Outdoor Sun</button>
-          <button type="button" class="lpill active" data-val="Sleep 7h">😴 7+ Hrs Sleep</button>
+          <button type="button" class="lpill active" data-val="AC Office" onclick="window.toggleOnboardLifestyle(this)">❄️ Mostly Indoors / AC</button>
+          <button type="button" class="lpill active" data-val="Blue Light" onclick="window.toggleOnboardLifestyle(this)">🖥️ Screen Blue Light</button>
+          <button type="button" class="lpill" data-val="Outdoor Commute" onclick="window.toggleOnboardLifestyle(this)">🏃 Moderate Commute (1-2h Sun)</button>
+          <button type="button" class="lpill" data-val="High Sun" onclick="window.toggleOnboardLifestyle(this)">☀️ High Outdoor Sun</button>
+          <button type="button" class="lpill active" data-val="Sleep 7h" onclick="window.toggleOnboardLifestyle(this)">😴 7+ Hrs Sleep</button>
         </div>
 
         <div class="row-between" style="margin-top:22px; gap:8px;">

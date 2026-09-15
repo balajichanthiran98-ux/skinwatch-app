@@ -965,6 +965,42 @@ function goToOnboardStep(step) {
 }
 window.goToOnboardStep = goToOnboardStep;
 
+window.setOnboardPhototype = function(el) {
+  document.querySelectorAll('#onboard-phototype-pills .onboard-pill-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  window.onboardingDraft.phototype = el.dataset.val || 'Type III-IV';
+};
+
+window.setOnboardSkinType = function(el) {
+  document.querySelectorAll('#onboard-skintype-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  window.onboardingDraft.skinType = el.dataset.val || 'Normal';
+};
+
+window.setOnboardAge = function(el) {
+  document.querySelectorAll('#onboard-age-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  window.onboardingDraft.ageGroup = el.dataset.val || '20-29';
+};
+
+window.toggleOnboardConcern = function(el) {
+  el.classList.toggle('active');
+  const activeConcerns = [];
+  document.querySelectorAll('#onboard-concern-pills .cpill.active').forEach(p => {
+    if (p.dataset.val) activeConcerns.push(p.dataset.val);
+  });
+  window.onboardingDraft.concerns = activeConcerns.length ? activeConcerns : ['Acne'];
+};
+
+window.toggleOnboardLifestyle = function(el) {
+  el.classList.toggle('active');
+  const activeLife = [];
+  document.querySelectorAll('#onboard-lifestyle-pills .lpill.active').forEach(p => {
+    if (p.dataset.val) activeLife.push(p.dataset.val);
+  });
+  window.onboardingDraft.lifestyle = activeLife.length ? activeLife : ['AC Office'];
+};
+
 function calculatePersonalizedRegimen() {
   const draft = window.onboardingDraft || {};
   const skin = draft.skinType || 'Normal';
