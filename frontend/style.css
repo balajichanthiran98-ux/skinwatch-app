@@ -3869,14 +3869,14 @@ body {
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   margin-top: 14px;
 }
 
 .onboard-summary-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
 }
 
 .onboard-summary-item strong {
@@ -3884,10 +3884,26 @@ body {
   color: var(--ink);
 }
 
-.onboard-summary-item span {
-  font-size: 11.5px;
-  color: var(--text-primary);
+.onboard-routine-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: #FFFFFF;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
   line-height: 1.45;
+  resize: vertical;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.onboard-routine-input:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2.5px rgba(138, 106, 47, 0.2);
+  background: #FFFDF8;
 }
 
 /* ========================================================

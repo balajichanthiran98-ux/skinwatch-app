@@ -1038,12 +1038,12 @@ function calculatePersonalizedRegimen() {
     suppSummary = '9 Drops (2.7L Water) · Hydrolyzed Collagen Peptides · CoQ10';
   }
 
-  const amEl = document.getElementById('onboard-am-summary');
-  const pmEl = document.getElementById('onboard-pm-summary');
-  const suppEl = document.getElementById('onboard-supp-summary');
-  if (amEl) amEl.textContent = amSummary;
-  if (pmEl) pmEl.textContent = pmSummary;
-  if (suppEl) suppEl.textContent = suppSummary;
+  const amInput = document.getElementById('onboard-am-input');
+  const pmInput = document.getElementById('onboard-pm-input');
+  const suppInput = document.getElementById('onboard-supp-input');
+  if (amInput) amInput.value = amSummary;
+  if (pmInput) pmInput.value = pmSummary;
+  if (suppInput) suppInput.value = suppSummary;
 
   draft.calculatedAM = amSummary;
   draft.calculatedPM = pmSummary;
@@ -1069,14 +1069,25 @@ async function completeOnboardingAndLaunch() {
   const concerns = draft.concerns || ['Acne', 'Dryness'];
   const lifestyle = draft.lifestyle || ['AC Office', 'Blue Light'];
 
-  // Parse routine steps
-  const amSteps = (draft.calculatedAM || 'Gentle Cleanser · Antioxidant Serum · SPF 50+ Sunscreen')
-    .split('·')
-    .map((s, i) => ({ id: `a${i+1}`, name: s.trim(), done: false }));
+  // Read whatever the user edited in Step 3
+  const amRaw = document.getElementById('onboard-am-input')?.value.trim() || draft.calculatedAM || 'Gentle Cleanser · Antioxidant Serum · SPF 50+ Sunscreen';
+  const pmRaw = document.getElementById('onboard-pm-input')?.value.trim() || draft.calculatedPM || 'Double Cleanse · Barrier Serum · Ceramide Cream';
+  const suppRaw = document.getElementById('onboard-supp-input')?.value.trim() || '8 Drops (2.4L Water) · Omega-3';
+
+  // Split by middle dot, newline, or comma
+  const splitSteps = (text) => text.split(/[·\n,]/).map(s => s.trim()).filter(Boolean);
+
+  const amList = splitSteps(amRaw);
+  const amSteps = (amList.length ? amList : ['Gentle Cleanser', 'SPF 50+ Sunscreen'])
+    .map((s, i) => ({ id: `a${i+1}`, name: s, done: false }));
   
-  const pmSteps = (draft.calculatedPM || 'Double Cleanse · Barrier Serum · Ceramide Cream')
-    .split('·')
-    .map((s, i) => ({ id: `p${i+1}`, name: s.trim(), done: false }));
+  const pmList = splitSteps(pmRaw);
+  const pmSteps = (pmList.length ? pmList : ['Double Cleanse', 'Barrier Ceramide Cream'])
+    .map((s, i) => ({ id: `p${i+1}`, name: s, done: false }));
+
+  // Extract water target number from suppRaw if typed (e.g. "10 Drops" -> 10)
+  const matchDrops = suppRaw.match(/(\d+)\s*drops?/i);
+  const userWaterTarget = matchDrops ? parseInt(matchDrops[1], 10) : (draft.calculatedWaterTarget || 8);
 
   const newUserData = {
     phone,
@@ -1090,7 +1101,7 @@ async function completeOnboardingAndLaunch() {
     concerns,
     lifestyle,
     waterGlasses: 0,
-    waterTarget: draft.calculatedWaterTarget || 8,
+    waterTarget: userWaterTarget,
     amSteps,
     suppSteps: [
       { id: 's1', name: 'Omega-3 & Antioxidants', done: false },

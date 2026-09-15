@@ -293,24 +293,33 @@
         </div>
       </div>
 
-      <!-- Step 3: Calibrated Regimen Confirmation -->
+      <!-- Step 3: Calibrated Regimen Confirmation (Editable) -->
       <div id="onboard-step-3" class="onboard-step-card" style="display:none;">
         <div class="onboard-badge-icon" style="background:#E8F5E9; color:#2E7D32;"><i class="ti ti-circle-check"></i></div>
         <h2 class="serif-heading-dark">Your Calibrated Regimen</h2>
-        <p class="muted-note">Custom-crafted for your skin traits and local climate.</p>
+        <p class="muted-note">Custom-crafted for your skin traits. You can edit or add your favorite products.</p>
 
         <div class="onboard-summary-box">
           <div class="onboard-summary-item">
-            <strong>☀️ Morning AM Ritual:</strong>
-            <span id="onboard-am-summary">Gentle Cleanser · Niacinamide & BHA · Broad-Spectrum SPF 50+</span>
+            <div class="row-between" style="align-items:center;">
+              <strong>☀️ Morning AM Ritual:</strong>
+              <span style="font-size:10px; color:var(--gold); font-weight:600;"><i class="ti ti-edit"></i> Editable</span>
+            </div>
+            <textarea id="onboard-am-input" class="onboard-routine-input" rows="2" placeholder="e.g. Gentle Cleanser · Vitamin C · SPF 50+"></textarea>
           </div>
           <div class="onboard-summary-item">
-            <strong>🌙 Evening PM Reset:</strong>
-            <span id="onboard-pm-summary">Double Cleanser · Barrier Recovery Serum · Ceramide Night Cream</span>
+            <div class="row-between" style="align-items:center;">
+              <strong>🌙 Evening PM Reset:</strong>
+              <span style="font-size:10px; color:var(--gold); font-weight:600;"><i class="ti ti-edit"></i> Editable</span>
+            </div>
+            <textarea id="onboard-pm-input" class="onboard-routine-input" rows="2" placeholder="e.g. Double Cleanse · Retinol · Night Cream"></textarea>
           </div>
           <div class="onboard-summary-item">
-            <strong>💧 Daily Cellular Hydration:</strong>
-            <span id="onboard-supp-summary">8 Drops (2.4L Water) · Omega-3 & Antioxidant Support</span>
+            <div class="row-between" style="align-items:center;">
+              <strong>💧 Daily Cellular Hydration:</strong>
+              <span style="font-size:10px; color:var(--gold); font-weight:600;"><i class="ti ti-edit"></i> Editable</span>
+            </div>
+            <input id="onboard-supp-input" type="text" class="onboard-routine-input" placeholder="8 Drops (2.4L Water) · Omega-3" />
           </div>
         </div>
 
