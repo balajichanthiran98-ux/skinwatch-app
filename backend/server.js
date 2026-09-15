@@ -1103,11 +1103,11 @@ app.post('/api/auth/login', (req, res) => {
 
 // Register New User (creates dedicated user database file)
 app.post('/api/auth/register', (req, res) => {
-  const { name, phone, password, city, skinType } = req.body || {};
+  const { phone, password } = req.body || {};
   if (!phone || !password) {
     return res.status(400).json({ success: false, error: 'Phone number/username and password are required.' });
   }
-  const result = userStore.register({ name, phone, password, city, skinType });
+  const result = userStore.register(req.body || {});
   if (!result.success) {
     return res.status(400).json(result);
   }

@@ -832,21 +832,77 @@ async function handleLogin() {
   executeInstantLogin(newFallbackUser);
 }
 
-async function handleSignup() {
-  const name = document.getElementById('signup-name-input')?.value.trim() || 'Balaji';
-  const code = document.getElementById('signup-country-code')?.value || '+91';
-  const rawPhone = document.getElementById('signup-phone-input')?.value.trim() || '';
-  const password = document.getElementById('signup-pass-input')?.value.trim() || '';
-  const city = document.getElementById('signup-city-input')?.value.trim() || 'Trichy, Tamil Nadu';
-  const skinType = document.getElementById('signup-skintype-select')?.value || 'III';
+// Global Onboarding Draft State
+window.onboardingDraft = {
+  name: 'Balaji',
+  phone: '+919876543210',
+  password: 'password123',
+  city: 'Trichy, Tamil Nadu',
+  phototype: 'Type III-IV',
+  skinType: 'Normal',
+  ageGroup: '20-29',
+  concerns: ['Acne', 'Dryness'],
+  lifestyle: ['AC Office', 'Blue Light', 'Sleep 7h']
+};
+
+function autoDetectSignupLocation() {
+  const cityInput = document.getElementById('signup-city-input');
+  const btn = document.getElementById('signup-locate-btn');
+  if (btn) btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i>`;
+  
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+        const data = await res.json();
+        const detected = [data.city || data.locality, data.principalSubdivision || data.countryName].filter(Boolean).join(', ');
+        if (detected && cityInput) {
+          cityInput.value = detected;
+          showToast(`Location detected: ${detected}`);
+        }
+      } catch {
+        if (cityInput && !cityInput.value) cityInput.value = 'Trichy, Tamil Nadu';
+      } finally {
+        if (btn) btn.innerHTML = `<i class="ti ti-current-location"></i>`;
+      }
+    }, () => {
+      if (btn) btn.innerHTML = `<i class="ti ti-current-location"></i>`;
+      showToast('Could not access GPS. Please type city name.');
+    }, { timeout: 6000 });
+  } else {
+    if (btn) btn.innerHTML = `<i class="ti ti-current-location"></i>`;
+  }
+}
+window.autoDetectSignupLocation = autoDetectSignupLocation;
+
+function startOnboardingFromSignup() {
+  const nameInput = document.getElementById('signup-name-input');
+  const codeSelect = document.getElementById('signup-country-code');
+  const phoneInput = document.getElementById('signup-phone-input');
+  const passInput = document.getElementById('signup-pass-input');
+  const cityInput = document.getElementById('signup-city-input');
   const errEl = document.getElementById('auth-signup-error');
-  const btn = document.getElementById('auth-signup-submit-btn');
 
   if (errEl) errEl.style.display = 'none';
 
+  const name = nameInput?.value.trim() || 'Balaji';
+  const code = codeSelect?.value || '+91';
+  const rawPhone = phoneInput?.value.trim() || '';
+  const password = passInput?.value.trim() || '';
+  const city = cityInput?.value.trim() || 'Trichy, Tamil Nadu';
+
   if (!rawPhone || !password) {
     if (errEl) {
-      errEl.innerHTML = 'Phone number and password are required.';
+      errEl.innerHTML = '⚠️ Please enter your mobile number and password.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (password.length < 4) {
+    if (errEl) {
+      errEl.innerHTML = '⚠️ Password must be at least 4 characters.';
       errEl.style.display = 'block';
     }
     return;
@@ -854,43 +910,190 @@ async function handleSignup() {
 
   const cleanDigits = rawPhone.replace(/[^0-9]/g, '');
   const phone = rawPhone.startsWith('+') ? ('+' + cleanDigits) : `${code}${cleanDigits}`;
+
+  window.onboardingDraft.name = name;
+  window.onboardingDraft.phone = phone;
+  window.onboardingDraft.password = password;
+  window.onboardingDraft.city = city;
+
+  // Transition from Auth screen to Onboarding Wizard
+  const authScreen = document.getElementById('screen-auth');
+  const onboardScreen = document.getElementById('screen-onboarding');
+  if (authScreen) authScreen.style.setProperty('display', 'none', 'important');
+  if (onboardScreen) onboardScreen.style.setProperty('display', 'block', 'important');
+
+  goToOnboardStep(1);
+}
+window.startOnboardingFromSignup = startOnboardingFromSignup;
+
+function cancelOnboardingToAuth() {
+  const authScreen = document.getElementById('screen-auth');
+  const onboardScreen = document.getElementById('screen-onboarding');
+  if (onboardScreen) onboardScreen.style.setProperty('display', 'none', 'important');
+  if (authScreen) authScreen.style.setProperty('display', 'flex', 'important');
+}
+window.cancelOnboardingToAuth = cancelOnboardingToAuth;
+
+function goToOnboardStep(step) {
+  const s1 = document.getElementById('onboard-step-1');
+  const s2 = document.getElementById('onboard-step-2');
+  const s3 = document.getElementById('onboard-step-3');
+  const fill = document.getElementById('onboard-progress-fill');
+  const lbl = document.getElementById('onboard-step-lbl');
+  const pct = document.getElementById('onboard-step-pct');
+
+  if (s1) s1.style.display = step === 1 ? 'block' : 'none';
+  if (s2) s2.style.display = step === 2 ? 'block' : 'none';
+  if (s3) s3.style.display = step === 3 ? 'block' : 'none';
+
+  if (step === 1) {
+    if (fill) fill.style.width = '33.3%';
+    if (lbl) lbl.textContent = 'Step 1 of 3: Skin Profile';
+    if (pct) pct.textContent = '33%';
+  } else if (step === 2) {
+    if (fill) fill.style.width = '66.6%';
+    if (lbl) lbl.textContent = 'Step 2 of 3: Goals & Lifestyle';
+    if (pct) pct.textContent = '66%';
+  } else if (step === 3) {
+    if (fill) fill.style.width = '100%';
+    if (lbl) lbl.textContent = 'Step 3 of 3: Calibrated Regimen';
+    if (pct) pct.textContent = '100%';
+    calculatePersonalizedRegimen();
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+window.goToOnboardStep = goToOnboardStep;
+
+function calculatePersonalizedRegimen() {
+  const draft = window.onboardingDraft || {};
+  const skin = draft.skinType || 'Normal';
+  const concerns = draft.concerns || [];
+  
+  let amSummary = 'Gentle Cleanser · Antioxidant Serum · Broad-Spectrum SPF 50+';
+  let pmSummary = 'Double Cleanser · Barrier Recovery Serum · Night Ceramide Cream';
+  let waterTarget = 8;
+  let suppSummary = '8 Drops (2.4L Water) · Omega-3 & Antioxidant Support';
+
+  if (skin === 'Oily' || concerns.includes('Acne') || concerns.includes('Pores')) {
+    amSummary = 'Purifying Amino Cleanser · 2% Salicylic Acid (BHA) & Niacinamide · Oil-Free Matte Fluid SPF 50+';
+    pmSummary = 'Clarifying Double Cleanse · Barrier Zinc PCA Serum · Lightweight Hydrating Gel';
+    waterTarget = 8;
+    suppSummary = '8 Drops (2.4L Water) · Zinc Picolinate · Green Tea Polyphenols';
+  } else if (skin === 'Dry' || concerns.includes('Dryness')) {
+    amSummary = 'Nourishing Milk Cleanser · Multi-Molecular Hyaluronic Acid · Rich Barrier Recovery Cream SPF 50+';
+    pmSummary = 'Replenishing Oil Cleanse · 5-Ceramide Lipid Complex · Intensive Overnight Moisture Mask';
+    waterTarget = 10;
+    suppSummary = '10 Drops (3.0L Water) · Pure Omega-3 Fatty Acids · Marine Collagen';
+  } else if (skin === 'Sensitive' || concerns.includes('Sensitivity')) {
+    amSummary = 'Ultra-Gentle Cica Gel · Centella Asiatica & Azelaic Acid · 100% Mineral Physical SPF 50+';
+    pmSummary = 'Soothing Micellar Rinse · Panthenol (B5) Barrier Elixir · Pure Squalane Recovery Balm';
+    waterTarget = 8;
+    suppSummary = '8 Drops (2.4L Water) · Evening Primrose Oil · Vitamin D3 & Zinc';
+  } else if (concerns.includes('Pigmentation')) {
+    amSummary = 'Brightening Foam Cleanser · Stabilized 15% Vitamin C + Ferulic · Broad-Spectrum Shield SPF 50+';
+    pmSummary = 'Gentle Amino Cleanse · 2% Alpha Arbutin & Tranexamic Acid · Night Cell Renewal Cream';
+    waterTarget = 8;
+    suppSummary = '8 Drops (2.4L Water) · Glutathione & Polyphenols · Astaxanthin';
+  } else if (concerns.includes('Fine Lines')) {
+    amSummary = 'Gentle Hydrating Cleanser · Multi-Peptide Copper Serum · Peptide Infused Fluid SPF 50+';
+    pmSummary = 'Double Cleanse · Encapsulated Retinol 0.2% · Deep Ceramide Night Complex';
+    waterTarget = 9;
+    suppSummary = '9 Drops (2.7L Water) · Hydrolyzed Collagen Peptides · CoQ10';
+  }
+
+  const amEl = document.getElementById('onboard-am-summary');
+  const pmEl = document.getElementById('onboard-pm-summary');
+  const suppEl = document.getElementById('onboard-supp-summary');
+  if (amEl) amEl.textContent = amSummary;
+  if (pmEl) pmEl.textContent = pmSummary;
+  if (suppEl) suppEl.textContent = suppSummary;
+
+  draft.calculatedAM = amSummary;
+  draft.calculatedPM = pmSummary;
+  draft.calculatedWaterTarget = waterTarget;
+}
+window.calculatePersonalizedRegimen = calculatePersonalizedRegimen;
+
+async function completeOnboardingAndLaunch() {
+  const btn = document.getElementById('onboard-finish-btn');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Creating Database...</span>`;
+    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Initializing Profile...</span>`;
   }
+
+  const draft = window.onboardingDraft || {};
+  const name = draft.name || 'Balaji';
+  const phone = draft.phone || '+919876543210';
+  const password = draft.password || 'password123';
+  const city = draft.city || 'Trichy, Tamil Nadu';
+  const skinType = draft.skinType || 'Normal';
+  const phototype = draft.phototype || 'Type III-IV';
+  const ageGroup = draft.ageGroup || '20-29';
+  const concerns = draft.concerns || ['Acne', 'Dryness'];
+  const lifestyle = draft.lifestyle || ['AC Office', 'Blue Light'];
+
+  // Parse routine steps
+  const amSteps = (draft.calculatedAM || 'Gentle Cleanser · Antioxidant Serum · SPF 50+ Sunscreen')
+    .split('·')
+    .map((s, i) => ({ id: `a${i+1}`, name: s.trim(), done: false }));
+  
+  const pmSteps = (draft.calculatedPM || 'Double Cleanse · Barrier Serum · Ceramide Cream')
+    .split('·')
+    .map((s, i) => ({ id: `p${i+1}`, name: s.trim(), done: false }));
 
   const newUserData = {
     phone,
     name,
     city,
-    skinType,
-    skinTypeName: `Type ${skinType}`,
-    waterGlasses: 4,
-    waterTarget: 8,
-    amSteps: [
-      { id: 'a1', name: 'Gentle Cleanser', done: false },
-      { id: 'a2', name: 'Hydrating Antioxidant Serum', done: false },
-      { id: 'a3', name: 'Broad-Spectrum SPF 50', done: false }
+    location: { name: city, lat: 10.7905, lon: 78.7047 },
+    skinType: phototype.replace('Type ', ''),
+    skinTypeName: phototype,
+    skinBarrierType: skinType,
+    ageGroup,
+    concerns,
+    lifestyle,
+    waterGlasses: 0,
+    waterTarget: draft.calculatedWaterTarget || 8,
+    amSteps,
+    suppSteps: [
+      { id: 's1', name: 'Omega-3 & Antioxidants', done: false },
+      { id: 's2', name: 'Hydration Target', done: false }
     ],
-    pmSteps: [
-      { id: 'p1', name: 'Double Cleanse', done: false },
-      { id: 'p2', name: 'Barrier Recovery Cream', done: false }
-    ],
+    pmSteps,
     scanHistory: {},
     acneTrackerHistory: typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []
   };
 
-  // 1. Immediately save to local persistent storage
+  // 1. Save local persistent user
   saveJSON(`sw_user_${phone}`, newUserData);
 
-  // 2. Attempt background backend registration
-  fetch(BACKEND_URL + '/api/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, phone, password, city, skinType })
-  }).catch(() => null);
+  // 2. Register to backend
+  try {
+    await fetch(BACKEND_URL + '/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        phone,
+        password,
+        city,
+        skinType: phototype.replace('Type ', ''),
+        skinTypeName: phototype,
+        skinBarrierType: skinType,
+        ageGroup,
+        concerns,
+        lifestyle,
+        amSteps,
+        pmSteps,
+        waterTarget: newUserData.waterTarget
+      })
+    }).catch(() => null);
+  } catch (e) {
+    console.warn('Backend sync error:', e);
+  }
 
-  // 3. Immediately enter app
+  // 3. Set auth state
   state.authUser = {
     phone,
     name,
@@ -899,18 +1102,24 @@ async function handleSignup() {
     scanHistory: {},
     acneTrackerHistory: newUserData.acneTrackerHistory
   };
+
   saveJSON('sw_session_auth', state.authUser);
   try { sessionStorage.setItem('sw_session_user', JSON.stringify(newUserData)); } catch {}
   try { localStorage.setItem('sw_session_user', JSON.stringify(newUserData)); } catch {}
   applyUserDataToState(newUserData);
 
-  if (btn) {
-    btn.disabled = false;
-    btn.innerHTML = `<span>Create Account & Enter</span> <i class="ti ti-check"></i>`;
-  }
-  showToast(`Account created for ${name}!`);
+  // Hide onboarding screen and reveal main app
+  const onboardScreen = document.getElementById('screen-onboarding');
+  if (onboardScreen) onboardScreen.style.setProperty('display', 'none', 'important');
+
+  showToast(`Welcome to SkinWatch, ${name}! Your personalized regimen is active.`);
   checkAuthState();
   try { refreshWeather(); } catch {}
+}
+window.completeOnboardingAndLaunch = completeOnboardingAndLaunch;
+
+function handleSignup() {
+  startOnboardingFromSignup();
 }
 
 function handleSignOut() {
@@ -1075,6 +1284,52 @@ function initAuthSystem() {
     handleSignOut();
     const tabSignUp = document.getElementById('tab-btn-signup');
     if (tabSignUp) tabSignUp.click();
+  });
+  // Onboarding Wizard Pill & Card Listeners
+  document.querySelectorAll('#onboard-phototype-pills .onboard-pill-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('#onboard-phototype-pills .onboard-pill-card').forEach(c => c.classList.remove('active'));
+      card.classList.add('active');
+      window.onboardingDraft.phototype = card.dataset.val || 'Type III-IV';
+    });
+  });
+
+  document.querySelectorAll('#onboard-skintype-pills .pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('#onboard-skintype-pills .pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      window.onboardingDraft.skinType = pill.dataset.val || 'Normal';
+    });
+  });
+
+  document.querySelectorAll('#onboard-age-pills .pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('#onboard-age-pills .pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      window.onboardingDraft.ageGroup = pill.dataset.val || '20-29';
+    });
+  });
+
+  document.querySelectorAll('#onboard-concern-pills .cpill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      pill.classList.toggle('active');
+      const activeConcerns = [];
+      document.querySelectorAll('#onboard-concern-pills .cpill.active').forEach(p => {
+        if (p.dataset.val) activeConcerns.push(p.dataset.val);
+      });
+      window.onboardingDraft.concerns = activeConcerns.length ? activeConcerns : ['Acne'];
+    });
+  });
+
+  document.querySelectorAll('#onboard-lifestyle-pills .lpill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      pill.classList.toggle('active');
+      const activeLife = [];
+      document.querySelectorAll('#onboard-lifestyle-pills .lpill.active').forEach(p => {
+        if (p.dataset.val) activeLife.push(p.dataset.val);
+      });
+      window.onboardingDraft.lifestyle = activeLife.length ? activeLife : ['AC Office'];
+    });
   });
 
   checkAuthState();

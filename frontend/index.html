@@ -135,7 +135,7 @@
 
         <!-- Form 2: Register New User -->
         <form id="form-signup" class="auth-form" style="display:none;"
-          onsubmit="event.preventDefault(); window.handleSignup(); return false;">
+          onsubmit="event.preventDefault(); window.startOnboardingFromSignup(); return false;">
           <div class="auth-heading">
             <h2 class="serif-heading-dark">New Account</h2>
             <p class="muted-note">Personalize your climate skincare database.</p>
@@ -155,6 +155,7 @@
                 <option value="+1">🇺🇸 +1</option>
                 <option value="+44">🇬🇧 +44</option>
                 <option value="+971">🇦🇪 +971</option>
+                <option value="+65">🇸🇬 +65</option>
               </select>
               <input id="signup-phone-input" type="tel" class="auth-phone-field" placeholder="Enter mobile number"
                 maxlength="14" autocomplete="tel" required>
@@ -173,28 +174,19 @@
 
           <div class="auth-field-group">
             <label class="auth-field-label">Home City</label>
-            <input id="signup-city-input" type="text" class="auth-phone-field" placeholder="e.g. Trichy, Tamil Nadu"
-              value="Trichy, Tamil Nadu" required>
-          </div>
-
-          <div class="auth-field-group">
-            <label class="auth-field-label">Fitzpatrick Phototype</label>
-            <select id="signup-skintype-select" class="auth-phone-field"
-              style="height:44px; padding:0 12px; background:var(--cream);">
-              <option value="I">Type I - Very Fair (Always burns, never tans)</option>
-              <option value="II">Type II - Fair (Burns easily, tans minimally)</option>
-              <option value="III" selected>Type III - Medium / Olive (Tans uniformly, mild burns)</option>
-              <option value="IV">Type IV - Olive / Brown (Burns minimally, tans well)</option>
-              <option value="V">Type V - Dark Brown (Rarely burns, deeply tans)</option>
-              <option value="VI">Type VI - Deeply Pigmented (Never burns)</option>
-            </select>
+            <div class="location-row">
+              <input id="signup-city-input" type="text" class="auth-phone-field" placeholder="e.g. Trichy, Tamil Nadu"
+                value="Trichy, Tamil Nadu" required>
+              <button id="signup-locate-btn" type="button" class="locate-btn-inline" title="Detect Location"
+                onclick="window.autoDetectSignupLocation()"><i class="ti ti-current-location"></i></button>
+            </div>
           </div>
 
           <p id="auth-signup-error" class="auth-error-msg" style="display:none;"></p>
 
-          <button id="auth-signup-submit-btn" class="auth-primary-btn" type="submit" onclick="window.handleSignup()">
-            <span>Create Account & Enter</span>
-            <i class="ti ti-check"></i>
+          <button id="auth-signup-submit-btn" class="auth-primary-btn" type="button" onclick="window.startOnboardingFromSignup()">
+            <span>Continue to Skin Diagnostic</span>
+            <i class="ti ti-arrow-right"></i>
           </button>
         </form>
       </div>
@@ -204,139 +196,131 @@
       </div>
     </section>
 
-    <!-- FIRST-TIME USER ONBOARDING WIZARD -->
+    <!-- FIRST-TIME USER ONBOARDING WIZARD (3-STEP DIAGNOSTIC) -->
     <section id="screen-onboarding" class="screen onboarding-screen" style="display:none;">
       <div class="onboarding-top-bar">
         <div class="onboarding-step-indicator">
-          <span id="onboard-step-lbl">Step 1 of 4</span>
-          <div class="onboard-progress-track">
-            <div class="onboard-progress-fill" id="onboard-progress-fill" style="width: 25%;"></div>
+          <div class="row-between" style="align-items:center;">
+            <span id="onboard-step-lbl" style="font-weight:700; color:var(--gold); font-size:12px;">Step 1 of 3: Skin Profile</span>
+            <span id="onboard-step-pct" style="font-size:11px; color:var(--text-muted); font-weight:600;">33%</span>
+          </div>
+          <div class="onboard-progress-track" style="margin-top:6px;">
+            <div class="onboard-progress-fill" id="onboard-progress-fill" style="width: 33.3%;"></div>
           </div>
         </div>
       </div>
 
-      <!-- Step 1: Personal Info & Location -->
+      <!-- Step 1: Skin Genetics & Phototype -->
       <div id="onboard-step-1" class="onboard-step-card">
-        <div class="onboard-badge-icon"><i class="ti ti-user-circle"></i></div>
-        <h2 class="serif-heading-dark">Welcome to SkinWatch</h2>
-        <p class="muted-note">Let's personalize your climate skincare profile.</p>
-
-        <div class="auth-field-group" style="margin-top:18px;">
-          <label class="auth-field-label">Your Name</label>
-          <input id="onboard-name-input" type="text" class="auth-phone-field" placeholder="Enter your full name" />
-        </div>
-
-        <div class="auth-field-group">
-          <label class="auth-field-label">Your Home City</label>
-          <div class="location-row">
-            <input id="onboard-city-input" type="text" placeholder="e.g. Trichy, Chennai, Mumbai"
-              value="Trichy, Tamil Nadu" />
-            <button id="onboard-locate-btn" type="button" title="Detect Location"><i
-                class="ti ti-current-location"></i></button>
-          </div>
-        </div>
-
-        <button id="onboard-next-1" class="auth-primary-btn" style="margin-top:16px;">
-          <span>Continue to Skin Profile</span>
-          <i class="ti ti-arrow-right"></i>
-        </button>
-      </div>
-
-      <!-- Step 2: Fitzpatrick Phototype & Skin Type -->
-      <div id="onboard-step-2" class="onboard-step-card" style="display:none;">
         <div class="onboard-badge-icon"><i class="ti ti-dna"></i></div>
-        <h2 class="serif-heading-dark">Skin Genetics & Type</h2>
-        <p class="muted-note">Calibrates your UV sensitivity and barrier resistance.</p>
+        <h2 class="serif-heading-dark">Skin Profile & Genetics</h2>
+        <p class="muted-note">Calibrates your UV sensitivity, melanin response, and moisture barrier.</p>
 
-        <label class="auth-field-label" style="margin-top:14px;">Fitzpatrick Phototype (Sun Sensitivity)</label>
+        <label class="auth-field-label" style="margin-top:16px;">Fitzpatrick Phototype (Sun Sensitivity)</label>
         <div class="onboard-pills-grid" id="onboard-phototype-pills">
           <button type="button" class="onboard-pill-card" data-val="Type I-II">
-            <strong>Type I–II (Fair)</strong>
-            <span>Burns easily, high UV sensitivity</span>
+            <strong>Type I–II (Fair / Light)</strong>
+            <span>Burns easily, freckles, high UV sensitivity</span>
           </button>
           <button type="button" class="onboard-pill-card active" data-val="Type III-IV">
-            <strong>Type III–IV (Medium)</strong>
-            <span>Tans gradually, moderate burn risk</span>
+            <strong>Type III–IV (Medium / Olive)</strong>
+            <span>Tans gradually, uniform tone, moderate burn risk</span>
           </button>
           <button type="button" class="onboard-pill-card" data-val="Type V-VI">
-            <strong>Type V–VI (Deep)</strong>
-            <span>Melanin-rich, hyperpigmentation focus</span>
+            <strong>Type V–VI (Deep / Melanin-Rich)</strong>
+            <span>Never burns, deeply pigmented, PIH focus</span>
           </button>
         </div>
 
-        <label class="auth-field-label" style="margin-top:14px;">Base Skin Type</label>
+        <label class="auth-field-label" style="margin-top:16px;">Base Skin Barrier Type</label>
         <div class="pill-group" id="onboard-skintype-pills">
-          <button type="button" class="pill active" data-val="Normal">Normal</button>
-          <button type="button" class="pill" data-val="Oily">Oily</button>
-          <button type="button" class="pill" data-val="Dry">Dry</button>
-          <button type="button" class="pill" data-val="Combination">Combination</button>
-          <button type="button" class="pill" data-val="Sensitive">Sensitive</button>
+          <button type="button" class="pill active" data-val="Normal">🌱 Normal / Balanced</button>
+          <button type="button" class="pill" data-val="Oily">✨ Oily</button>
+          <button type="button" class="pill" data-val="Dry">🌵 Dry</button>
+          <button type="button" class="pill" data-val="Combination">⚖️ Combination</button>
+          <button type="button" class="pill" data-val="Sensitive">⚡ Sensitive</button>
         </div>
 
-        <div class="row-between" style="margin-top:20px; gap:8px;">
-          <button id="onboard-back-2" class="check-sub-btn" style="flex:0.4;">Back</button>
-          <button id="onboard-next-2" class="auth-primary-btn" style="flex:1;">Next Step <i
-              class="ti ti-arrow-right"></i></button>
+        <label class="auth-field-label" style="margin-top:16px;">Age Demographic</label>
+        <div class="pill-group" id="onboard-age-pills">
+          <button type="button" class="pill" data-val="Under 20">&lt; 20</button>
+          <button type="button" class="pill active" data-val="20-29">20–29</button>
+          <button type="button" class="pill" data-val="30-39">30–39</button>
+          <button type="button" class="pill" data-val="40-49">40–49</button>
+          <button type="button" class="pill" data-val="50+">50+</button>
+        </div>
+
+        <div class="row-between" style="margin-top:22px; gap:8px;">
+          <button type="button" id="onboard-back-1" class="check-sub-btn" style="flex:0.35;" onclick="window.cancelOnboardingToAuth()">Cancel</button>
+          <button type="button" id="onboard-next-1" class="auth-primary-btn" style="flex:1;" onclick="window.goToOnboardStep(2)">
+            <span>Goals & Environment</span>
+            <i class="ti ti-arrow-right"></i>
+          </button>
         </div>
       </div>
 
-      <!-- Step 3: Concerns & Lifestyle Stressors -->
-      <div id="onboard-step-3" class="onboard-step-card" style="display:none;">
+      <!-- Step 2: Primary Concerns & Lifestyle Stressors -->
+      <div id="onboard-step-2" class="onboard-step-card" style="display:none;">
         <div class="onboard-badge-icon"><i class="ti ti-target-arrow"></i></div>
         <h2 class="serif-heading-dark">Goals & Environment</h2>
-        <p class="muted-note">Select your primary concerns and daily environmental stressors.</p>
+        <p class="muted-note">Select your active concerns and daily climate stressors.</p>
 
-        <label class="auth-field-label" style="margin-top:14px;">Primary Concerns (Select all that apply)</label>
+        <label class="auth-field-label" style="margin-top:16px;">Primary Concerns (Select all that apply)</label>
         <div class="pill-group" id="onboard-concern-pills">
-          <button type="button" class="cpill active" data-val="Dryness">💧 Dryness / TEWL</button>
-          <button type="button" class="cpill" data-val="Acne">⚡ Acne & Blemishes</button>
-          <button type="button" class="cpill" data-val="Pigmentation">☀️ Pigmentation</button>
-          <button type="button" class="cpill" data-val="Sensitivity">🌿 Sensitivity / Redness</button>
-          <button type="button" class="cpill" data-val="Fine Lines">✨ Fine Lines</button>
+          <button type="button" class="cpill active" data-val="Acne">⚡ Acne & Blemishes</button>
+          <button type="button" class="cpill" data-val="Dryness">💧 Dryness & Dehydration</button>
+          <button type="button" class="cpill" data-val="Pigmentation">☀️ Dark Spots & Sun Damage</button>
+          <button type="button" class="cpill" data-val="Sensitivity">🌿 Redness & Reactive Barrier</button>
+          <button type="button" class="cpill" data-val="Fine Lines">✨ Fine Lines & Elasticity</button>
+          <button type="button" class="cpill" data-val="Pores">🔬 Clogged Pores & Texture</button>
         </div>
 
-        <label class="auth-field-label" style="margin-top:14px;">Daily Lifestyle Factors</label>
+        <label class="auth-field-label" style="margin-top:16px;">Daily Sun & Lifestyle Exposure</label>
         <div class="pill-group" id="onboard-lifestyle-pills">
-          <button type="button" class="lpill active" data-val="AC Office">❄️ AC Office (Dry Air)</button>
+          <button type="button" class="lpill active" data-val="AC Office">❄️ Mostly Indoors / AC</button>
           <button type="button" class="lpill active" data-val="Blue Light">🖥️ Screen Blue Light</button>
-          <button type="button" class="lpill" data-val="Outdoor Commute">🏃 Outdoor Commute</button>
+          <button type="button" class="lpill" data-val="Outdoor Commute">🏃 Moderate Commute (1-2h Sun)</button>
+          <button type="button" class="lpill" data-val="High Sun">☀️ High Outdoor Sun</button>
           <button type="button" class="lpill active" data-val="Sleep 7h">😴 7+ Hrs Sleep</button>
-          <button type="button" class="lpill" data-val="Frequent Travel">✈️ Frequent Travel</button>
         </div>
 
-        <div class="row-between" style="margin-top:20px; gap:8px;">
-          <button id="onboard-back-3" class="check-sub-btn" style="flex:0.4;">Back</button>
-          <button id="onboard-next-3" class="auth-primary-btn" style="flex:1;">Generate Routine <i
-              class="ti ti-sparkles"></i></button>
+        <div class="row-between" style="margin-top:22px; gap:8px;">
+          <button type="button" id="onboard-back-2" class="check-sub-btn" style="flex:0.35;" onclick="window.goToOnboardStep(1)">Back</button>
+          <button type="button" id="onboard-next-2" class="auth-primary-btn" style="flex:1;" onclick="window.goToOnboardStep(3)">
+            <span>Generate Routine</span>
+            <i class="ti ti-sparkles"></i>
+          </button>
         </div>
       </div>
 
-      <!-- Step 4: Calibrated Regimen Confirmation -->
-      <div id="onboard-step-4" class="onboard-step-card" style="display:none;">
-        <div class="onboard-badge-icon" style="background:#E8F5E9; color:#2E7D32;"><i class="ti ti-circle-check"></i>
-        </div>
+      <!-- Step 3: Calibrated Regimen Confirmation -->
+      <div id="onboard-step-3" class="onboard-step-card" style="display:none;">
+        <div class="onboard-badge-icon" style="background:#E8F5E9; color:#2E7D32;"><i class="ti ti-circle-check"></i></div>
         <h2 class="serif-heading-dark">Your Calibrated Regimen</h2>
         <p class="muted-note">Custom-crafted for your skin traits and local climate.</p>
 
         <div class="onboard-summary-box">
           <div class="onboard-summary-item">
             <strong>☀️ Morning AM Ritual:</strong>
-            <span id="onboard-am-summary">Gentle Cleanser · Vitamin C Serum · SPF 50+ Sunscreen</span>
+            <span id="onboard-am-summary">Gentle Cleanser · Niacinamide & BHA · Broad-Spectrum SPF 50+</span>
           </div>
           <div class="onboard-summary-item">
             <strong>🌙 Evening PM Reset:</strong>
-            <span id="onboard-pm-summary">Double Cleanser · Retinol 0.2% · Barrier Night Moisturizer</span>
+            <span id="onboard-pm-summary">Double Cleanser · Barrier Recovery Serum · Ceramide Night Cream</span>
           </div>
           <div class="onboard-summary-item">
-            <strong>💧 Daily Nutrition & Hydration:</strong>
-            <span id="onboard-supp-summary">8 Drops (2.4L Water) · Omega-3 · Vitamin C & Collagen</span>
+            <strong>💧 Daily Cellular Hydration:</strong>
+            <span id="onboard-supp-summary">8 Drops (2.4L Water) · Omega-3 & Antioxidant Support</span>
           </div>
         </div>
 
-        <button id="onboard-finish-btn" class="auth-primary-btn" style="margin-top:18px;">
-          <span>Complete Setup & Enter SkinWatch</span>
-          <i class="ti ti-check"></i>
-        </button>
+        <div class="row-between" style="margin-top:22px; gap:8px;">
+          <button type="button" id="onboard-back-3" class="check-sub-btn" style="flex:0.35;" onclick="window.goToOnboardStep(2)">Back</button>
+          <button type="button" id="onboard-finish-btn" class="auth-primary-btn" style="flex:1;" onclick="window.completeOnboardingAndLaunch()">
+            <span>Complete & Enter App</span>
+            <i class="ti ti-check"></i>
+          </button>
+        </div>
       </div>
     </section>
 
