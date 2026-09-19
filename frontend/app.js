@@ -5191,20 +5191,22 @@ window.exportWeeklySkincarePDF = function () {
         // Progression stages from clinical recovery cycle if exact single day not individually scanned
         if (!matchedAcnePhoto && acneHist.length > 0) {
           if (isToday) {
-            matchedAcnePhoto = currentAcnePhoto || acneHist[0]?.photo;
-            lesionsCount = acneHist[0]?.totalLesions || 2;
-          } else if (i >= 4 && acneHist.length >= 3) {
+            matchedAcnePhoto = currentAcnePhoto || acneHist[0]?.photo || './assets/acne_scan_followup.jpg';
+            lesionsCount = (acneHist[0]?.totalLesions != null) ? acneHist[0]?.totalLesions : 2;
+          } else if (i === 1) {
+            // Day 6 (Yesterday) - Calming / Healing transition phase (distinct from Day 7)
+            const day6Photo = (acneHist.length > 1 && acneHist[1]?.photo && acneHist[1]?.photo !== acneHist[0]?.photo) ? acneHist[1]?.photo : './assets/acne_scan_midpoint.jpg';
+            matchedAcnePhoto = day6Photo;
+            lesionsCount = (acneHist.length > 1 && acneHist[1]?.totalLesions != null) ? acneHist[1]?.totalLesions : 5;
+          } else if (i >= 4) {
             // Baseline period (Days 1-3)
-            matchedAcnePhoto = acneHist[acneHist.length - 1]?.photo;
+            matchedAcnePhoto = acneHist[acneHist.length - 1]?.photo || './assets/acne_scan_baseline.jpg';
             lesionsCount = acneHist[acneHist.length - 1]?.totalLesions || 16;
-          } else if (i >= 2 && acneHist.length >= 2) {
-            // Midpoint period (Days 4-5)
-            const midIdx = Math.floor(acneHist.length / 2);
-            matchedAcnePhoto = acneHist[midIdx]?.photo;
-            lesionsCount = acneHist[midIdx]?.totalLesions || 8;
           } else {
-            matchedAcnePhoto = acneHist[0]?.photo;
-            lesionsCount = acneHist[0]?.totalLesions || 4;
+            // Midpoint period (Days 4-5)
+            const midIdx = Math.min(Math.floor(acneHist.length / 2), acneHist.length - 1);
+            matchedAcnePhoto = acneHist[midIdx]?.photo || './assets/acne_scan_midpoint.jpg';
+            lesionsCount = acneHist[midIdx]?.totalLesions || 8;
           }
         }
 
@@ -5271,20 +5273,22 @@ window.exportWeeklySkincarePDF = function () {
         // Progression stages from clinical recovery cycle if exact single day not individually scanned
         if (!matchedRedPhoto && redHist.length > 0) {
           if (isToday) {
-            matchedRedPhoto = currentRedPhoto || redHist[0]?.photo;
+            matchedRedPhoto = currentRedPhoto || redHist[0]?.photo || './assets/acne_scan_followup.jpg';
             eiVal = redHist[0]?.erythemaIndex || 14.8;
-          } else if (i >= 4 && redHist.length >= 3) {
+          } else if (i === 1) {
+            // Day 6 (Yesterday) - Vascular calming transition stage (distinct from Day 7)
+            const day6RedPhoto = (redHist.length > 1 && redHist[1]?.photo && redHist[1]?.photo !== redHist[0]?.photo) ? redHist[1]?.photo : './assets/acne_scan_midpoint.jpg';
+            matchedRedPhoto = day6RedPhoto;
+            eiVal = (redHist.length > 1 && redHist[1]?.erythemaIndex != null) ? redHist[1]?.erythemaIndex : 17.5;
+          } else if (i >= 4) {
             // Baseline stage (Days 1-3)
-            matchedRedPhoto = redHist[redHist.length - 1]?.photo;
+            matchedRedPhoto = redHist[redHist.length - 1]?.photo || './assets/acne_scan_baseline.jpg';
             eiVal = redHist[redHist.length - 1]?.erythemaIndex || 28.5;
-          } else if (i >= 2 && redHist.length >= 2) {
-            // Flare / Midpoint stage (Days 4-5)
-            const midIdx = Math.floor(redHist.length / 2);
-            matchedRedPhoto = redHist[midIdx]?.photo;
-            eiVal = redHist[midIdx]?.erythemaIndex || 22.0;
           } else {
-            matchedRedPhoto = redHist[0]?.photo;
-            eiVal = redHist[0]?.erythemaIndex || 16.0;
+            // Flare / Midpoint stage (Days 4-5)
+            const midIdx = Math.min(Math.floor(redHist.length / 2), redHist.length - 1);
+            matchedRedPhoto = redHist[midIdx]?.photo || './assets/acne_scan_midpoint.jpg';
+            eiVal = redHist[midIdx]?.erythemaIndex || 22.0;
           }
         }
 
@@ -7586,6 +7590,14 @@ function setupAcneTracker() {
         s.weatherSnapshot.aqi = liveSnap.aqi;
       }
     });
+
+    if (state.acnePhoto && state.acneTrackerHistory.length > 0) {
+      const todaySlot = state.acneTrackerHistory.find(s => s.id === 'scan-d3');
+      if (todaySlot && (!todaySlot.photo || !todaySlot.photo.startsWith('data:'))) {
+        todaySlot.photo = state.acnePhoto;
+      }
+    }
+
     state.acneTrackerHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     if (state.authUser?.phone) {
       saveJSON(`sw_acne_tracker_history_${state.authUser.phone}`, state.acneTrackerHistory);
@@ -7830,6 +7842,18 @@ function displayAcnePreview(dataUrl) {
 
   // Update dedicated acne photo state
   state.acnePhoto = dataUrl;
+
+  // Immediately synchronize today's scan slot in history if it exists
+  if (Array.isArray(state.acneTrackerHistory) && state.acneTrackerHistory.length > 0) {
+    const todayScan = state.acneTrackerHistory.find(s => s.id === 'scan-d3');
+    if (todayScan) {
+      todayScan.photo = dataUrl;
+    }
+  }
+
+  // Update Before & After comparison slider immediately with the taken photo
+  renderAcneCompareDropdowns();
+  updateAcneCompareImages();
 }
 
 function toggleAcneZoneGrid() {
@@ -8312,7 +8336,22 @@ async function runAcneAIAnalysis(dataUrl) {
     };
 
     state.currentAcneScan = scanObj;
+    state.acnePhoto = dataUrl;
+
+    if (Array.isArray(state.acneTrackerHistory) && state.acneTrackerHistory.length > 0) {
+      const todayScan = state.acneTrackerHistory.find(s => s.id === 'scan-d3');
+      if (todayScan) {
+        todayScan.photo = dataUrl;
+        todayScan.severity = cvAnalysis.overall_severity;
+        todayScan.severityScore = cvAnalysis.severity_score;
+        todayScan.totalLesions = cvAnalysis.total_lesions_estimate;
+        todayScan.zones = cvAnalysis.zones;
+      }
+    }
+
     applyAnalysisToUI(scanObj);
+    renderAcneCompareDropdowns();
+    updateAcneCompareImages();
 
     // Optional backend sync / refinement
     try {
@@ -8452,6 +8491,12 @@ function saveCurrentAcneScan() {
   };
 
   if (!state.acneTrackerHistory) state.acneTrackerHistory = [];
+
+  // Remove default placeholder scan-d3 if saving real user scan
+  const d3Idx = state.acneTrackerHistory.findIndex(s => s.id === 'scan-d3');
+  if (d3Idx >= 0) {
+    state.acneTrackerHistory.splice(d3Idx, 1);
+  }
 
   // Deduplicate: If an entry was saved within 3 minutes or with the same photo on the same date, update it
   const existingIdx = state.acneTrackerHistory.findIndex(s => {
@@ -8604,7 +8649,7 @@ function renderAcneCompareDropdowns() {
   if (!currentA || !history.some(s => s.id === currentA)) {
     currentA = baselineItem.id;
   }
-  if (!currentB || !history.some(s => s.id === currentB)) {
+  if (!currentB || !history.some(s => s.id === currentB) || (currentB === 'scan-d3' && history[0].id !== 'scan-d3')) {
     currentB = latestItem.id;
   }
 
@@ -8618,7 +8663,8 @@ function renderAcneCompareDropdowns() {
     return history.map(s => {
       const timePart = (s.dateFormatted && s.dateFormatted.includes(' · ')) ? ` (${s.dateFormatted.split(' · ')[1]})` : '';
       const datePart = s.dateFormatted ? s.dateFormatted.split(' · ')[0] : s.timestamp.slice(0, 10);
-      const label = `${datePart}${timePart} - ${s.severity} (${s.totalLesions} bumps)`;
+      const isUserPhoto = s.photo && (s.photo.startsWith('data:') || !s.photo.includes('/assets/'));
+      const label = `${datePart}${timePart} - ${s.severity} (${s.totalLesions} bumps)${isUserPhoto ? ' 📷' : ''}`;
       const isSel = s.id === selectedId ? 'selected' : '';
       return `<option value="${s.id}" ${isSel}>${label}</option>`;
     }).join('');
@@ -8701,7 +8747,7 @@ function updateAcneCompareImages() {
   const deltaText = document.getElementById('acne-delta-text');
   const statusEl = document.getElementById('acne-delta-status-pill');
 
-  if (history.length === 0) return;
+  if (history.length === 0 && !state.acnePhoto && !state.currentAcneScan) return;
 
   let idA = selectA?.value || history[history.length - 1]?.id; // Baseline (Left)
   let idB = selectB?.value || history[0]?.id; // Follow-up (Right)
@@ -8715,8 +8761,19 @@ function updateAcneCompareImages() {
     itemA = samples[samples.length - 1];
   }
 
-  const photoBefore = itemA?.photo || itemA?.annotatedPhoto || itemA?.img || './assets/acne_scan_baseline.jpg';
-  const photoAfter = itemB?.photo || itemB?.annotatedPhoto || itemB?.img || './assets/acne_scan_followup.jpg';
+  let photoBefore = itemA?.photo || itemA?.annotatedPhoto || itemA?.img || './assets/acne_scan_baseline.jpg';
+  let photoAfter = itemB?.photo || itemB?.annotatedPhoto || itemB?.img;
+
+  const liveUserPhoto = state.acnePhoto || state.currentAcneScan?.photo;
+  if (liveUserPhoto) {
+    // If follow-up image is empty, or is default clinical demo asset, or is scan-d3 / latest item with non-data URL
+    if (!photoAfter || photoAfter.includes('acne_scan_followup.jpg') || itemB?.id === 'scan-d3' || (itemB && itemB.id === history[0]?.id && !itemB.photo?.startsWith('data:'))) {
+      photoAfter = liveUserPhoto;
+    }
+  }
+  if (!photoAfter) {
+    photoAfter = './assets/acne_scan_followup.jpg';
+  }
 
   if (imgBefore) {
     imgBefore.src = photoBefore;
@@ -9050,6 +9107,13 @@ function setupRednessTracker() {
         s.weatherSnapshot.aqi = liveSnap.aqi;
       }
     });
+    if (state.rednessPhoto && state.rednessTrackerHistory.length > 0) {
+      const todaySlot = state.rednessTrackerHistory.find(s => s.id === 'rscan-d3');
+      if (todaySlot && (!todaySlot.photo || !todaySlot.photo.startsWith('data:'))) {
+        todaySlot.photo = state.rednessPhoto;
+      }
+    }
+
     state.rednessTrackerHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     if (state.authUser?.phone) {
       saveJSON(`sw_redness_tracker_history_${state.authUser.phone}`, state.rednessTrackerHistory);
@@ -9345,6 +9409,18 @@ function displayRednessPreview(dataUrl) {
 
   // Update dedicated redness photo state
   state.rednessPhoto = dataUrl;
+
+  // Immediately synchronize today's scan slot in history if it exists
+  if (Array.isArray(state.rednessTrackerHistory) && state.rednessTrackerHistory.length > 0) {
+    const todayScan = state.rednessTrackerHistory.find(s => s.id === 'rscan-d3');
+    if (todayScan) {
+      todayScan.photo = dataUrl;
+    }
+  }
+
+  // Update Before & After comparison slider immediately with the taken photo
+  renderRednessCompareDropdowns();
+  updateRednessCompareImages();
 }
 window.displayRednessPreview = displayRednessPreview;
 
@@ -9623,7 +9699,22 @@ async function runRednessAIAnalysis(dataUrl) {
     };
 
     state.currentRednessScan = scanObj;
+    state.rednessPhoto = dataUrl;
+
+    if (Array.isArray(state.rednessTrackerHistory) && state.rednessTrackerHistory.length > 0) {
+      const todayScan = state.rednessTrackerHistory.find(s => s.id === 'rscan-d3');
+      if (todayScan) {
+        todayScan.photo = dataUrl;
+        todayScan.severity = cvAnalysis.overall_severity;
+        todayScan.severityScore = cvAnalysis.severity_score;
+        todayScan.erythemaIndex = cvAnalysis.erythema_index;
+        todayScan.zones = cvAnalysis.zones;
+      }
+    }
+
     applyRednessAnalysisToUI(scanObj);
+    renderRednessCompareDropdowns();
+    updateRednessCompareImages();
 
     // Optional backend sync
     try {
@@ -9799,6 +9890,12 @@ function saveCurrentRednessScan() {
   }
 
   if (!state.rednessTrackerHistory) state.rednessTrackerHistory = [];
+
+  // Remove default placeholder rscan-d3 if saving real user scan
+  const rd3Idx = state.rednessTrackerHistory.findIndex(s => s.id === 'rscan-d3');
+  if (rd3Idx >= 0) {
+    state.rednessTrackerHistory.splice(rd3Idx, 1);
+  }
 
   // Deduplicate: If an entry was saved within 3 minutes, update it
   const existingIdx = state.rednessTrackerHistory.findIndex(s => {
@@ -9994,7 +10091,7 @@ function renderRednessCompareDropdowns() {
   if (!currentA || !history.some(s => s.id === currentA)) {
     currentA = baselineItem.id;
   }
-  if (!currentB || !history.some(s => s.id === currentB)) {
+  if (!currentB || !history.some(s => s.id === currentB) || (currentB === 'rscan-d3' && history[0].id !== 'rscan-d3')) {
     currentB = latestItem.id;
   }
 
@@ -10008,7 +10105,8 @@ function renderRednessCompareDropdowns() {
       const timePart = (s.dateFormatted && s.dateFormatted.includes(' · ')) ? ` (${s.dateFormatted.split(' · ')[1]})` : '';
       const datePart = s.dateFormatted ? s.dateFormatted.split(' · ')[0] : s.timestamp.slice(0, 10);
       const isBaseStr = s.isBaseline ? ' [Baseline]' : '';
-      const label = `${datePart}${timePart}${isBaseStr} - Score ${s.severityScore} (EI ${s.erythemaIndex || 14.8})`;
+      const isUserPhoto = s.photo && (s.photo.startsWith('data:') || !s.photo.includes('/assets/'));
+      const label = `${datePart}${timePart}${isBaseStr} - Score ${s.severityScore} (EI ${s.erythemaIndex || 14.8})${isUserPhoto ? ' 📷' : ''}`;
       const isSel = s.id === selectedId ? 'selected' : '';
       return `<option value="${s.id}" ${isSel}>${label}</option>`;
     }).join('');
@@ -10091,7 +10189,7 @@ function updateRednessCompareImages() {
   const deltaText = document.getElementById('redness-delta-text');
   const statusEl = document.getElementById('redness-delta-status-pill');
 
-  if (history.length === 0) return;
+  if (history.length === 0 && !state.rednessPhoto && !state.currentRednessScan) return;
 
   let idA = selectA?.value || history[history.length - 1]?.id;
   let idB = selectB?.value || history[0]?.id;
@@ -10104,8 +10202,22 @@ function updateRednessCompareImages() {
     itemA = samples[samples.length - 1];
   }
 
-  const photoBefore = itemA?.photo || itemA?.annotatedPhoto || itemA?.heatmapPhoto || itemA?.img || './assets/acne_scan_baseline.jpg';
-  const photoAfter = itemB?.photo || itemB?.annotatedPhoto || itemB?.heatmapPhoto || itemB?.img || './assets/acne_scan_followup.jpg';
+  let photoBefore = itemA?.photo || itemA?.annotatedPhoto || itemA?.heatmapPhoto || itemA?.img || './assets/acne_scan_baseline.jpg';
+  let photoAfter = itemB?.photo || itemB?.annotatedPhoto || itemB?.heatmapPhoto || itemB?.img;
+
+  if (state.rednessBaselinePhoto && itemA?.isBaseline) {
+    photoBefore = state.rednessBaselinePhoto;
+  }
+
+  const liveUserRedPhoto = state.rednessPhoto || state.currentRednessScan?.photo;
+  if (liveUserRedPhoto) {
+    if (!photoAfter || photoAfter.includes('acne_scan_followup.jpg') || itemB?.id === 'rscan-d3' || (itemB && itemB.id === history[0]?.id && !itemB.photo?.startsWith('data:'))) {
+      photoAfter = liveUserRedPhoto;
+    }
+  }
+  if (!photoAfter) {
+    photoAfter = './assets/acne_scan_followup.jpg';
+  }
 
   if (imgBefore) {
     imgBefore.src = photoBefore;
