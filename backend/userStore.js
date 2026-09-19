@@ -401,6 +401,8 @@ class UserStore {
     if (data.waterTarget != null) user.waterTarget = data.waterTarget;
     if (data.skinCyclePhase != null) user.skinCyclePhase = data.skinCyclePhase;
     if (data.checkPhoto !== undefined) user.checkPhoto = data.checkPhoto;
+    if (data.acnePhoto !== undefined) user.acnePhoto = data.acnePhoto;
+    if (data.rednessPhoto !== undefined) user.rednessPhoto = data.rednessPhoto;
     if (data.scanHistory) {
       if (typeof data.scanHistory === 'object' && !Array.isArray(data.scanHistory)) {
         const existing = (typeof user.scanHistory === 'object' && !Array.isArray(user.scanHistory)) ? user.scanHistory : {};
