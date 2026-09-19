@@ -1,0 +1,105 @@
+{
+  "phone": "+919840044444",
+  "displayPhone": "+919840044444",
+  "name": "Sneha Reddy",
+  "city": "Hyderabad, Telangana",
+  "location": {
+    "name": "Hyderabad, Telangana",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "V",
+  "skinTypeName": "Type V (Dark Brown)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Dryness",
+    "Pigmentation"
+  ],
+  "tolerances": [
+    "Squalane",
+    "Hyaluronic Acid",
+    "Shea Butter"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Hydrating Cream Wash",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Squalane + HA Serum",
+      "done": true
+    },
+    {
+      "id": "a3",
+      "name": "Dewy Finish Sunscreen SPF 50+",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Nourishing Oil Wash",
+      "done": true
+    },
+    {
+      "id": "p2",
+      "name": "Shea Butter Lipid Recovery Cream",
+      "done": true
+    },
+    {
+      "id": "custom_pm_8",
+      "name": "Sneha's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 1,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768028_8",
+      "timestamp": "2026-09-19T05:29:28.028Z",
+      "lesionCount": 26,
+      "papules": 9,
+      "pustules": 8,
+      "comedones": 10,
+      "severityIndex": 71,
+      "erythemaGrade": "Mild",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768042_8",
+      "timestamp": "2026-09-19T05:29:28.042Z",
+      "rednessScore": 68,
+      "vascularPattern": "Diffuse Erythema",
+      "flushingGrade": "Grade 1",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.275Z",
+  "lastLoginAt": "2026-09-19T05:29:27.967Z",
+  "skinBarrierType": "Dry",
+  "ageGroup": "20-29",
+  "lifestyle": [
+    "AC Office",
+    "Sleep 7h"
+  ]
+}

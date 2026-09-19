@@ -192,6 +192,11 @@ class UserStore {
     };
   }
 
+  // Alias for authenticate
+  login(phone, password) {
+    return this.authenticate(phone, password);
+  }
+
   // Register a new user and create their own dedicated database
   register(userData) {
     const rawPhone = String(userData.phone || '').trim();
@@ -257,6 +262,13 @@ class UserStore {
         if (userData.name) user.name = userData.name;
         if (userData.city) user.city = userData.city;
         if (userData.skinType) user.skinType = userData.skinType;
+        if (userData.skinBarrierType) user.skinBarrierType = userData.skinBarrierType;
+        if (userData.ageGroup) user.ageGroup = userData.ageGroup;
+        if (userData.concerns) user.concerns = userData.concerns;
+        if (userData.lifestyle) user.lifestyle = userData.lifestyle;
+        if (userData.amSteps) user.amSteps = userData.amSteps;
+        if (userData.pmSteps) user.pmSteps = userData.pmSteps;
+        if (userData.waterTarget) user.waterTarget = userData.waterTarget;
         user.lastLoginAt = existing.lastLoginAt;
       }
 
@@ -282,26 +294,29 @@ class UserStore {
       location: userData.location || { name: userData.city || 'Trichy, Tamil Nadu', lat: 10.7905, lon: 78.7047 },
       skinType: userData.skinType || 'III',
       skinTypeName: userData.skinTypeName || 'Type III (Medium / Olive)',
+      skinBarrierType: userData.skinBarrierType || 'Balanced',
+      ageGroup: userData.ageGroup || '25-34',
       skinFeel: userData.skinFeel || 'Normal / Balanced',
       concerns: userData.concerns || ['Daily UV Protection', 'Moisture Retention'],
+      lifestyle: userData.lifestyle || [],
       tolerances: userData.tolerances || ['Hyaluronic Acid', 'Niacinamide'],
       allergies: userData.allergies || [],
-      amSteps: [
+      amSteps: userData.amSteps && Array.isArray(userData.amSteps) && userData.amSteps.length > 0 ? userData.amSteps : [
         { id: 'a1', name: 'Hydrating Cleanser', done: false },
         { id: 'a2', name: 'Antioxidant Day Serum', done: false },
         { id: 'a3', name: 'Barrier Moisturizer', done: false },
         { id: 'a4', name: 'SPF 50+ Sunscreen', done: false }
       ],
-      suppSteps: [
+      suppSteps: userData.suppSteps && Array.isArray(userData.suppSteps) ? userData.suppSteps : [
         { id: 's1', name: 'Omega-3 Fatty Acids', done: false }
       ],
-      pmSteps: [
+      pmSteps: userData.pmSteps && Array.isArray(userData.pmSteps) && userData.pmSteps.length > 0 ? userData.pmSteps : [
         { id: 'p1', name: 'Gentle Evening Cleanser', done: false },
         { id: 'p2', name: 'Night Repair Serum', done: false },
         { id: 'p3', name: 'Nourishing Ceramide Cream', done: false }
       ],
       waterGlasses: 0,
-      waterTarget: 8,
+      waterTarget: userData.waterTarget || 8,
       skinCyclePhase: 1,
       checkPhoto: null,
       scanHistory: [],

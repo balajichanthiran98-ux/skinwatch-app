@@ -1,0 +1,107 @@
+{
+  "phone": "+919810011111",
+  "displayPhone": "+919810011111",
+  "name": "Aanya Sharma",
+  "city": "Mumbai, Maharashtra",
+  "location": {
+    "name": "Mumbai, Maharashtra",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "IV",
+  "skinTypeName": "Type IV (Olive / Brown)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Acne",
+    "Pores"
+  ],
+  "tolerances": [
+    "Salicylic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [
+    "Fragrance (Parfum)",
+    "Eucalyptus Oil"
+  ],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Salicylic Acid Foaming Wash",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Niacinamide 10%",
+      "done": true
+    },
+    {
+      "id": "a3",
+      "name": "Matte Gel SPF 50+",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Tea Tree Cleanser",
+      "done": true
+    },
+    {
+      "id": "p2",
+      "name": "BHA Liquid Exfoliant",
+      "done": false
+    },
+    {
+      "id": "custom_pm_0",
+      "name": "Aanya's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 1,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768016_0",
+      "timestamp": "2026-09-19T05:29:28.016Z",
+      "lesionCount": 2,
+      "papules": 1,
+      "pustules": 0,
+      "comedones": 2,
+      "severityIndex": 15,
+      "erythemaGrade": "Mild",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768031_0",
+      "timestamp": "2026-09-19T05:29:28.031Z",
+      "rednessScore": 20,
+      "vascularPattern": "Telangiectasia",
+      "flushingGrade": "Grade 1",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.212Z",
+  "lastLoginAt": "2026-09-19T05:29:27.939Z",
+  "skinBarrierType": "Oily",
+  "ageGroup": "20-29",
+  "lifestyle": [
+    "AC Office",
+    "Outdoor Commute"
+  ]
+}

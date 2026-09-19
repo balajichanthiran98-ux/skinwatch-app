@@ -1,0 +1,105 @@
+{
+  "phone": "+14155552678",
+  "displayPhone": "+14155552678",
+  "name": "Marcus Johnson",
+  "city": "New York, USA",
+  "location": {
+    "name": "New York, USA",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "VI",
+  "skinTypeName": "Type VI (Deeply Pigmented)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Pigmentation",
+    "Pores"
+  ],
+  "tolerances": [
+    "Salicylic Acid",
+    "Vitamin C",
+    "Azelaic Acid"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Salicylic Daily Cleanser",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Vitamin C + E Serum",
+      "done": false
+    },
+    {
+      "id": "a3",
+      "name": "No-White-Cast Sun Fluid SPF 50+",
+      "done": false
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Charcoal Deep Wash",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Azelaic Acid Cream",
+      "done": false
+    },
+    {
+      "id": "custom_pm_7",
+      "name": "Marcus's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 8,
+  "waterTarget": 8,
+  "skinCyclePhase": 4,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768027_7",
+      "timestamp": "2026-09-19T05:29:28.027Z",
+      "lesionCount": 23,
+      "papules": 8,
+      "pustules": 7,
+      "comedones": 9,
+      "severityIndex": 64,
+      "erythemaGrade": "Moderate",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768041_7",
+      "timestamp": "2026-09-19T05:29:28.041Z",
+      "rednessScore": 62,
+      "vascularPattern": "Diffuse Erythema",
+      "flushingGrade": "Grade 2",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.265Z",
+  "lastLoginAt": "2026-09-19T05:29:27.964Z",
+  "skinBarrierType": "Oily",
+  "ageGroup": "30-39",
+  "lifestyle": [
+    "AC Office",
+    "Outdoor Commute"
+  ]
+}

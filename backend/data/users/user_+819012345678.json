@@ -1,0 +1,104 @@
+{
+  "phone": "+819012345678",
+  "displayPhone": "+819012345678",
+  "name": "Kenji Takahashi",
+  "city": "Tokyo, Japan",
+  "location": {
+    "name": "Tokyo, Japan",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "III",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Fine Lines",
+    "Pores"
+  ],
+  "tolerances": [
+    "Galactomyces",
+    "Ceramides"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Amino Acid Gentle Wash",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Galactomyces Essence",
+      "done": true
+    },
+    {
+      "id": "a3",
+      "name": "Water Gel Sunscreen SPF 50+",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Deep Cleansing Oil",
+      "done": true
+    },
+    {
+      "id": "p2",
+      "name": "Ceramide Rich Emulsion",
+      "done": true
+    },
+    {
+      "id": "custom_pm_5",
+      "name": "Kenji's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 6,
+  "waterTarget": 8,
+  "skinCyclePhase": 2,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768024_5",
+      "timestamp": "2026-09-19T05:29:28.024Z",
+      "lesionCount": 17,
+      "papules": 6,
+      "pustules": 5,
+      "comedones": 7,
+      "severityIndex": 50,
+      "erythemaGrade": "Moderate",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768038_5",
+      "timestamp": "2026-09-19T05:29:28.038Z",
+      "rednessScore": 50,
+      "vascularPattern": "Diffuse Erythema",
+      "flushingGrade": "Grade 2",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.252Z",
+  "lastLoginAt": "2026-09-19T05:29:27.957Z",
+  "skinBarrierType": "Normal",
+  "ageGroup": "30-39",
+  "lifestyle": [
+    "AC Office",
+    "Sleep 7h"
+  ]
+}

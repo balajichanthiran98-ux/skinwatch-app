@@ -1,0 +1,108 @@
+{
+  "phone": "+33612345678",
+  "displayPhone": "+33612345678",
+  "name": "Chloe Dubois",
+  "city": "Paris, France",
+  "location": {
+    "name": "Paris, France",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "I",
+  "skinTypeName": "Type I (Very Fair)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Pigmentation",
+    "Dryness"
+  ],
+  "tolerances": [
+    "Vitamin C",
+    "Alpha Arbutin",
+    "Thermal Water"
+  ],
+  "allergies": [
+    "Limonene",
+    "Linalool"
+  ],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Thermal Water Spray",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Vitamin C 15% + Ferulic",
+      "done": true
+    },
+    {
+      "id": "a3",
+      "name": "Hydrating Sun Fluid SPF 50+",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Double Cleanse Oil",
+      "done": true
+    },
+    {
+      "id": "p2",
+      "name": "Alpha Arbutin 2%",
+      "done": true
+    },
+    {
+      "id": "custom_pm_3",
+      "name": "Chloe's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 4,
+  "waterTarget": 9,
+  "skinCyclePhase": 4,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768021_3",
+      "timestamp": "2026-09-19T05:29:28.021Z",
+      "lesionCount": 11,
+      "papules": 4,
+      "pustules": 3,
+      "comedones": 5,
+      "severityIndex": 36,
+      "erythemaGrade": "Moderate",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768035_3",
+      "timestamp": "2026-09-19T05:29:28.035Z",
+      "rednessScore": 38,
+      "vascularPattern": "Telangiectasia",
+      "flushingGrade": "Grade 2",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.241Z",
+  "lastLoginAt": "2026-09-19T05:29:27.950Z",
+  "skinBarrierType": "Dry",
+  "ageGroup": "30-39",
+  "lifestyle": [
+    "AC Office",
+    "Blue Light"
+  ]
+}

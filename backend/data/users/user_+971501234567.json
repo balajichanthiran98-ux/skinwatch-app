@@ -1,0 +1,106 @@
+{
+  "phone": "+971501234567",
+  "displayPhone": "+971501234567",
+  "name": "Fatima Al-Mansoor",
+  "city": "Dubai, UAE",
+  "location": {
+    "name": "Dubai, UAE",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "IV",
+  "skinTypeName": "Type IV (Olive / Brown)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Pigmentation",
+    "Acne"
+  ],
+  "tolerances": [
+    "Tranexamic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [
+    "Synthetic Dyes"
+  ],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Clarifying Foaming Gel",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Tranexamic Acid Serum",
+      "done": true
+    },
+    {
+      "id": "a3",
+      "name": "Extreme Heat Defense SPF 50+",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Pre-Cleanse Balm",
+      "done": true
+    },
+    {
+      "id": "p2",
+      "name": "Niacinamide Overnight Mask",
+      "done": true
+    },
+    {
+      "id": "custom_pm_6",
+      "name": "Fatima's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 7,
+  "waterTarget": 10,
+  "skinCyclePhase": 3,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768025_6",
+      "timestamp": "2026-09-19T05:29:28.025Z",
+      "lesionCount": 20,
+      "papules": 7,
+      "pustules": 6,
+      "comedones": 8,
+      "severityIndex": 57,
+      "erythemaGrade": "Mild",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768039_6",
+      "timestamp": "2026-09-19T05:29:28.039Z",
+      "rednessScore": 56,
+      "vascularPattern": "Telangiectasia",
+      "flushingGrade": "Grade 1",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.258Z",
+  "lastLoginAt": "2026-09-19T05:29:27.959Z",
+  "skinBarrierType": "Combination",
+  "ageGroup": "20-29",
+  "lifestyle": [
+    "High Sun",
+    "AC Office"
+  ]
+}

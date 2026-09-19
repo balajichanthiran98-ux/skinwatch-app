@@ -1,0 +1,110 @@
+{
+  "phone": "+919820022222",
+  "displayPhone": "+919820022222",
+  "name": "Dr. Vikram Patel",
+  "city": "Ahmedabad, Gujarat",
+  "location": {
+    "name": "Ahmedabad, Gujarat",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "III",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Dryness",
+    "Fine Lines"
+  ],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Ceramides",
+    "Peptides"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Milky Ceramide Cleanser",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Hyaluronic Acid Serum",
+      "done": false
+    },
+    {
+      "id": "a3",
+      "name": "Rich Cream SPF 50+",
+      "done": false
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Cleansing Balm",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Retinol 0.5%",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Peptide Night Cream",
+      "done": false
+    },
+    {
+      "id": "custom_pm_1",
+      "name": "Dr.'s Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 2,
+  "waterTarget": 10,
+  "skinCyclePhase": 2,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768018_1",
+      "timestamp": "2026-09-19T05:29:28.018Z",
+      "lesionCount": 5,
+      "papules": 2,
+      "pustules": 1,
+      "comedones": 3,
+      "severityIndex": 22,
+      "erythemaGrade": "Moderate",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768032_1",
+      "timestamp": "2026-09-19T05:29:28.032Z",
+      "rednessScore": 26,
+      "vascularPattern": "Diffuse Erythema",
+      "flushingGrade": "Grade 2",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.229Z",
+  "lastLoginAt": "2026-09-19T05:29:27.943Z",
+  "skinBarrierType": "Dry",
+  "ageGroup": "40-49",
+  "lifestyle": [
+    "AC Office",
+    "Sleep 7h"
+  ]
+}

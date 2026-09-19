@@ -1,0 +1,107 @@
+{
+  "phone": "+919830033333",
+  "displayPhone": "+919830033333",
+  "name": "Priya Sundaram",
+  "city": "Trichy, Tamil Nadu",
+  "location": {
+    "name": "Trichy, Tamil Nadu",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "IV",
+  "skinTypeName": "Type IV (Olive / Brown)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Sensitivity",
+    "Redness"
+  ],
+  "tolerances": [
+    "Centella Asiatica",
+    "Panthenol",
+    "Zinc Oxide"
+  ],
+  "allergies": [
+    "Benzoyl Peroxide"
+  ],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Centella Gentle Wash",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Azelaic Acid 10%",
+      "done": true
+    },
+    {
+      "id": "a3",
+      "name": "100% Mineral Zinc SPF 50+",
+      "done": true
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Soothing Micellar Rinse",
+      "done": true
+    },
+    {
+      "id": "p2",
+      "name": "Panthenol Barrier Balm",
+      "done": true
+    },
+    {
+      "id": "custom_pm_2",
+      "name": "Priya's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 3,
+  "waterTarget": 8,
+  "skinCyclePhase": 3,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768020_2",
+      "timestamp": "2026-09-19T05:29:28.020Z",
+      "lesionCount": 8,
+      "papules": 3,
+      "pustules": 2,
+      "comedones": 4,
+      "severityIndex": 29,
+      "erythemaGrade": "Mild",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768034_2",
+      "timestamp": "2026-09-19T05:29:28.034Z",
+      "rednessScore": 32,
+      "vascularPattern": "Diffuse Erythema",
+      "flushingGrade": "Grade 1",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.235Z",
+  "lastLoginAt": "2026-09-19T05:29:27.947Z",
+  "skinBarrierType": "Sensitive",
+  "ageGroup": "20-29",
+  "lifestyle": [
+    "High Sun",
+    "Outdoor Commute"
+  ]
+}

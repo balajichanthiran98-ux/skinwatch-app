@@ -1,0 +1,104 @@
+{
+  "phone": "+447911123456",
+  "displayPhone": "+447911123456",
+  "name": "Liam O’Connor",
+  "city": "London, UK",
+  "location": {
+    "name": "London, UK",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "II",
+  "skinTypeName": "Type II (Fair)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Acne",
+    "Redness"
+  ],
+  "tolerances": [
+    "Zinc PCA",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Purifying Gel Cleanser",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Zinc PCA Hydrator",
+      "done": false
+    },
+    {
+      "id": "a3",
+      "name": "Invisible Sunscreen SPF 50+",
+      "done": false
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Foaming Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Centella Recovery Gel",
+      "done": false
+    },
+    {
+      "id": "custom_pm_4",
+      "name": "Liam's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 5,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768023_4",
+      "timestamp": "2026-09-19T05:29:28.023Z",
+      "lesionCount": 14,
+      "papules": 5,
+      "pustules": 4,
+      "comedones": 6,
+      "severityIndex": 43,
+      "erythemaGrade": "Mild",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768037_4",
+      "timestamp": "2026-09-19T05:29:28.037Z",
+      "rednessScore": 44,
+      "vascularPattern": "Diffuse Erythema",
+      "flushingGrade": "Grade 1",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.246Z",
+  "lastLoginAt": "2026-09-19T05:29:27.952Z",
+  "skinBarrierType": "Combination",
+  "ageGroup": "20-29",
+  "lifestyle": [
+    "Outdoor Commute",
+    "Blue Light"
+  ]
+}

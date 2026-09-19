@@ -1,0 +1,106 @@
+{
+  "phone": "+6591234567",
+  "displayPhone": "+6591234567",
+  "name": "David Chen",
+  "city": "Singapore",
+  "location": {
+    "name": "Singapore",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "III",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Sensitivity",
+    "Acne"
+  ],
+  "tolerances": [
+    "Centella Asiatica",
+    "Probiotics"
+  ],
+  "allergies": [
+    "Tea Tree Oil"
+  ],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Calming Cica Cleanser",
+      "done": true
+    },
+    {
+      "id": "a2",
+      "name": "Centella Barrier Gel",
+      "done": false
+    },
+    {
+      "id": "a3",
+      "name": "Ultra-Light Physical SPF 50+",
+      "done": false
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Micellar Water Rinse",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Probiotics Calming Serum",
+      "done": false
+    },
+    {
+      "id": "custom_pm_9",
+      "name": "David's Bespoke Active Booster",
+      "done": false
+    }
+  ],
+  "waterGlasses": 2,
+  "waterTarget": 8,
+  "skinCyclePhase": 2,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [
+    {
+      "id": "acne_scan_1789795768029_9",
+      "timestamp": "2026-09-19T05:29:28.029Z",
+      "lesionCount": 29,
+      "papules": 10,
+      "pustules": 9,
+      "comedones": 11,
+      "severityIndex": 78,
+      "erythemaGrade": "Moderate",
+      "analyzedAt": "2026-09-19"
+    }
+  ],
+  "rednessTrackerHistory": [
+    {
+      "id": "redness_scan_1789795768044_9",
+      "timestamp": "2026-09-19T05:29:28.044Z",
+      "rednessScore": 74,
+      "vascularPattern": "Telangiectasia",
+      "flushingGrade": "Grade 2",
+      "primaryTriggers": [
+        "Thermal Heat",
+        "Spicy Food",
+        "UV Exposure"
+      ]
+    }
+  ],
+  "createdAt": "2026-09-19T05:23:11.281Z",
+  "lastLoginAt": "2026-09-19T05:29:27.971Z",
+  "skinBarrierType": "Sensitive",
+  "ageGroup": "20-29",
+  "lifestyle": [
+    "High Sun",
+    "AC Office"
+  ]
+}
