@@ -466,15 +466,15 @@ async function loadUserDataForPhone(phone) {
 function applyUserDataToState(userData) {
   if (!userData) return;
   state.profile = {
-    name: userData.name || 'Balaji',
+    name: userData.name || 'User',
     skinType: userData.skinType || 'III',
-    phototype: userData.skinTypeName || 'Type III (Medium / Olive)',
+    phototype: userData.skinTypeName || (userData.skinType ? `Type ${userData.skinType}` : 'Type III (Medium / Olive)'),
     concerns: userData.concerns || ['Daily UV Protection'],
     tolerances: userData.tolerances || ['Hyaluronic Acid', 'Niacinamide'],
     allergies: userData.allergies || []
   };
 
-  state.location = userData.location || { name: userData.city || 'Trichy, Tamil Nadu', lat: 10.7905, lon: 78.7047 };
+  state.location = userData.location || { name: userData.city || 'User City', lat: 10.7905, lon: 78.7047 };
   if (userData.amSteps) state.amSteps = userData.amSteps;
   if (userData.pmSteps) state.pmSteps = userData.pmSteps;
   if (userData.suppSteps) state.suppSteps = userData.suppSteps;
@@ -737,9 +737,10 @@ async function handleLogin() {
   }
 
   const executeInstantLogin = (userData) => {
+    const displayName = userData.name || 'User';
     state.authUser = {
       phone: userData.phone || phone,
-      name: userData.name || 'Balaji',
+      name: displayName,
       token: 'sw_auth_token_' + Date.now(),
       databasePartition: `user_${userData.phone || phone}.json`,
       scanHistory: userData.scanHistory || {},
@@ -754,7 +755,7 @@ async function handleLogin() {
       btn.disabled = false;
       btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
     }
-    showToast(`Welcome back, ${userData.name || 'Balaji'}!`);
+    showToast(`Welcome back, ${displayName}!`);
     checkAuthState();
     try { useCurrentLocation(false); } catch {}
   };
@@ -780,71 +781,98 @@ async function handleLogin() {
         return;
       }
       
-      // Auto-onboarding: If account is not registered yet on this backend partition, auto-create it instantly!
-      if (data && data.error && (data.error.includes('No account found') || data.error.includes('not found') || res.status === 404)) {
-        const regRes = await fetch(BACKEND_URL + '/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: 'Balaji', phone, password, city: 'Trichy, Tamil Nadu', skinType: 'III' })
-        }).catch(() => null);
-
-        if (regRes) {
-          const regData = await regRes.json().catch(() => null);
-          if (regData && regData.success && regData.user) {
-            executeInstantLogin(regData.user);
-            return;
-          }
-        }
-      } else if (data && data.error && data.error.includes('Incorrect password')) {
+      if (data && data.error) {
         if (btn) {
           btn.disabled = false;
           btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
         }
         if (errEl) {
-          errEl.innerHTML = `⚠️ Incorrect password. Please check your password.`;
+          if (data.error.includes('No account found') || data.error.includes('not found') || res.status === 404 || res.status === 401 && data.error.includes('sign up')) {
+            errEl.innerHTML = `⚠️ No account found for mobile number <b>${phone}</b>.<br><a href="javascript:void(0)" onclick="window.switchAuthTab('signup')" style="color:#d97706; text-decoration:underline; font-weight:700; display:inline-block; margin-top:6px;">👉 Click here to Create Account</a>`;
+          } else if (data.error.includes('Incorrect password') || data.error.includes('password')) {
+            errEl.innerHTML = `⚠️ Incorrect password for ${phone}. Please verify and try again.`;
+          } else {
+            errEl.innerHTML = `⚠️ ${data.error}`;
+          }
           errEl.style.display = 'block';
         }
         return;
       }
     }
   } catch (e) {
-    console.warn('Backend fetch error:', e);
+    console.warn('Backend login error:', e);
   }
 
   // Check custom local users created in this browser
   const localCached = loadJSON(`sw_user_${phone}`, null);
   if (localCached) {
-    executeInstantLogin(localCached);
-    return;
+    if (!localCached.password || localCached.password === password) {
+      executeInstantLogin(localCached);
+      return;
+    } else {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+      }
+      if (errEl) {
+        errEl.innerHTML = `⚠️ Incorrect password for ${phone}. Please verify and try again.`;
+        errEl.style.display = 'block';
+      }
+      return;
+    }
   }
 
-  // Fast client-side auto-create fallback if backend is offline
-  const newFallbackUser = {
-    phone,
-    name: 'Balaji',
-    city: 'Trichy, Tamil Nadu',
-    skinType: 'III',
-    skinTypeName: 'Type III (Medium / Olive)',
-    waterGlasses: 4,
-    waterTarget: 8,
-    scanHistory: {},
-    acneTrackerHistory: typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []
-  };
-  saveJSON(`sw_user_${phone}`, newFallbackUser);
-  executeInstantLogin(newFallbackUser);
+  // If account was not found anywhere, prompt user to Sign Up (NEVER auto-create as Balaji)
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = `<span>Sign In to Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+  }
+  if (errEl) {
+    errEl.innerHTML = `⚠️ No account found for mobile number <b>${phone}</b>.<br><a href="javascript:void(0)" onclick="window.switchAuthTab('signup')" style="color:#d97706; text-decoration:underline; font-weight:700; display:inline-block; margin-top:6px;">👉 Click here to Create Account</a>`;
+    errEl.style.display = 'block';
+  }
 }
 
 // Global Onboarding Draft State
 window.onboardingDraft = {
-  name: 'Balaji',
-  phone: '+919876543210',
-  password: 'password123',
-  city: 'Trichy, Tamil Nadu',
+  name: '',
+  phone: '',
+  password: '',
+  city: '',
   phototype: 'Type III-IV',
   skinType: 'Normal',
-  ageGroup: '20-29',
-  concerns: ['Acne', 'Dryness'],
-  lifestyle: ['AC Office', 'Blue Light', 'Sleep 7h']
+  ageGroup: '25-34',
+  concerns: ['Daily UV Protection'],
+  lifestyle: []
+};
+
+window.switchAuthTab = function(mode) {
+  const tabSignIn = document.getElementById('tab-btn-signin');
+  const tabSignUp = document.getElementById('tab-btn-signup');
+  const formSignIn = document.getElementById('form-signin');
+  const formSignUp = document.getElementById('form-signup');
+  const loginErr = document.getElementById('auth-login-error');
+  const signupErr = document.getElementById('auth-signup-error');
+  if (loginErr) loginErr.style.display = 'none';
+  if (signupErr) signupErr.style.display = 'none';
+
+  if (mode === 'signup') {
+    tabSignUp?.classList.add('active');
+    tabSignIn?.classList.remove('active');
+    if (formSignUp) formSignUp.style.display = 'block';
+    if (formSignIn) formSignIn.style.display = 'none';
+    const lip = document.getElementById('login-phone-input')?.value;
+    const sup = document.getElementById('signup-phone-input');
+    if (lip && sup && !sup.value) sup.value = lip;
+    const lcode = document.getElementById('login-country-code')?.value;
+    const scode = document.getElementById('signup-country-code');
+    if (lcode && scode) scode.value = lcode;
+  } else {
+    tabSignIn?.classList.add('active');
+    tabSignUp?.classList.remove('active');
+    if (formSignIn) formSignIn.style.display = 'block';
+    if (formSignUp) formSignUp.style.display = 'none';
+  }
 };
 
 function autoDetectSignupLocation() {
@@ -888,11 +916,19 @@ function startOnboardingFromSignup() {
 
   if (errEl) errEl.style.display = 'none';
 
-  const name = nameInput?.value.trim() || 'Balaji';
+  const name = nameInput?.value.trim() || '';
   const code = codeSelect?.value || '+91';
   const rawPhone = phoneInput?.value.trim() || '';
   const password = passInput?.value.trim() || '';
   const city = cityInput?.value.trim() || 'Trichy, Tamil Nadu';
+
+  if (!name) {
+    if (errEl) {
+      errEl.innerHTML = '⚠️ Please enter your full name.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
 
   if (!rawPhone || !password) {
     if (errEl) {
@@ -1061,15 +1097,15 @@ async function completeOnboardingAndLaunch() {
   }
 
   const draft = window.onboardingDraft || {};
-  const name = draft.name || 'Balaji';
-  const phone = draft.phone || '+919876543210';
-  const password = draft.password || 'password123';
-  const city = draft.city || 'Trichy, Tamil Nadu';
+  const name = draft.name || 'User';
+  const phone = draft.phone || '';
+  const password = draft.password || '';
+  const city = draft.city || 'User City';
   const skinType = draft.skinType || 'Normal';
   const phototype = draft.phototype || 'Type III-IV';
-  const ageGroup = draft.ageGroup || '20-29';
-  const concerns = draft.concerns || ['Acne', 'Dryness'];
-  const lifestyle = draft.lifestyle || ['AC Office', 'Blue Light'];
+  const ageGroup = draft.ageGroup || '25-34';
+  const concerns = draft.concerns || ['Daily UV Protection'];
+  const lifestyle = draft.lifestyle || ['Normal Activity'];
 
   // Read whatever the user edited in Step 3
   const amRaw = document.getElementById('onboard-am-input')?.value.trim() || draft.calculatedAM || 'Gentle Cleanser · Antioxidant Serum · SPF 50+ Sunscreen';
@@ -7496,7 +7532,7 @@ function getDefaultAcneHistory() {
   const d2 = new Date(now - 3 * 86400000); // Midpoint (Sep 9)
   const d3 = new Date(now);                // Latest / Today (Sep 12)
   const liveSnap = getLiveClimateSnapshot();
-  const userName = state.profile?.name || state.authUser?.name || 'Balaji';
+  const userName = state.profile?.name || state.authUser?.name || 'User';
 
   // Return in chronological descending order (Newest first, Oldest last) with realistic clinical photography
   return [
@@ -9001,7 +9037,7 @@ function getDefaultRednessHistory() {
   const d2 = new Date(now - 3 * 86400000); // Flare (Sep 9)
   const d3 = new Date(now);                // Follow-up / Today (Sep 12)
   const liveSnap = getLiveClimateSnapshot();
-  const userName = state.profile?.name || state.authUser?.name || 'Balaji';
+  const userName = state.profile?.name || state.authUser?.name || 'User';
 
   return [
     {
@@ -10417,7 +10453,7 @@ function openDermatologistReportModal() {
   const history = state.rednessTrackerHistory || [];
   const latest = history[0] || {};
   const baseline = history[history.length - 1] || {};
-  const userName = state.profile?.name || state.authUser?.name || 'Balaji';
+  const userName = state.profile?.name || state.authUser?.name || 'User';
   const skinType = state.profile?.fitzpatrick || state.profile?.skinType || 'Type III (Normal/Combination)';
   const city = state.weather?.city || 'Trichy, Tamil Nadu';
 

@@ -124,18 +124,18 @@
   "rednessPhoto": "data:image/png;base64,USER_A_ISOLATED_REDNESS_PHOTO",
   "acneTrackerHistory": [
     {
-      "id": "test-acne-iso-1789812032463",
+      "id": "test-acne-iso-1789818456757",
       "dateKey": "2026-09-19",
-      "timestamp": "2026-09-19T10:00:32.463Z",
+      "timestamp": "2026-09-19T11:47:36.757Z",
       "totalLesions": 3,
       "photo": "data:image/png;base64,USER_A_ISOLATED_ACNE_PHOTO"
     }
   ],
   "rednessTrackerHistory": [
     {
-      "id": "test-red-iso-1789812032464",
+      "id": "test-red-iso-1789818456757",
       "dateKey": "2026-09-19",
-      "timestamp": "2026-09-19T10:00:32.464Z",
+      "timestamp": "2026-09-19T11:47:36.757Z",
       "erythemaIndex": 12.5,
       "photo": "data:image/png;base64,USER_A_ISOLATED_REDNESS_PHOTO"
     }
