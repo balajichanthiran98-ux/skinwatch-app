@@ -315,9 +315,10 @@ function saveCurrentUserData() {
     ? state.scanHistory
     : (state.authUser.scanHistory && typeof state.authUser.scanHistory === 'object' && !Array.isArray(state.authUser.scanHistory))
       ? state.authUser.scanHistory
-      : (loadJSON('sw_scan_history', {}) || {});
+      : (loadJSON(`sw_scan_history_${ph}`, {}) || {});
 
   const payload = {
+    phone: ph,
     name: state.profile?.name || state.authUser.name || 'User',
     city: state.location?.name || 'Trichy, Tamil Nadu',
     location: state.location,
@@ -342,17 +343,14 @@ function saveCurrentUserData() {
     rednessTrackerHistory: state.rednessTrackerHistory || []
   };
 
-  // 1. Save locally for instant offline cache
+  // 1. Save locally for instant offline cache strictly namespaced per user
   saveJSON(`sw_user_${ph}`, payload);
   if (state.acneTrackerHistory) {
-    saveJSON('sw_acne_tracker_history', state.acneTrackerHistory);
     saveJSON(`sw_acne_tracker_history_${ph}`, state.acneTrackerHistory);
   }
   if (state.rednessTrackerHistory) {
-    saveJSON('sw_redness_tracker_history', state.rednessTrackerHistory);
     saveJSON(`sw_redness_tracker_history_${ph}`, state.rednessTrackerHistory);
   }
-  saveJSON('sw_scan_history', validScanHistory);
   saveJSON(`sw_scan_history_${ph}`, validScanHistory);
 
   // 2. Sync to user's isolated server database partition
@@ -369,8 +367,8 @@ async function loadUserDataForPhone(phone) {
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.user) {
-        // Multi-device sync: Merge local with server scans, giving priority to server data with valid photos
-        const localHistory = loadJSON(`sw_scan_history_${phone}`, null) || loadJSON('sw_scan_history', {}) || {};
+        // Multi-device sync: Only load strictly for this phone
+        const localHistory = loadJSON(`sw_scan_history_${phone}`, null) || {};
         const serverHistory = (data.user.scanHistory && typeof data.user.scanHistory === 'object' && !Array.isArray(data.user.scanHistory))
           ? data.user.scanHistory
           : {};
@@ -392,11 +390,11 @@ async function loadUserDataForPhone(phone) {
         }
         data.user.scanHistory = mergedHistory;
 
-        // Multi-device sync for Acne Tracker History
+        // Multi-device sync for Acne Tracker History strictly for this user
         const serverAcne = (Array.isArray(data.user.acneTrackerHistory) && data.user.acneTrackerHistory.length > 0)
           ? data.user.acneTrackerHistory
           : [];
-        const localAcne = loadJSON(`sw_acne_tracker_history_${phone}`, null) || loadJSON('sw_acne_tracker_history', []) || [];
+        const localAcne = loadJSON(`sw_acne_tracker_history_${phone}`, null) || [];
 
         const acneMap = new Map();
         [...localAcne, ...serverAcne].forEach(item => {
@@ -415,11 +413,11 @@ async function loadUserDataForPhone(phone) {
         const mergedAcne = Array.from(acneMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         data.user.acneTrackerHistory = mergedAcne.length > 0 ? mergedAcne : (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
 
-        // Multi-device sync for Redness Tracker History
+        // Multi-device sync for Redness Tracker History strictly for this user
         const serverRedness = (Array.isArray(data.user.rednessTrackerHistory) && data.user.rednessTrackerHistory.length > 0)
           ? data.user.rednessTrackerHistory
           : [];
-        const localRedness = loadJSON(`sw_redness_tracker_history_${phone}`, null) || loadJSON('sw_redness_tracker_history', []) || [];
+        const localRedness = loadJSON(`sw_redness_tracker_history_${phone}`, null) || [];
 
         const rednessMap = new Map();
         [...localRedness, ...serverRedness].forEach(item => {
@@ -440,17 +438,14 @@ async function loadUserDataForPhone(phone) {
 
         applyUserDataToState(data.user);
 
-        // Update local caches
+        // Update local caches strictly for this phone
         saveJSON(`sw_user_${phone}`, data.user);
         saveJSON(`sw_scan_history_${phone}`, mergedHistory);
-        saveJSON('sw_scan_history', mergedHistory);
         if (data.user.acneTrackerHistory) {
           saveJSON(`sw_acne_tracker_history_${phone}`, data.user.acneTrackerHistory);
-          saveJSON('sw_acne_tracker_history', data.user.acneTrackerHistory);
         }
         if (data.user.rednessTrackerHistory) {
           saveJSON(`sw_redness_tracker_history_${phone}`, data.user.rednessTrackerHistory);
-          saveJSON('sw_redness_tracker_history', data.user.rednessTrackerHistory);
         }
         return true;
       }
@@ -459,7 +454,7 @@ async function loadUserDataForPhone(phone) {
     console.warn('Loading from server database partition failed, checking local cache:', e);
   }
 
-  // Fallback to local cache
+  // Fallback to local cache strictly for this phone
   const cached = loadJSON(`sw_user_${phone}`, null);
   if (cached) {
     applyUserDataToState(cached);
@@ -524,11 +519,11 @@ function applyUserDataToState(userData) {
   const userPhone = userData.phone || state.authUser?.phone;
   state.acneTrackerHistory = (userData.acneTrackerHistory && Array.isArray(userData.acneTrackerHistory) && userData.acneTrackerHistory.length > 0)
     ? userData.acneTrackerHistory
-    : (userPhone ? loadJSON(`sw_acne_tracker_history_${userPhone}`, null) : null) || loadJSON('sw_acne_tracker_history', null) || (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
+    : (userPhone ? loadJSON(`sw_acne_tracker_history_${userPhone}`, null) : null) || (typeof getDefaultAcneHistory === 'function' ? getDefaultAcneHistory() : []);
 
   state.rednessTrackerHistory = (userData.rednessTrackerHistory && Array.isArray(userData.rednessTrackerHistory) && userData.rednessTrackerHistory.length > 0)
     ? userData.rednessTrackerHistory
-    : (userPhone ? loadJSON(`sw_redness_tracker_history_${userPhone}`, null) : null) || loadJSON('sw_redness_tracker_history', null) || (typeof getDefaultRednessHistory === 'function' ? getDefaultRednessHistory() : []);
+    : (userPhone ? loadJSON(`sw_redness_tracker_history_${userPhone}`, null) : null) || (typeof getDefaultRednessHistory === 'function' ? getDefaultRednessHistory() : []);
 
   state.acnePhoto = userData.acnePhoto || null;
   state.rednessPhoto = userData.rednessPhoto || null;
@@ -1181,7 +1176,23 @@ function handleSignOut() {
   localStorage.removeItem('sw_session_auth');
   sessionStorage.removeItem('sw_session_user');
   localStorage.removeItem('sw_session_user');
+  localStorage.removeItem('sw_check_photo');
+  localStorage.removeItem('sw_scan_history');
+  localStorage.removeItem('sw_acne_tracker_history');
+  localStorage.removeItem('sw_redness_tracker_history');
+  
+  // Clear in-memory user state
   state.authUser = null;
+  state.checkPhoto = null;
+  state.acnePhoto = null;
+  state.rednessPhoto = null;
+  state.scanHistory = {};
+  state.checkHistory = [];
+  state.acneTrackerHistory = [];
+  state.rednessTrackerHistory = [];
+  state.lastScanMetrics = null;
+
+  try { resetCheckScreenForUser(); } catch {}
   checkAuthState();
   showToast('You have been signed out.');
 }
@@ -4108,8 +4119,6 @@ async function runBiometricScan(imageUrl) {
       };
       state.checkPhoto = imgToUse;
       state.diagScore = metrics.overallScore || 85;
-      saveJSON('sw_scan_history', state.scanHistory);
-      saveJSON('sw_check_photo', state.checkPhoto);
       if (state.authUser && state.authUser.phone) {
         saveJSON(`sw_scan_history_${state.authUser.phone}`, state.scanHistory);
         state.authUser.scanHistory = state.scanHistory;
@@ -4169,9 +4178,7 @@ async function saveCurrentAIScan() {
     dateFormatted: `${dateStr} · ${timeStr}`
   };
 
-  // Persist locally
-  saveJSON('sw_scan_history', state.scanHistory);
-  saveJSON('sw_check_photo', state.checkPhoto);
+  // Persist locally for this user
   if (state.authUser && state.authUser.phone) {
     saveJSON(`sw_scan_history_${state.authUser.phone}`, state.scanHistory);
     state.authUser.scanHistory = state.scanHistory;
@@ -7560,7 +7567,7 @@ function getDefaultAcneHistory() {
 
 function setupAcneTracker() {
   if (!state.acneTrackerHistory || !Array.isArray(state.acneTrackerHistory) || state.acneTrackerHistory.length === 0) {
-    state.acneTrackerHistory = loadJSON('sw_acne_tracker_history', null) || getDefaultAcneHistory();
+    state.acneTrackerHistory = (state.authUser?.phone ? loadJSON(`sw_acne_tracker_history_${state.authUser.phone}`, null) : null) || getDefaultAcneHistory();
   }
   // Automatically migrate legacy SVG placeholders and sync live climate for today's scans
   if (Array.isArray(state.acneTrackerHistory)) {
@@ -7580,7 +7587,9 @@ function setupAcneTracker() {
       }
     });
     state.acneTrackerHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    saveJSON('sw_acne_tracker_history', state.acneTrackerHistory);
+    if (state.authUser?.phone) {
+      saveJSON(`sw_acne_tracker_history_${state.authUser.phone}`, state.acneTrackerHistory);
+    }
   }
 
   state.activeAcneTags = new Set();
@@ -9021,7 +9030,7 @@ function getDefaultRednessHistory() {
 
 function setupRednessTracker() {
   if (!state.rednessTrackerHistory || !Array.isArray(state.rednessTrackerHistory) || state.rednessTrackerHistory.length === 0) {
-    state.rednessTrackerHistory = loadJSON('sw_redness_tracker_history', null) || getDefaultRednessHistory();
+    state.rednessTrackerHistory = (state.authUser?.phone ? loadJSON(`sw_redness_tracker_history_${state.authUser.phone}`, null) : null) || getDefaultRednessHistory();
   }
 
   // Auto-migrate legacy placeholders and sync live climate
@@ -9042,7 +9051,9 @@ function setupRednessTracker() {
       }
     });
     state.rednessTrackerHistory.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    saveJSON('sw_redness_tracker_history', state.rednessTrackerHistory);
+    if (state.authUser?.phone) {
+      saveJSON(`sw_redness_tracker_history_${state.authUser.phone}`, state.rednessTrackerHistory);
+    }
   }
 
   state.activeRednessTags = new Set();

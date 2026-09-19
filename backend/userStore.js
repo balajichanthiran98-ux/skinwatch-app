@@ -36,6 +36,20 @@ function getUserDbFilename(phone) {
 // Default initial pre-seeded profiles (empty for production/clean slate)
 const INITIAL_PROFILES = [];
 
+function phonesMatch(p1, p2) {
+  const norm1 = normalizePhone(p1);
+  const norm2 = normalizePhone(p2);
+  if (!norm1 || !norm2) return false;
+  if (norm1 === norm2) return true;
+  const d1 = norm1.replace(/[^0-9]/g, '');
+  const d2 = norm2.replace(/[^0-9]/g, '');
+  if (d1 === d2) return true;
+  if (d1.length >= 10 && d2.length >= 10 && d1.slice(-10) === d2.slice(-10)) {
+    return true;
+  }
+  return false;
+}
+
 class UserStore {
   constructor() {
     this.authRegistry = {};
@@ -107,6 +121,17 @@ class UserStore {
         console.error(`Error reading isolated DB for ${norm}:`, err);
       }
     }
+    // Also try matching by phone in registry
+    const entry = this.findRegistryEntry(norm);
+    if (entry && entry.normalizedPhone && entry.normalizedPhone !== norm) {
+      const regDbFile = getUserDbFilename(entry.normalizedPhone);
+      if (fs.existsSync(regDbFile)) {
+        try {
+          const raw = fs.readFileSync(regDbFile, 'utf8');
+          return JSON.parse(raw);
+        } catch (err) {}
+      }
+    }
     return null;
   }
 
@@ -128,7 +153,7 @@ class UserStore {
     if (!norm) return null;
     if (this.authRegistry && this.authRegistry[norm]) return this.authRegistry[norm];
     for (const key in this.authRegistry) {
-      if (key === norm || key.endsWith(norm) || norm.endsWith(key)) {
+      if (phonesMatch(key, norm)) {
         return this.authRegistry[key];
       }
     }
@@ -139,7 +164,7 @@ class UserStore {
         this.authRegistry = JSON.parse(raw) || {};
         if (this.authRegistry[norm]) return this.authRegistry[norm];
         for (const key in this.authRegistry) {
-          if (key === norm || key.endsWith(norm) || norm.endsWith(key)) {
+          if (phonesMatch(key, norm)) {
             return this.authRegistry[key];
           }
         }
