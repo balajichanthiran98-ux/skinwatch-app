@@ -304,8 +304,7 @@ function showToast(message) {
   }
 }
 
-// ---------- Multi-User Database & Storage Engine ----------
-let usersDb = loadJSON('sw_users_db', {});
+// Isolated multi-user database uses isolated keys per phone: sw_user_<phone>, sw_scan_history_<phone>, etc.
 
 function saveCurrentUserData() {
   if (!state.authUser || !state.authUser.phone) return;
@@ -3442,10 +3441,7 @@ function renderFacialExercises() {
         e.stopPropagation();
         ex.done = !ex.done;
         saveJSON('sw_facial_exercises', state.facialExercises);
-        if (state.authUser?.phone && usersDb[state.authUser.phone]) {
-          usersDb[state.authUser.phone].facialExercises = state.facialExercises;
-          saveJSON('sw_users_db', usersDb);
-        }
+        saveCurrentUserData();
         showToast(ex.done ? `✓ Completed: ${ex.name} (${ex.impact || 'Bonus Applied'})!` : `Marked incomplete: ${ex.name}`);
         renderRoutineAll();
       });
@@ -3654,10 +3650,7 @@ document.getElementById('fe-modal-complete-btn')?.addEventListener('click', () =
   if (currentExerciseInModal) {
     currentExerciseInModal.done = !currentExerciseInModal.done;
     saveJSON('sw_facial_exercises', state.facialExercises);
-    if (state.authUser?.phone && usersDb[state.authUser.phone]) {
-      usersDb[state.authUser.phone].facialExercises = state.facialExercises;
-      saveJSON('sw_users_db', usersDb);
-    }
+    saveCurrentUserData();
     showToast(currentExerciseInModal.done ? `✓ Exercise completed: ${currentExerciseInModal.name}!` : `Marked incomplete.`);
     renderRoutineAll();
   }
@@ -4720,10 +4713,7 @@ window.resetCurrentScan = function() {
   state.checkPhoto = null;
   state.lastScanMetrics = null;
   saveJSON('sw_check_photo', null);
-  if (state.authUser?.phone && usersDb[state.authUser.phone]) {
-    usersDb[state.authUser.phone].checkPhoto = null;
-    saveJSON('sw_users_db', usersDb);
-  }
+  saveCurrentUserData();
   resetCheckScreenForUser();
 };
 
@@ -4841,10 +4831,7 @@ const resetScanTopBtn = document.getElementById('reset-scan-top-btn');
       sessionStorage.setItem('sw_session_user', JSON.stringify(state.authUser));
       syncUserData();
     }
-    if (state.authUser?.phone && usersDb[state.authUser.phone]) {
-      usersDb[state.authUser.phone].checkPhoto = null;
-      saveJSON('sw_users_db', usersDb);
-    }
+      saveCurrentUserData();
     resetCheckScreenForUser();
   });
 });

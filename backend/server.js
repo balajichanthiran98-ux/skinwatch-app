@@ -938,7 +938,7 @@ app.post('/api/auth/verify-otp', (req, res) => {
       token: `sk_auth_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       user: {
         phone: cleanPhone,
-        name: name || 'Balaji',
+        name: name || 'User',
         verified: true,
         authenticatedAt: new Date().toISOString()
       }
