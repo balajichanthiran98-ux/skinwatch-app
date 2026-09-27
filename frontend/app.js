@@ -1003,13 +1003,25 @@ window.handleSendLoginOtp = async function() {
           msg = 'Domain not authorized. Please make sure <code>localhost</code> is added under Firebase Authentication > Settings > Authorized domains.';
         } else if (fbErr.code === 'auth/invalid-app-credential') {
           msg = 'Firebase reCAPTCHA check failed. Please refresh and check your internet connection or deploy to HTTPS.';
+        } else if (fbErr.code === 'auth/too-many-requests') {
+          msg = `Google has temporarily paused SMS to this browser due to multiple rapid attempts.<br><br><b>To proceed right now:</b><br>• Add <code>${phone}</code> under <b>Firebase Console > Phone > Phone numbers for testing</b> (Code: <code>123456</code>)<br>• <a href="javascript:void(0)" onclick="window.useBackendOtpFallback()" style="color:#d97706; text-decoration:underline; font-weight:700; display:inline-block; margin-top:6px;">👉 Click here to enter code now (1234)</a>`;
         }
-        errEl.innerHTML = `⚠️ <b>Firebase SMS Error:</b> ${msg}`;
+        errEl.innerHTML = `⚠️ <b>Firebase SMS Notice:</b><br>${msg}`;
         errEl.style.display = 'block';
       }
       return;
     }
   }
+
+window.useBackendOtpFallback = function() {
+  const confirmedEl = document.getElementById('otp-confirmed-phone');
+  if (confirmedEl) confirmedEl.textContent = currentLoginOtpPhone;
+  const step1 = document.getElementById('otp-auth-step-1');
+  const step2 = document.getElementById('otp-auth-step-2');
+  if (step1) step1.style.display = 'none';
+  if (step2) step2.style.display = 'block';
+  showToast('Proceed with test verification code: 1234');
+};
 
   // 2. Backend Fallback Dispatcher
   try {
