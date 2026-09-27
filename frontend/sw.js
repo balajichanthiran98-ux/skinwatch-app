@@ -1,10 +1,10 @@
-// SkinWatch Service Worker v65 - Instant Multi-Device Sync & Photo Compression
-const CACHE_NAME = 'skinwatch-pwa-v65';
+// SkinWatch Service Worker v68 - Instant Multi-Device Sync & Photo Compression
+const CACHE_NAME = 'skinwatch-pwa-v68';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './style.css?v=13.0',
-  './app.js?v=13.0',
+  './style.css?v=14.0',
+  './app.js?v=14.0',
   './manifest.json',
   './assets/logo.png',
   './assets/skinwatch-logo.png',

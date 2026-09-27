@@ -963,8 +963,9 @@ window.handleSendLoginOtp = async function() {
       if (!recaptchaVerifierLogin) {
         recaptchaVerifierLogin = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
           size: 'invisible',
-          callback: () => console.log('Login reCAPTCHA verified')
+          callback: () => console.log('✓ Login reCAPTCHA verified')
         });
+        await recaptchaVerifierLogin.render();
       }
       const confirmationResult = await firebase.auth().signInWithPhoneNumber(phone, recaptchaVerifierLogin);
       firebaseConfirmationResult = confirmationResult;
@@ -980,13 +981,28 @@ window.handleSendLoginOtp = async function() {
       const step2 = document.getElementById('otp-auth-step-2');
       if (step1) step1.style.display = 'none';
       if (step2) step2.style.display = 'block';
-      showToast(`Verification code sent to ${phone}`);
+      showToast(`Real SMS code dispatched to ${phone}`);
       return;
     } catch (fbErr) {
-      console.warn('Firebase SMS attempt failed, falling back to backend dispatcher:', fbErr);
+      console.warn('Firebase SMS attempt warning:', fbErr);
       if (recaptchaVerifierLogin) {
         try { recaptchaVerifierLogin.clear(); recaptchaVerifierLogin = null; } catch {}
       }
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Get Verification Code</span> <i class="ti ti-send"></i>`;
+      }
+      if (errEl) {
+        let msg = fbErr.message || fbErr.code || 'Failed to send SMS';
+        if (fbErr.code === 'auth/app-not-authorized' || fbErr.code === 'auth/unauthorized-domain') {
+          msg = 'Domain not authorized. Please make sure <code>localhost</code> is added under Firebase Authentication > Settings > Authorized domains.';
+        } else if (fbErr.code === 'auth/invalid-app-credential') {
+          msg = 'Firebase reCAPTCHA check failed. Please refresh and check your internet connection or deploy to HTTPS.';
+        }
+        errEl.innerHTML = `⚠️ <b>Firebase SMS Error:</b> ${msg}`;
+        errEl.style.display = 'block';
+      }
+      return;
     }
   }
 
@@ -1276,10 +1292,23 @@ window.handleForgotSendOtp = async function() {
       showToast(`Verification code sent to ${phone}`);
       return;
     } catch (fbErr) {
-      console.warn('Firebase reset SMS attempt failed, falling back to backend dispatcher:', fbErr);
+      console.warn('Firebase reset SMS attempt warning:', fbErr);
       if (recaptchaVerifierForgot) {
         try { recaptchaVerifierForgot.clear(); recaptchaVerifierForgot = null; } catch {}
       }
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Send Verification Code</span> <i class="ti ti-send"></i>`;
+      }
+      if (errEl) {
+        let msg = fbErr.message || fbErr.code || 'Failed to send verification SMS';
+        if (fbErr.code === 'auth/app-not-authorized' || fbErr.code === 'auth/unauthorized-domain') {
+          msg = 'Domain not authorized. Please make sure <code>localhost</code> is added under Firebase Authentication > Settings > Authorized domains.';
+        }
+        errEl.innerHTML = `⚠️ <b>Firebase SMS Error:</b> ${msg}`;
+        errEl.style.display = 'block';
+      }
+      return;
     }
   }
 
