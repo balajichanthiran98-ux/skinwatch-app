@@ -1043,6 +1043,7 @@ window.handleVerifyLoginOtp = async function() {
 let forgotPasswordPhone = '';
 
 window.openForgotPasswordModal = function() {
+  console.log('[SkinWatch] Opening Forgot Password Modal');
   const modal = document.getElementById('modal-forgot-password');
   const step1 = document.getElementById('forgot-step-1');
   const step2 = document.getElementById('forgot-step-2');
@@ -1061,13 +1062,25 @@ window.openForgotPasswordModal = function() {
   }
 
   if (modal) {
+    modal.style.display = 'flex';
     modal.style.setProperty('display', 'flex', 'important');
+    modal.style.visibility = 'visible';
+    modal.style.opacity = '1';
+    modal.style.zIndex = '99999999';
+    setTimeout(() => {
+      phoneInput?.focus();
+    }, 100);
+  } else {
+    console.error('[SkinWatch] Modal element #modal-forgot-password not found');
   }
 };
 
 window.closeForgotPasswordModal = function() {
   const modal = document.getElementById('modal-forgot-password');
-  if (modal) modal.style.setProperty('display', 'none', 'important');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.style.setProperty('display', 'none', 'important');
+  }
 };
 
 window.backToForgotStep1 = function() {
