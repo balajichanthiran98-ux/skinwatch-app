@@ -222,7 +222,7 @@
     }
   ],
   "createdAt": "2026-09-12T17:48:59.716Z",
-  "lastLoginAt": "2026-09-12T18:46:34.957Z",
+  "lastLoginAt": "2026-09-27T15:59:03.204Z",
   "rednessTrackerHistory": [
     {
       "id": "rscan-d3",
@@ -395,5 +395,6 @@
       "isBaseline": true,
       "mode": "photo"
     }
-  ]
+  ],
+  "lastPasswordResetAt": "2026-09-27T15:59:03.171Z"
 }

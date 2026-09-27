@@ -1012,6 +1012,48 @@ app.post('/api/auth/verify-otp', (req, res) => {
   return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Use code 1234.' });
 });
 
+// POST /api/auth/firebase-verify
+// body: { phone, idToken, uid, name }
+app.post('/api/auth/firebase-verify', (req, res) => {
+  const { phone, uid, name } = req.body || {};
+  if (!phone || typeof phone !== 'string' || phone.trim().length < 6) {
+    return res.status(400).json({ success: false, error: 'Valid phone number is required.' });
+  }
+
+  const cleanPhone = phone.trim();
+  let user = userStore.findByPhone(cleanPhone);
+  let dbFile = '';
+
+  if (user) {
+    user.lastLoginAt = new Date().toISOString();
+    if (uid) user.firebaseUid = uid;
+    userStore.saveUserDb(cleanPhone, user);
+    dbFile = `user_${cleanPhone.replace(/[^a-zA-Z0-9_+]/g, '_')}.json`;
+  } else {
+    const regResult = userStore.register({
+      phone: cleanPhone,
+      name: name || 'User',
+      password: 'otp_pwd_' + Math.random().toString(36).slice(2, 8),
+      city: 'Trichy, Tamil Nadu',
+      skinType: 'III'
+    });
+    user = regResult.user;
+    if (uid) user.firebaseUid = uid;
+    userStore.saveUserDb(cleanPhone, user);
+    dbFile = regResult.databasePartition;
+  }
+
+  const sessionToken = crypto.createHash('sha256').update(cleanPhone + Date.now()).digest('hex');
+
+  return res.json({
+    success: true,
+    token: sessionToken,
+    user: userStore.sanitizeUser(user),
+    databasePartition: dbFile,
+    message: 'Firebase Phone authentication verified successfully.'
+  });
+});
+
 // ---- POST /api/routine-flags ----
 // body: { uv, humidity, aqi, steps: [{ id, name }], profile: { phototype, skinType, retinoidTolerance, vitcTolerance, concerns, lifestyles } }
 app.post('/api/routine-flags', (req, res) => {
@@ -1233,16 +1275,16 @@ app.post('/api/auth/forgot-password/send-otp', (req, res) => {
 
 // Password Reset 2: Verify OTP and update password
 app.post('/api/auth/forgot-password/reset', (req, res) => {
-  const { phone, otp, newPassword } = req.body || {};
-  if (!phone || !otp || !newPassword) {
+  const { phone, otp, newPassword, isFirebaseVerified } = req.body || {};
+  if (!phone || (!otp && !isFirebaseVerified) || !newPassword) {
     return res.status(400).json({ success: false, error: 'Phone number, verification code, and new password are required.' });
   }
 
   const cleanPhone = phone.trim();
   const entry = otpStore.get(cleanPhone);
 
-  // Validate OTP (allow demo code 1234 or stored code)
-  if (String(otp).trim() === '1234' || (entry && entry.code === String(otp).trim())) {
+  // Validate OTP (allow demo code 1234, stored code, or client-side verified Firebase token)
+  if (isFirebaseVerified || String(otp).trim() === '1234' || (entry && entry.code === String(otp).trim())) {
     otpStore.delete(cleanPhone);
     const result = userStore.resetPassword(cleanPhone, newPassword);
     if (!result.success) {

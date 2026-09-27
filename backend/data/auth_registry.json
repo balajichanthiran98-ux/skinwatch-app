@@ -14,14 +14,15 @@
   "+916382418031": {
     "phone": "+916382418031",
     "normalizedPhone": "+916382418031",
-    "passwordHash": "56cbee42d5fe1290328584ec9ad26a3944fb7225441965ccd4b6b3c383a488d7",
-    "salt": "salt_+916382418031_1789235480617",
+    "passwordHash": "d63d212c25e5e2dcb1e71186190a10c004bc8edf02cee49402d8f9f6a0b91b64",
+    "salt": "salt_+916382418031_1790524743171",
     "name": "User A",
     "city": "Trichy, Tamil Nadu",
     "skinType": "III",
     "dbFile": "user_+916382418031.json",
     "createdAt": "2026-09-12T17:48:59.716Z",
-    "lastLoginAt": "2026-09-12T18:46:34.957Z"
+    "lastLoginAt": "2026-09-27T15:59:03.204Z",
+    "lastPasswordResetAt": "2026-09-27T15:59:03.171Z"
   },
   "+919810011111": {
     "phone": "+919810011111",

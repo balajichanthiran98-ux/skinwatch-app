@@ -901,6 +901,36 @@ window.backToOtpStep1 = function() {
   if (step2) step2.style.display = 'none';
 };
 
+// Firebase Phone Auth Configuration & Integration
+const firebaseConfig = {
+  apiKey: "AIzaSyBfpG0T_ykulf8QXN24yFZqwWTtl85M43o",
+  authDomain: "gen-lang-client-0506239728.firebaseapp.com",
+  projectId: "gen-lang-client-0506239728",
+  storageBucket: "gen-lang-client-0506239728.firebasestorage.app",
+  messagingSenderId: "846912843520",
+  appId: "1:846912843520:web:506f86886ac9ea90e80de5",
+  measurementId: "G-F0SBWGVTBC"
+};
+
+let firebaseConfirmationResult = null;
+let firebaseForgotConfirmationResult = null;
+let recaptchaVerifierLogin = null;
+let recaptchaVerifierForgot = null;
+
+function getFirebaseApp() {
+  if (typeof firebase !== 'undefined') {
+    try {
+      if (!firebase.apps || !firebase.apps.length) {
+        return firebase.initializeApp(firebaseConfig);
+      }
+      return firebase.app();
+    } catch (e) {
+      console.warn('Firebase init error:', e);
+    }
+  }
+  return null;
+}
+
 window.handleSendLoginOtp = async function() {
   const code = document.getElementById('otp-country-code')?.value || '+91';
   const rawPhone = document.getElementById('otp-phone-input')?.value.trim() || '';
@@ -926,6 +956,41 @@ window.handleSendLoginOtp = async function() {
     btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Sending SMS...</span>`;
   }
 
+  // 1. Try Firebase Phone Auth (Google Real SMS)
+  getFirebaseApp();
+  if (typeof firebase !== 'undefined' && firebase.auth) {
+    try {
+      if (!recaptchaVerifierLogin) {
+        recaptchaVerifierLogin = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+          size: 'invisible',
+          callback: () => console.log('Login reCAPTCHA verified')
+        });
+      }
+      const confirmationResult = await firebase.auth().signInWithPhoneNumber(phone, recaptchaVerifierLogin);
+      firebaseConfirmationResult = confirmationResult;
+      console.log('✓ Firebase real SMS dispatched to', phone);
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Get Verification Code</span> <i class="ti ti-send"></i>`;
+      }
+      const confirmedEl = document.getElementById('otp-confirmed-phone');
+      if (confirmedEl) confirmedEl.textContent = phone;
+      const step1 = document.getElementById('otp-auth-step-1');
+      const step2 = document.getElementById('otp-auth-step-2');
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = 'block';
+      showToast(`Verification code sent to ${phone}`);
+      return;
+    } catch (fbErr) {
+      console.warn('Firebase SMS attempt failed, falling back to backend dispatcher:', fbErr);
+      if (recaptchaVerifierLogin) {
+        try { recaptchaVerifierLogin.clear(); recaptchaVerifierLogin = null; } catch {}
+      }
+    }
+  }
+
+  // 2. Backend Fallback Dispatcher
   try {
     const res = await fetch(BACKEND_URL + '/api/auth/send-otp', {
       method: 'POST',
@@ -975,7 +1040,7 @@ window.handleVerifyLoginOtp = async function() {
 
   if (!otp) {
     if (errEl) {
-      errEl.textContent = 'Please enter the 4-digit verification code.';
+      errEl.textContent = 'Please enter the verification code.';
       errEl.style.display = 'block';
     }
     return;
@@ -986,6 +1051,73 @@ window.handleVerifyLoginOtp = async function() {
     btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Verifying Code...</span>`;
   }
 
+  // 1. If Firebase Confirmation is active and OTP != 1234, confirm via Firebase
+  if (firebaseConfirmationResult && otp !== '1234') {
+    try {
+      const result = await firebaseConfirmationResult.confirm(otp);
+      const user = result.user;
+      const idToken = await user.getIdToken();
+
+      const res = await fetch(BACKEND_URL + '/api/auth/firebase-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: currentLoginOtpPhone,
+          uid: user.uid,
+          idToken
+        })
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Verify & Enter Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+      }
+
+      if (res.ok && data && data.success && data.user) {
+        const displayName = data.user.name || 'User';
+        state.authUser = {
+          phone: data.user.phone || currentLoginOtpPhone,
+          name: displayName,
+          token: data.token || ('sw_auth_token_' + Date.now()),
+          databasePartition: data.databasePartition || `user_${currentLoginOtpPhone}.json`,
+          scanHistory: data.user.scanHistory || {},
+          checkPhoto: data.user.checkPhoto || null,
+          acneTrackerHistory: data.user.acneTrackerHistory || []
+        };
+        saveJSON('sw_session_auth', state.authUser);
+        try { sessionStorage.setItem('sw_session_user', JSON.stringify(data.user)); } catch {}
+        try { localStorage.setItem('sw_session_user', JSON.stringify(data.user)); } catch {}
+        applyUserDataToState(data.user);
+        showToast(`Welcome, ${displayName}!`);
+        checkAuthState();
+        try { useCurrentLocation(false); } catch {}
+        return;
+      } else {
+        if (errEl) {
+          errEl.textContent = data?.error || 'Authentication error after verification.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+    } catch (fbErr) {
+      console.warn('Firebase confirm error:', fbErr);
+      if (otp !== '1234') {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Verify & Enter Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+        }
+        if (errEl) {
+          errEl.textContent = 'Invalid verification code. Please check your SMS and try again.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+    }
+  }
+
+  // 2. Fallback backend verify (also accepts test code 1234)
   try {
     const res = await fetch(BACKEND_URL + '/api/auth/verify-otp', {
       method: 'POST',
@@ -1117,6 +1249,41 @@ window.handleForgotSendOtp = async function() {
     btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Sending Code...</span>`;
   }
 
+  // 1. Try Firebase Phone Auth for Forgot Password
+  getFirebaseApp();
+  if (typeof firebase !== 'undefined' && firebase.auth) {
+    try {
+      if (!recaptchaVerifierForgot) {
+        recaptchaVerifierForgot = new firebase.auth.RecaptchaVerifier('recaptcha-container-forgot', {
+          size: 'invisible',
+          callback: () => console.log('Forgot Password reCAPTCHA verified')
+        });
+      }
+      const confirmationResult = await firebase.auth().signInWithPhoneNumber(phone, recaptchaVerifierForgot);
+      firebaseForgotConfirmationResult = confirmationResult;
+      console.log('✓ Firebase real SMS dispatched for password reset to', phone);
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Send Verification Code</span> <i class="ti ti-send"></i>`;
+      }
+      const confirmedEl = document.getElementById('forgot-confirmed-phone');
+      if (confirmedEl) confirmedEl.textContent = phone;
+      const step1 = document.getElementById('forgot-step-1');
+      const step2 = document.getElementById('forgot-step-2');
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = 'block';
+      showToast(`Verification code sent to ${phone}`);
+      return;
+    } catch (fbErr) {
+      console.warn('Firebase reset SMS attempt failed, falling back to backend dispatcher:', fbErr);
+      if (recaptchaVerifierForgot) {
+        try { recaptchaVerifierForgot.clear(); recaptchaVerifierForgot = null; } catch {}
+      }
+    }
+  }
+
+  // 2. Backend Fallback
   try {
     const res = await fetch(BACKEND_URL + '/api/auth/forgot-password/send-otp', {
       method: 'POST',
@@ -1167,7 +1334,7 @@ window.handleForgotResetSubmit = async function() {
   if (errEl) errEl.style.display = 'none';
 
   if (!otp) {
-    if (errEl) { errEl.textContent = 'Please enter the 4-digit verification code.'; errEl.style.display = 'block'; }
+    if (errEl) { errEl.textContent = 'Please enter the verification code.'; errEl.style.display = 'block'; }
     return;
   }
   if (!newPass || newPass.length < 4) {
@@ -1184,6 +1351,27 @@ window.handleForgotResetSubmit = async function() {
     btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Updating Password...</span>`;
   }
 
+  let isFirebaseVerified = false;
+  if (firebaseForgotConfirmationResult && otp !== '1234') {
+    try {
+      await firebaseForgotConfirmationResult.confirm(otp);
+      isFirebaseVerified = true;
+    } catch (fbErr) {
+      console.warn('Firebase forgot password confirm error:', fbErr);
+      if (otp !== '1234') {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Save Password & Sign In</span> <i class="ti ti-check"></i>`;
+        }
+        if (errEl) {
+          errEl.textContent = 'Invalid verification code. Please check your SMS and try again.';
+          errEl.style.display = 'block';
+        }
+        return;
+      }
+    }
+  }
+
   try {
     const res = await fetch(BACKEND_URL + '/api/auth/forgot-password/reset', {
       method: 'POST',
@@ -1191,6 +1379,7 @@ window.handleForgotResetSubmit = async function() {
       body: JSON.stringify({
         phone: forgotPasswordPhone,
         otp,
+        isFirebaseVerified,
         newPassword: newPass
       })
     });
@@ -1225,7 +1414,7 @@ window.handleForgotResetSubmit = async function() {
       btn.innerHTML = `<span>Save Password & Sign In</span> <i class="ti ti-check"></i>`;
     }
     if (errEl) {
-      errEl.textContent = 'Network error while contacting server. Please try again.';
+      errEl.textContent = 'Network error while updating password.';
       errEl.style.display = 'block';
     }
   }
