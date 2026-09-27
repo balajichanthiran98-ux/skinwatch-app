@@ -1,0 +1,82 @@
+{
+  "phone": "+918098394637",
+  "displayPhone": "+918098394637",
+  "name": "BALAJI CHANDRASEKARAN",
+  "city": "Trichy, Tamil Nadu",
+  "location": {
+    "name": "Trichy, Tamil Nadu",
+    "lat": 10.7905,
+    "lon": 78.7047
+  },
+  "skinType": "III",
+  "skinTypeName": "Type III (Medium / Olive)",
+  "skinBarrierType": "Balanced",
+  "ageGroup": "25-34",
+  "skinFeel": "Normal / Balanced",
+  "concerns": [
+    "Daily UV Protection",
+    "Moisture Retention"
+  ],
+  "lifestyle": [],
+  "tolerances": [
+    "Hyaluronic Acid",
+    "Niacinamide"
+  ],
+  "allergies": [],
+  "amSteps": [
+    {
+      "id": "a1",
+      "name": "Hydrating Cleanser",
+      "done": false
+    },
+    {
+      "id": "a2",
+      "name": "Antioxidant Day Serum",
+      "done": false
+    },
+    {
+      "id": "a3",
+      "name": "Barrier Moisturizer",
+      "done": false
+    },
+    {
+      "id": "a4",
+      "name": "SPF 50+ Sunscreen",
+      "done": false
+    }
+  ],
+  "suppSteps": [
+    {
+      "id": "s1",
+      "name": "Omega-3 Fatty Acids",
+      "done": false
+    }
+  ],
+  "pmSteps": [
+    {
+      "id": "p1",
+      "name": "Gentle Evening Cleanser",
+      "done": false
+    },
+    {
+      "id": "p2",
+      "name": "Night Repair Serum",
+      "done": false
+    },
+    {
+      "id": "p3",
+      "name": "Nourishing Ceramide Cream",
+      "done": false
+    }
+  ],
+  "waterGlasses": 0,
+  "waterTarget": 8,
+  "skinCyclePhase": 1,
+  "checkPhoto": null,
+  "scanHistory": [],
+  "acneTrackerHistory": [],
+  "rednessTrackerHistory": [],
+  "createdAt": "2026-09-27T15:21:40.437Z",
+  "lastLoginAt": "2026-09-27T15:32:39.410Z",
+  "lastPasswordResetAt": "2026-09-27T15:25:45.051Z"
+}

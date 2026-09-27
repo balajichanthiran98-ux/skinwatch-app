@@ -1049,7 +1049,7 @@ window.openForgotPasswordModal = function() {
   const err1 = document.getElementById('forgot-step1-error');
   const err2 = document.getElementById('forgot-step2-error');
   const phoneInput = document.getElementById('forgot-phone-input');
-  const loginPhone = document.getElementById('login-phone-input')?.value.trim();
+  const loginPhone = document.getElementById('login-phone-input')?.value.trim() || document.getElementById('otp-phone-input')?.value.trim();
 
   if (err1) err1.style.display = 'none';
   if (err2) err2.style.display = 'none';
@@ -1060,12 +1060,14 @@ window.openForgotPasswordModal = function() {
     phoneInput.value = loginPhone;
   }
 
-  if (modal) modal.style.display = 'flex';
+  if (modal) {
+    modal.style.setProperty('display', 'flex', 'important');
+  }
 };
 
 window.closeForgotPasswordModal = function() {
   const modal = document.getElementById('modal-forgot-password');
-  if (modal) modal.style.display = 'none';
+  if (modal) modal.style.setProperty('display', 'none', 'important');
 };
 
 window.backToForgotStep1 = function() {
@@ -1599,39 +1601,13 @@ window.switchToSignUp = function(phone, password) {
 };
 
 function initAuthSystem() {
-  const tabSignIn = document.getElementById('tab-btn-signin');
-  const tabSignUp = document.getElementById('tab-btn-signup');
-  const formSignIn = document.getElementById('form-signin');
-  const formSignUp = document.getElementById('form-signup');
-
-  if (tabSignIn && tabSignUp && formSignIn && formSignUp) {
-    tabSignIn.addEventListener('click', () => {
-      tabSignIn.classList.add('active');
-      tabSignUp.classList.remove('active');
-      formSignIn.style.display = 'block';
-      formSignUp.style.display = 'none';
-
-      // Autofill signup to login if typed
-      const sup = document.getElementById('signup-phone-input')?.value;
-      const lip = document.getElementById('login-phone-input');
-      if (sup && lip && !lip.value) lip.value = sup;
-    });
-
-    tabSignUp.addEventListener('click', () => {
-      tabSignUp.classList.add('active');
-      tabSignIn.classList.remove('active');
-      formSignUp.style.display = 'block';
-      formSignIn.style.display = 'none';
-
-      // Autofill login to signup if typed
-      const lip = document.getElementById('login-phone-input')?.value;
-      const sup = document.getElementById('signup-phone-input');
-      if (lip && sup && !sup.value) sup.value = lip;
-      const lpass = document.getElementById('login-pass-input')?.value;
-      const spass = document.getElementById('signup-pass-input');
-      if (lpass && spass && !spass.value) spass.value = lpass;
-    });
-  }
+  document.getElementById('tab-btn-otp')?.addEventListener('click', () => window.switchAuthTab('otp'));
+  document.getElementById('tab-btn-signin')?.addEventListener('click', () => window.switchAuthTab('signin'));
+  document.getElementById('tab-btn-signup')?.addEventListener('click', () => window.switchAuthTab('signup'));
+  document.getElementById('forgot-pass-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.openForgotPasswordModal();
+  });
 
   document.getElementById('auth-login-submit-btn')?.addEventListener('click', handleLogin);
   document.getElementById('auth-signup-submit-btn')?.addEventListener('click', handleSignup);
