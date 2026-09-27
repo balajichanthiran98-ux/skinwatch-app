@@ -845,32 +845,197 @@ window.onboardingDraft = {
   lifestyle: []
 };
 
+// Global OTP State
+let currentLoginOtpPhone = '';
+
 window.switchAuthTab = function(mode) {
+  const tabOtp = document.getElementById('tab-btn-otp');
   const tabSignIn = document.getElementById('tab-btn-signin');
   const tabSignUp = document.getElementById('tab-btn-signup');
+  const formOtp = document.getElementById('form-otp');
   const formSignIn = document.getElementById('form-signin');
   const formSignUp = document.getElementById('form-signup');
   const loginErr = document.getElementById('auth-login-error');
   const signupErr = document.getElementById('auth-signup-error');
+  const otpErr1 = document.getElementById('otp-auth-error-1');
+  const otpErr2 = document.getElementById('otp-auth-error-2');
+
   if (loginErr) loginErr.style.display = 'none';
   if (signupErr) signupErr.style.display = 'none';
+  if (otpErr1) otpErr1.style.display = 'none';
+  if (otpErr2) otpErr2.style.display = 'none';
+
+  [tabOtp, tabSignIn, tabSignUp].forEach(t => t?.classList.remove('active'));
+  [formOtp, formSignIn, formSignUp].forEach(f => { if (f) f.style.display = 'none'; });
 
   if (mode === 'signup') {
     tabSignUp?.classList.add('active');
-    tabSignIn?.classList.remove('active');
     if (formSignUp) formSignUp.style.display = 'block';
-    if (formSignIn) formSignIn.style.display = 'none';
-    const lip = document.getElementById('login-phone-input')?.value;
+    const num = document.getElementById('otp-phone-input')?.value || document.getElementById('login-phone-input')?.value;
     const sup = document.getElementById('signup-phone-input');
-    if (lip && sup && !sup.value) sup.value = lip;
-    const lcode = document.getElementById('login-country-code')?.value;
-    const scode = document.getElementById('signup-country-code');
-    if (lcode && scode) scode.value = lcode;
-  } else {
+    if (num && sup && !sup.value) sup.value = num;
+  } else if (mode === 'signin') {
     tabSignIn?.classList.add('active');
-    tabSignUp?.classList.remove('active');
     if (formSignIn) formSignIn.style.display = 'block';
-    if (formSignUp) formSignUp.style.display = 'none';
+    const num = document.getElementById('otp-phone-input')?.value;
+    const lip = document.getElementById('login-phone-input');
+    if (num && lip && !lip.value) lip.value = num;
+  } else {
+    // Default: 'otp'
+    tabOtp?.classList.add('active');
+    if (formOtp) formOtp.style.display = 'block';
+    const num = document.getElementById('login-phone-input')?.value;
+    const oip = document.getElementById('otp-phone-input');
+    if (num && oip && !oip.value) oip.value = num;
+  }
+};
+
+window.backToOtpStep1 = function() {
+  const step1 = document.getElementById('otp-auth-step-1');
+  const step2 = document.getElementById('otp-auth-step-2');
+  const err1 = document.getElementById('otp-auth-error-1');
+  const err2 = document.getElementById('otp-auth-error-2');
+  if (err1) err1.style.display = 'none';
+  if (err2) err2.style.display = 'none';
+  if (step1) step1.style.display = 'block';
+  if (step2) step2.style.display = 'none';
+};
+
+window.handleSendLoginOtp = async function() {
+  const code = document.getElementById('otp-country-code')?.value || '+91';
+  const rawPhone = document.getElementById('otp-phone-input')?.value.trim() || '';
+  const errEl = document.getElementById('otp-auth-error-1');
+  const btn = document.getElementById('otp-get-code-btn');
+
+  if (errEl) errEl.style.display = 'none';
+
+  if (!rawPhone || rawPhone.length < 6) {
+    if (errEl) {
+      errEl.textContent = 'Please enter a valid mobile number.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  const cleanDigits = rawPhone.replace(/[^0-9]/g, '');
+  const phone = rawPhone.startsWith('+') ? ('+' + cleanDigits) : `${code}${cleanDigits}`;
+  currentLoginOtpPhone = phone;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Sending SMS...</span>`;
+  }
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Get Verification Code</span> <i class="ti ti-send"></i>`;
+    }
+
+    if (res.ok && data && data.success) {
+      const confirmedEl = document.getElementById('otp-confirmed-phone');
+      if (confirmedEl) confirmedEl.textContent = phone;
+      const step1 = document.getElementById('otp-auth-step-1');
+      const step2 = document.getElementById('otp-auth-step-2');
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = 'block';
+      showToast(`Verification code sent to ${phone}`);
+    } else {
+      if (errEl) {
+        errEl.textContent = data?.error || 'Failed to send SMS. Please check your phone number.';
+        errEl.style.display = 'block';
+      }
+    }
+  } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Get Verification Code</span> <i class="ti ti-send"></i>`;
+    }
+    if (errEl) {
+      errEl.textContent = 'Network error while contacting authentication server.';
+      errEl.style.display = 'block';
+    }
+  }
+};
+
+window.handleVerifyLoginOtp = async function() {
+  const otp = document.getElementById('otp-code-input')?.value.trim() || '';
+  const errEl = document.getElementById('otp-auth-error-2');
+  const btn = document.getElementById('otp-verify-btn');
+
+  if (errEl) errEl.style.display = 'none';
+
+  if (!otp) {
+    if (errEl) {
+      errEl.textContent = 'Please enter the 4-digit verification code.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Verifying Code...</span>`;
+  }
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/auth/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: currentLoginOtpPhone,
+        otp
+      })
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Verify & Enter Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+    }
+
+    if (res.ok && data && data.success && data.user) {
+      const displayName = data.user.name || 'User';
+      state.authUser = {
+        phone: data.user.phone || currentLoginOtpPhone,
+        name: displayName,
+        token: data.token || ('sw_auth_token_' + Date.now()),
+        databasePartition: data.databasePartition || `user_${currentLoginOtpPhone}.json`,
+        scanHistory: data.user.scanHistory || {},
+        checkPhoto: data.user.checkPhoto || null,
+        acneTrackerHistory: data.user.acneTrackerHistory || []
+      };
+      saveJSON('sw_session_auth', state.authUser);
+      try { sessionStorage.setItem('sw_session_user', JSON.stringify(data.user)); } catch {}
+      try { localStorage.setItem('sw_session_user', JSON.stringify(data.user)); } catch {}
+      applyUserDataToState(data.user);
+      showToast(`Welcome, ${displayName}!`);
+      checkAuthState();
+      try { useCurrentLocation(false); } catch {}
+    } else {
+      if (errEl) {
+        errEl.textContent = data?.error || 'Invalid verification code. Please try again.';
+        errEl.style.display = 'block';
+      }
+    }
+  } catch (e) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Verify & Enter Dashboard</span> <i class="ti ti-arrow-right"></i>`;
+    }
+    if (errEl) {
+      errEl.textContent = 'Network error during verification. Please try again.';
+      errEl.style.display = 'block';
+    }
   }
 };
 

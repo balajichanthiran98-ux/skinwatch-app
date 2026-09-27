@@ -25,6 +25,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <link rel="stylesheet" href="style.css?v=12.0">
   <script>
     // Force instant favicon & PWA icon cache update
@@ -84,17 +86,79 @@
         <p class="auth-app-tagline">Climate-Aware Skincare Intelligence</p>
       </div>
 
-      <!-- Auth Mode Switcher (Sign In / Sign Up) -->
-      <div class="auth-tabs-row">
-        <button id="tab-btn-signin" class="auth-tab-btn active" type="button"><i class="ti ti-lock"></i> Sign
-          In</button>
-        <button id="tab-btn-signup" class="auth-tab-btn" type="button"><i class="ti ti-user-plus"></i> Create
-          Account</button>
+      <!-- Auth Mode Switcher (Mobile OTP / Password / Sign Up) -->
+      <div class="auth-tabs-row" style="grid-template-columns: 1fr 1fr 1fr;">
+        <button id="tab-btn-otp" class="auth-tab-btn active" type="button" onclick="window.switchAuthTab('otp')"><i class="ti ti-device-mobile-message"></i> Mobile OTP</button>
+        <button id="tab-btn-signin" class="auth-tab-btn" type="button" onclick="window.switchAuthTab('signin')"><i class="ti ti-lock"></i> Password</button>
+        <button id="tab-btn-signup" class="auth-tab-btn" type="button" onclick="window.switchAuthTab('signup')"><i class="ti ti-user-plus"></i> Register</button>
       </div>
 
       <div class="auth-card">
+        <!-- Form 0: Sign In with Mobile OTP (Google & SMS Verified) -->
+        <div id="form-otp" class="auth-form" style="display:block;">
+          <div class="auth-heading">
+            <h2 class="serif-heading-dark">Sign In with OTP</h2>
+            <p class="muted-note">Fast &amp; secure passwordless login via mobile SMS code.</p>
+          </div>
+
+          <!-- OTP Step 1: Request SMS -->
+          <div id="otp-auth-step-1">
+            <div class="auth-field-group">
+              <label class="auth-field-label">Mobile Number</label>
+              <div class="auth-phone-input-row">
+                <select id="otp-country-code" class="auth-country-select">
+                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option>
+                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+65">🇸🇬 +65</option>
+                  <option value="+61">🇦🇺 +61</option>
+                </select>
+                <input id="otp-phone-input" type="tel" class="auth-phone-field" placeholder="Enter mobile number" maxlength="14" autocomplete="tel" required>
+              </div>
+            </div>
+
+            <div id="recaptcha-container" style="margin-top:8px;"></div>
+            <p id="otp-auth-error-1" class="auth-error-msg" style="display:none;"></p>
+
+            <button id="otp-get-code-btn" class="auth-primary-btn" type="button" onclick="window.handleSendLoginOtp()">
+              <span>Get Verification Code</span>
+              <i class="ti ti-send"></i>
+            </button>
+          </div>
+
+          <!-- OTP Step 2: Verify Code -->
+          <div id="otp-auth-step-2" style="display:none;">
+            <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px; margin-bottom:12px; font-size:12px; color:#166534;">
+              <i class="ti ti-circle-check"></i> Code sent to <strong id="otp-confirmed-phone"></strong>.
+              <div style="font-size:11px; color:#15803D; margin-top:2px;">Enter 4-digit code (use <strong>1234</strong> for test)</div>
+            </div>
+
+            <div class="auth-field-group">
+              <label class="auth-field-label">Verification Code (OTP)</label>
+              <input id="otp-code-input" type="text" class="auth-phone-field" placeholder="Enter 4-digit code" maxlength="6" autocomplete="one-time-code" required>
+            </div>
+
+            <p id="otp-auth-error-2" class="auth-error-msg" style="display:none;"></p>
+
+            <button id="otp-verify-btn" class="auth-primary-btn" type="button" onclick="window.handleVerifyLoginOtp()">
+              <span>Verify &amp; Enter Dashboard</span>
+              <i class="ti ti-arrow-right"></i>
+            </button>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+              <button type="button" class="pill-btn sm secondary" onclick="window.backToOtpStep1()">
+                <i class="ti ti-arrow-left"></i> Change Number
+              </button>
+              <button type="button" id="otp-resend-btn" class="pill-btn sm" onclick="window.handleSendLoginOtp()" style="font-size:11px;">
+                Resend Code
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Form 1: Sign In with Phone & Password -->
-        <form id="form-signin" class="auth-form" onsubmit="event.preventDefault(); window.handleLogin(); return false;">
+        <form id="form-signin" class="auth-form" style="display:none;" onsubmit="event.preventDefault(); window.handleLogin(); return false;">
           <div class="auth-heading">
             <h2 class="serif-heading-dark">Welcome Back</h2>
             <p class="muted-note">Enter your mobile number and password to sign in.</p>

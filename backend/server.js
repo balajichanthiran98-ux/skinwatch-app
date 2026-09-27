@@ -5,6 +5,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const rulesEngine = require('./rulesEngine');
@@ -894,27 +895,69 @@ app.get('/api/ip-location', async (req, res) => {
 // ---- Phone Number Authentication & OTP Store ----
 const otpStore = new Map();
 
+// Generic SMS Dispatcher supporting Fast2SMS, Twilio, or Dev Simulator
+async function sendSMSNotification(phone, code) {
+  // 1. Fast2SMS (Indian DLT SMS Gateway)
+  if (process.env.FAST2SMS_API_KEY) {
+    try {
+      const cleanDigits = phone.replace(/[^0-9]/g, '').slice(-10);
+      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${process.env.FAST2SMS_API_KEY}&variables_values=${code}&route=otp&numbers=${cleanDigits}`;
+      await fetchWithTimeout(url, {}, 3000);
+      console.log(`[SMS] Fast2SMS OTP dispatched to ${cleanDigits}`);
+      return;
+    } catch (e) {
+      console.warn('[SMS] Fast2SMS error:', e.message);
+    }
+  }
+
+  // 2. Twilio (Global Carrier Gateway)
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+    try {
+      const auth = Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64');
+      const params = new URLSearchParams();
+      params.append('To', phone);
+      params.append('From', process.env.TWILIO_PHONE_NUMBER);
+      params.append('Body', `Your SkinWatch verification code is: ${code}`);
+
+      await fetchWithTimeout(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      }, 3000);
+      console.log(`[SMS] Twilio OTP dispatched to ${phone}`);
+      return;
+    } catch (e) {
+      console.warn('[SMS] Twilio error:', e.message);
+    }
+  }
+
+  console.log(`[SMS] Real-time Simulation: OTP for ${phone} is: ${code}`);
+}
+
 // POST /api/auth/send-otp
 // body: { phone }
-app.post('/api/auth/send-otp', (req, res) => {
+app.post('/api/auth/send-otp', async (req, res) => {
   const { phone } = req.body || {};
-  if (!phone || typeof phone !== 'string' || phone.trim().length < 8) {
-    return res.status(400).json({ error: 'Valid phone number is required' });
+  if (!phone || typeof phone !== 'string' || phone.trim().length < 6) {
+    return res.status(400).json({ success: false, error: 'Valid phone number is required.' });
   }
 
   const cleanPhone = phone.trim();
-  // Standard demo OTP is 1234, or generate 4-digit code
   const code = '1234';
   otpStore.set(cleanPhone, {
     code,
-    expiresAt: Date.now() + 5 * 60 * 1000 // 5 min TTL
+    expiresAt: Date.now() + 10 * 60 * 1000 // 10 min TTL
   });
 
-  console.log(`[AUTH] OTP for ${cleanPhone} is: ${code}`);
+  await sendSMSNotification(cleanPhone, code);
+
   return res.json({
     success: true,
     phone: cleanPhone,
-    code, // returned so client can show incoming SMS toast preview
+    code,
     message: `Verification code sent to ${cleanPhone}`
   });
 });
@@ -924,28 +967,49 @@ app.post('/api/auth/send-otp', (req, res) => {
 app.post('/api/auth/verify-otp', (req, res) => {
   const { phone, otp, name } = req.body || {};
   if (!phone || !otp) {
-    return res.status(400).json({ error: 'Phone and OTP code are required' });
+    return res.status(400).json({ success: false, error: 'Phone number and verification code are required.' });
   }
 
   const cleanPhone = phone.trim();
   const entry = otpStore.get(cleanPhone);
 
-  // Allow 1234 or stored code
-  if (otp === '1234' || (entry && entry.code === String(otp).trim())) {
+  // Allow demo code 1234 or stored code
+  if (String(otp).trim() === '1234' || (entry && entry.code === String(otp).trim())) {
     otpStore.delete(cleanPhone);
-    return res.json({
-      success: true,
-      token: `sk_auth_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      user: {
+
+    // 1. Check if user already exists in isolated database
+    let user = userStore.findByPhone(cleanPhone);
+    let dbFile = '';
+
+    if (user) {
+      user.lastLoginAt = new Date().toISOString();
+      userStore.saveUserDb(cleanPhone, user);
+      dbFile = `user_${cleanPhone.replace(/[^a-zA-Z0-9_+]/g, '_')}.json`;
+    } else {
+      // 2. Initialize new user partition with their custom name
+      const regResult = userStore.register({
         phone: cleanPhone,
         name: name || 'User',
-        verified: true,
-        authenticatedAt: new Date().toISOString()
-      }
+        password: 'otp_pwd_' + Math.random().toString(36).slice(2, 8),
+        city: 'Trichy, Tamil Nadu',
+        skinType: 'III'
+      });
+      user = regResult.user;
+      dbFile = regResult.databasePartition;
+    }
+
+    const sessionToken = crypto.createHash('sha256').update(cleanPhone + Date.now()).digest('hex');
+
+    return res.json({
+      success: true,
+      token: sessionToken,
+      user: userStore.sanitizeUser(user),
+      databasePartition: dbFile,
+      message: 'Mobile OTP verification successful.'
     });
   }
 
-  return res.status(400).json({ error: 'Invalid or expired verification code. Use code 1234 for testing.' });
+  return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Use code 1234.' });
 });
 
 // ---- POST /api/routine-flags ----
