@@ -1139,6 +1139,57 @@ app.get('/api/auth/demo-accounts', (req, res) => {
   });
 });
 
+// Password Reset 1: Send OTP to verify account ownership
+app.post('/api/auth/forgot-password/send-otp', (req, res) => {
+  const { phone } = req.body || {};
+  if (!phone || typeof phone !== 'string' || phone.trim().length < 6) {
+    return res.status(400).json({ success: false, error: 'Valid phone number is required.' });
+  }
+
+  const cleanPhone = phone.trim();
+  const entry = userStore.findRegistryEntry(cleanPhone);
+  if (!entry) {
+    return res.status(404).json({ success: false, error: `No account found for ${cleanPhone}. Please create an account.` });
+  }
+
+  const code = '1234';
+  otpStore.set(cleanPhone, {
+    code,
+    expiresAt: Date.now() + 10 * 60 * 1000 // 10 min TTL
+  });
+
+  console.log(`[AUTH] Password Reset OTP for ${cleanPhone} is: ${code}`);
+  return res.json({
+    success: true,
+    phone: cleanPhone,
+    code,
+    message: `Verification code sent to ${cleanPhone}`
+  });
+});
+
+// Password Reset 2: Verify OTP and update password
+app.post('/api/auth/forgot-password/reset', (req, res) => {
+  const { phone, otp, newPassword } = req.body || {};
+  if (!phone || !otp || !newPassword) {
+    return res.status(400).json({ success: false, error: 'Phone number, verification code, and new password are required.' });
+  }
+
+  const cleanPhone = phone.trim();
+  const entry = otpStore.get(cleanPhone);
+
+  // Validate OTP (allow demo code 1234 or stored code)
+  if (String(otp).trim() === '1234' || (entry && entry.code === String(otp).trim())) {
+    otpStore.delete(cleanPhone);
+    const result = userStore.resetPassword(cleanPhone, newPassword);
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    return res.json(result);
+  }
+
+  return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Use code 1234.' });
+});
+
 // ---- POST /api/acne-tracker/analyze ----
 // Non-diagnostic facial photo analysis: zone segmentation, severity scoring, redness detection
 app.post('/api/acne-tracker/analyze', (req, res) => {

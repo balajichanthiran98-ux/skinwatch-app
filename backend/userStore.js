@@ -222,6 +222,39 @@ class UserStore {
     return this.authenticate(phone, password);
   }
 
+  // Reset password for an existing registered user
+  resetPassword(phone, newPassword) {
+    const norm = normalizePhone(phone);
+    const entry = this.findRegistryEntry(norm);
+    if (!entry) {
+      return { success: false, error: 'No account found with this phone number. Please sign up.' };
+    }
+
+    if (!newPassword || String(newPassword).trim().length < 4) {
+      return { success: false, error: 'New password must be at least 4 characters long.' };
+    }
+
+    const salt = 'salt_' + norm + '_' + Date.now();
+    const passwordHash = hashPassword(newPassword, salt);
+
+    entry.salt = salt;
+    entry.passwordHash = passwordHash;
+    entry.lastPasswordResetAt = new Date().toISOString();
+    this.saveRegistry();
+
+    const user = this.loadUserDb(entry.normalizedPhone);
+    if (user) {
+      user.lastPasswordResetAt = entry.lastPasswordResetAt;
+      this.saveUserDb(entry.normalizedPhone, user);
+    }
+
+    return {
+      success: true,
+      message: 'Password updated successfully! You can now sign in with your new password.',
+      phone: entry.phone || norm
+    };
+  }
+
   // Register a new user and create their own dedicated database
   register(userData) {
     const rawPhone = String(userData.phone || '').trim();

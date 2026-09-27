@@ -874,6 +874,183 @@ window.switchAuthTab = function(mode) {
   }
 };
 
+// ---------- Forgot Password Controller ----------
+let forgotPasswordPhone = '';
+
+window.openForgotPasswordModal = function() {
+  const modal = document.getElementById('modal-forgot-password');
+  const step1 = document.getElementById('forgot-step-1');
+  const step2 = document.getElementById('forgot-step-2');
+  const err1 = document.getElementById('forgot-step1-error');
+  const err2 = document.getElementById('forgot-step2-error');
+  const phoneInput = document.getElementById('forgot-phone-input');
+  const loginPhone = document.getElementById('login-phone-input')?.value.trim();
+
+  if (err1) err1.style.display = 'none';
+  if (err2) err2.style.display = 'none';
+  if (step1) step1.style.display = 'block';
+  if (step2) step2.style.display = 'none';
+
+  if (phoneInput && loginPhone) {
+    phoneInput.value = loginPhone;
+  }
+
+  if (modal) modal.style.display = 'flex';
+};
+
+window.closeForgotPasswordModal = function() {
+  const modal = document.getElementById('modal-forgot-password');
+  if (modal) modal.style.display = 'none';
+};
+
+window.backToForgotStep1 = function() {
+  const step1 = document.getElementById('forgot-step-1');
+  const step2 = document.getElementById('forgot-step-2');
+  const err1 = document.getElementById('forgot-step1-error');
+  if (err1) err1.style.display = 'none';
+  if (step1) step1.style.display = 'block';
+  if (step2) step2.style.display = 'none';
+};
+
+window.handleForgotSendOtp = async function() {
+  const code = document.getElementById('forgot-country-code')?.value || '+91';
+  const rawPhone = document.getElementById('forgot-phone-input')?.value.trim() || '';
+  const errEl = document.getElementById('forgot-step1-error');
+  const btn = document.getElementById('forgot-send-otp-btn');
+
+  if (errEl) errEl.style.display = 'none';
+
+  if (!rawPhone || rawPhone.length < 6) {
+    if (errEl) {
+      errEl.textContent = 'Please enter a valid mobile number.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  const cleanDigits = rawPhone.replace(/[^0-9]/g, '');
+  const phone = rawPhone.startsWith('+') ? ('+' + cleanDigits) : `${code}${cleanDigits}`;
+  forgotPasswordPhone = phone;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Sending Code...</span>`;
+  }
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/auth/forgot-password/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone })
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Send Verification Code</span> <i class="ti ti-send"></i>`;
+    }
+
+    if (res.ok && data && data.success) {
+      const confirmedEl = document.getElementById('forgot-confirmed-phone');
+      if (confirmedEl) confirmedEl.textContent = phone;
+      const step1 = document.getElementById('forgot-step-1');
+      const step2 = document.getElementById('forgot-step-2');
+      if (step1) step1.style.display = 'none';
+      if (step2) step2.style.display = 'block';
+      showToast(`Verification code sent to ${phone}`);
+    } else {
+      if (errEl) {
+        errEl.textContent = data?.error || 'Failed to send verification code. Please check your number.';
+        errEl.style.display = 'block';
+      }
+    }
+  } catch (err) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Send Verification Code</span> <i class="ti ti-send"></i>`;
+    }
+    if (errEl) {
+      errEl.textContent = 'Network error while contacting server. Please try again.';
+      errEl.style.display = 'block';
+    }
+  }
+};
+
+window.handleForgotResetSubmit = async function() {
+  const otp = document.getElementById('forgot-otp-input')?.value.trim() || '';
+  const newPass = document.getElementById('forgot-new-pass-input')?.value.trim() || '';
+  const confirmPass = document.getElementById('forgot-confirm-pass-input')?.value.trim() || '';
+  const errEl = document.getElementById('forgot-step2-error');
+  const btn = document.getElementById('forgot-submit-reset-btn');
+
+  if (errEl) errEl.style.display = 'none';
+
+  if (!otp) {
+    if (errEl) { errEl.textContent = 'Please enter the 4-digit verification code.'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (!newPass || newPass.length < 4) {
+    if (errEl) { errEl.textContent = 'Password must be at least 4 characters long.'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (newPass !== confirmPass) {
+    if (errEl) { errEl.textContent = 'Passwords do not match. Please re-enter.'; errEl.style.display = 'block'; }
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i class="ti ti-loader-2 ti-spin"></i> <span>Updating Password...</span>`;
+  }
+
+  try {
+    const res = await fetch(BACKEND_URL + '/api/auth/forgot-password/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phone: forgotPasswordPhone,
+        otp,
+        newPassword: newPass
+      })
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Save Password & Sign In</span> <i class="ti ti-check"></i>`;
+    }
+
+    if (res.ok && data && data.success) {
+      showToast('✓ Password updated successfully!');
+      window.closeForgotPasswordModal();
+
+      // Auto-fill into login form and perform instant login
+      const loginPhoneInput = document.getElementById('login-phone-input');
+      const loginPassInput = document.getElementById('login-pass-input');
+      if (loginPhoneInput) loginPhoneInput.value = forgotPasswordPhone;
+      if (loginPassInput) loginPassInput.value = newPass;
+
+      handleLogin();
+    } else {
+      if (errEl) {
+        errEl.textContent = data?.error || 'Failed to update password. Please check your OTP code.';
+        errEl.style.display = 'block';
+      }
+    }
+  } catch (err) {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Save Password & Sign In</span> <i class="ti ti-check"></i>`;
+    }
+    if (errEl) {
+      errEl.textContent = 'Network error while contacting server. Please try again.';
+      errEl.style.display = 'block';
+    }
+  }
+};
+
 function autoDetectSignupLocation() {
   const cityInput = document.getElementById('signup-city-input');
   const btn = document.getElementById('signup-locate-btn');
