@@ -2232,7 +2232,11 @@ function renderHome() {
   if (statHum) statHum.textContent = `${w.humidity}% · ${getSkinFeel(w.humidity)}`;
   const statUv = document.getElementById('stat-uv');
   const uvMeta = getUvMeta(w.uv);
-  if (statUv) statUv.textContent = `UV ${w.uv != null ? w.uv : 0} · ${uvMeta.label}`;
+  if (statUv) {
+    statUv.textContent = (isNight && (w.uv === 0 || w.uv == null)) 
+      ? `UV 0 · Night (Peak ${w.uvMax || 8.5})` 
+      : `UV ${w.uv != null ? w.uv : 0} · ${uvMeta.label}`;
+  }
   const statAqi = document.getElementById('stat-aqi');
   const aqiCat = aqi.category ? aqi.category.replace(' air quality', '') : (aqi.aqi > 100 ? 'Unhealthy' : 'Good');
   if (statAqi) statAqi.textContent = `AQI ${aqi.aqi != null ? aqi.aqi : 64} · ${aqiCat}`;
@@ -2362,17 +2366,17 @@ function renderUvTrendBar(days) {
 
   days.slice(0, 7).forEach((d, i) => {
     const isToday = i === 0;
-    const rawUv = d.uv != null ? Number(d.uv) : 5;
-    const displayUv = (isToday && isCurrentlyNight) ? 0 : rawUv;
+    // For 7-day forecast outlook, use the daily peak solar UV so all 7 days are consistently comparable
+    const displayUv = d.uv != null ? Number(d.uv) : 5;
     const meta = getUvMeta(displayUv);
     const dayLabel = isToday ? 'Today' : (d.date ? new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' }) : `D${i+1}`);
 
-    if (rawUv > peakUv) {
-      peakUv = rawUv;
+    if (displayUv > peakUv) {
+      peakUv = displayUv;
       peakDay = isToday ? 'Today' : (d.date ? new Date(d.date).toLocaleDateString(undefined, { weekday: 'short' }) : `Day ${i+1}`);
     }
 
-    const heightPct = displayUv === 0 ? 12 : Math.max(18, Math.min(100, Math.round((displayUv / 11) * 100)));
+    const heightPct = Math.max(18, Math.min(100, Math.round((displayUv / 11) * 100)));
 
     const col = document.createElement('div');
     col.className = 'uv-bar-col';
@@ -2454,7 +2458,7 @@ function renderForecastDays() {
     const dateObj = d.date ? new Date(d.date) : new Date(Date.now() + i * 86400000);
     const dayStr = isToday ? 'Today' : dateObj.toLocaleDateString(undefined, { weekday: 'short' });
     const dateFormatted = dateObj.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-    const meta = getUvMeta((isToday && isCurrentlyNight) ? 0 : d.uv);
+    const meta = getUvMeta(d.uv);
     const skinTip = getDailySkincarePlan(d.uv, d.humidity, d.condition);
     const skinFeel = getSkinFeel(d.humidity);
     const iconHtml = d.iconUri 
@@ -2462,7 +2466,7 @@ function renderForecastDays() {
       : getConditionIcon(d.condition);
 
     const uvBadgeText = (isToday && isCurrentlyNight) 
-      ? `UV 0 · Night` 
+      ? `Peak UV ${d.uv || 8.5} · Night (Now 0)` 
       : `UV ${d.uv != null ? d.uv : '--'} · ${meta.label}`;
 
     const card = document.createElement('div');
