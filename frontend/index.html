@@ -51,7 +51,7 @@
       });
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=72')
+        navigator.serviceWorker.register('sw.js?v=75')
           .then((reg) => {
             reg.update();
             console.log('✓ SkinWatch PWA Service Worker Registered & Checked for Updates', reg.scope);
@@ -281,61 +281,87 @@
           </button>
         </form>
 
-        <!-- Form 2: Register New User -->
-        <form id="form-signup" class="auth-form" style="display:none;"
-          onsubmit="event.preventDefault(); window.startOnboardingFromSignup(); return false;">
+        <!-- Form 2: Register New User with Mobile OTP Verification -->
+        <form id="form-signup" class="auth-form" style="display:none;" onsubmit="event.preventDefault(); return false;">
           <div class="auth-heading">
             <h2 class="serif-heading-dark">New Account</h2>
-            <p class="muted-note">Personalize your climate skincare database.</p>
+            <p class="muted-note">Personalize your climate skincare database with SMS verification.</p>
           </div>
 
-          <div class="auth-field-group">
-            <label class="auth-field-label">Full Name</label>
-            <input id="signup-name-input" type="text" class="auth-phone-field" placeholder="Enter your full name"
-              required>
+          <!-- Signup Step 1: User Profile Info -->
+          <div id="signup-step-1">
+            <div class="auth-field-group">
+              <label class="auth-field-label">Full Name</label>
+              <input id="signup-name-input" type="text" class="auth-phone-field" placeholder="Enter your full name" required>
+            </div>
+
+            <div class="auth-field-group">
+              <label class="auth-field-label">Mobile Number</label>
+              <div class="auth-phone-input-row">
+                <select id="signup-country-code" class="auth-country-select">
+                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option>
+                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+65">🇸🇬 +65</option>
+                </select>
+                <input id="signup-phone-input" type="tel" class="auth-phone-field" placeholder="Enter mobile number" maxlength="14" autocomplete="tel" required>
+              </div>
+            </div>
+
+            <div class="auth-field-group">
+              <label class="auth-field-label">Create Password</label>
+              <div class="auth-pass-input-row">
+                <input id="signup-pass-input" type="password" class="auth-phone-field" placeholder="Min 4 characters" autocomplete="new-password" required>
+                <button id="toggle-signup-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility"><i class="ti ti-eye"></i></button>
+              </div>
+            </div>
+
+            <div class="auth-field-group">
+              <label class="auth-field-label">Home City</label>
+              <div class="location-row">
+                <input id="signup-city-input" type="text" class="auth-phone-field" placeholder="e.g. Trichy, Tamil Nadu" value="Trichy, Tamil Nadu" required>
+                <button id="signup-locate-btn" type="button" class="locate-btn-inline" title="Detect Location" onclick="window.autoDetectSignupLocation()"><i class="ti ti-current-location"></i></button>
+              </div>
+            </div>
+
+            <div id="recaptcha-container-signup" style="margin-top:8px;"></div>
+            <p id="auth-signup-error" class="auth-error-msg" style="display:none;"></p>
+
+            <button id="auth-signup-submit-btn" class="auth-primary-btn" type="button" onclick="window.handleSignupSendOtp()">
+              <span>Send Verification Code</span>
+              <i class="ti ti-send"></i>
+            </button>
           </div>
 
-          <div class="auth-field-group">
-            <label class="auth-field-label">Mobile Number</label>
-            <div class="auth-phone-input-row">
-              <select id="signup-country-code" class="auth-country-select">
-                <option value="+91">🇮🇳 +91</option>
-                <option value="+1">🇺🇸 +1</option>
-                <option value="+44">🇬🇧 +44</option>
-                <option value="+971">🇦🇪 +971</option>
-                <option value="+65">🇸🇬 +65</option>
-              </select>
-              <input id="signup-phone-input" type="tel" class="auth-phone-field" placeholder="Enter mobile number"
-                maxlength="14" autocomplete="tel" required>
+          <!-- Signup Step 2: Verify Mobile SMS Code -->
+          <div id="signup-step-2" style="display:none;">
+            <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px; margin-bottom:12px; font-size:12px; color:#166534;">
+              <i class="ti ti-circle-check"></i> Code sent to <strong id="signup-confirmed-phone"></strong>.
+              <div style="font-size:11px; color:#15803D; margin-top:2px;">Enter 4-digit code (use <strong>1234</strong> for test)</div>
+            </div>
+
+            <div class="auth-field-group">
+              <label class="auth-field-label">Verification Code (OTP)</label>
+              <input id="signup-otp-input" type="text" class="auth-phone-field" placeholder="Enter verification code" maxlength="6" autocomplete="one-time-code" required>
+            </div>
+
+            <p id="auth-signup-otp-error" class="auth-error-msg" style="display:none;"></p>
+
+            <button id="auth-signup-verify-btn" class="auth-primary-btn" type="button" onclick="window.handleSignupVerifyOtp()">
+              <span>Verify &amp; Continue to Skin Profile</span>
+              <i class="ti ti-arrow-right"></i>
+            </button>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+              <button type="button" class="pill-btn sm secondary" onclick="window.backToSignupStep1()">
+                <i class="ti ti-arrow-left"></i> Change Details
+              </button>
+              <button type="button" id="signup-resend-btn" class="pill-btn sm" onclick="window.handleSignupSendOtp()" style="font-size:11px;">
+                Resend Code
+              </button>
             </div>
           </div>
-
-          <div class="auth-field-group">
-            <label class="auth-field-label">Create Password</label>
-            <div class="auth-pass-input-row">
-              <input id="signup-pass-input" type="password" class="auth-phone-field" placeholder="Min 4 characters"
-                autocomplete="new-password" required>
-              <button id="toggle-signup-pass" type="button" class="pass-toggle-btn"
-                title="Toggle password visibility"><i class="ti ti-eye"></i></button>
-            </div>
-          </div>
-
-          <div class="auth-field-group">
-            <label class="auth-field-label">Home City</label>
-            <div class="location-row">
-              <input id="signup-city-input" type="text" class="auth-phone-field" placeholder="e.g. Trichy, Tamil Nadu"
-                value="Trichy, Tamil Nadu" required>
-              <button id="signup-locate-btn" type="button" class="locate-btn-inline" title="Detect Location"
-                onclick="window.autoDetectSignupLocation()"><i class="ti ti-current-location"></i></button>
-            </div>
-          </div>
-
-          <p id="auth-signup-error" class="auth-error-msg" style="display:none;"></p>
-
-          <button id="auth-signup-submit-btn" class="auth-primary-btn" type="button" onclick="window.startOnboardingFromSignup()">
-            <span>Continue to Skin Profile</span>
-            <i class="ti ti-arrow-right"></i>
-          </button>
         </form>
       </div>
 
@@ -3610,7 +3636,7 @@
 
   </div>
 
-  <script src="app.js?v=16.0"></script>
+  <script src="app.js?v=17.0"></script>
 </body>
 
 </html>
