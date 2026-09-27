@@ -960,13 +960,18 @@ window.handleSendLoginOtp = async function() {
   getFirebaseApp();
   if (typeof firebase !== 'undefined' && firebase.auth) {
     try {
-      if (!recaptchaVerifierLogin) {
-        recaptchaVerifierLogin = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-          size: 'invisible',
-          callback: () => console.log('✓ Login reCAPTCHA verified')
-        });
-        await recaptchaVerifierLogin.render();
+      const container = document.getElementById('recaptcha-container');
+      if (container) container.innerHTML = '';
+      if (recaptchaVerifierLogin) {
+        try { recaptchaVerifierLogin.clear(); } catch {}
+        recaptchaVerifierLogin = null;
       }
+
+      recaptchaVerifierLogin = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+        size: 'invisible',
+        callback: () => console.log('✓ Login reCAPTCHA verified')
+      });
+
       const confirmationResult = await firebase.auth().signInWithPhoneNumber(phone, recaptchaVerifierLogin);
       firebaseConfirmationResult = confirmationResult;
       console.log('✓ Firebase real SMS dispatched to', phone);
@@ -1269,12 +1274,18 @@ window.handleForgotSendOtp = async function() {
   getFirebaseApp();
   if (typeof firebase !== 'undefined' && firebase.auth) {
     try {
-      if (!recaptchaVerifierForgot) {
-        recaptchaVerifierForgot = new firebase.auth.RecaptchaVerifier('recaptcha-container-forgot', {
-          size: 'invisible',
-          callback: () => console.log('Forgot Password reCAPTCHA verified')
-        });
+      const container = document.getElementById('recaptcha-container-forgot');
+      if (container) container.innerHTML = '';
+      if (recaptchaVerifierForgot) {
+        try { recaptchaVerifierForgot.clear(); } catch {}
+        recaptchaVerifierForgot = null;
       }
+
+      recaptchaVerifierForgot = new firebase.auth.RecaptchaVerifier('recaptcha-container-forgot', {
+        size: 'invisible',
+        callback: () => console.log('✓ Forgot Password reCAPTCHA verified')
+      });
+
       const confirmationResult = await firebase.auth().signInWithPhoneNumber(phone, recaptchaVerifierForgot);
       firebaseForgotConfirmationResult = confirmationResult;
       console.log('✓ Firebase real SMS dispatched for password reset to', phone);
