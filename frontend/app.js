@@ -3,7 +3,7 @@ console.log('%c✓ SkinWatch v10.0 Active | Cross-Device Cloud Sync & Timeline S
 
 
 // Google Cloud Run production backend URL
-const CLOUD_RUN_BACKEND_URL = 'https://skinwatch-app-131780735186.asia-south1.run.app';
+const CLOUD_RUN_BACKEND_URL = 'https://skinwatch-app-846912843520.asia-south1.run.app';
 
 // Auto-detect Backend API URL regardless of host port, Live Server, or Capacitor Android Native
 const BACKEND_URL = (function() {
