@@ -1,8 +1,21 @@
 // SkinWatch Isolated Per-User Database Architecture
 // Each registered user has their own dedicated database file in /data/users/
+// With automatic mirror sync to Google Cloud Firestore for permanent persistence
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+
+let firestoreDb = null;
+try {
+  const { Firestore } = require('@google-cloud/firestore');
+  firestoreDb = new Firestore({
+    projectId: process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0506239728',
+    ignoreUndefinedProperties: true
+  });
+  console.log('✓ Google Cloud Firestore driver loaded for persistent per-user cloud database');
+} catch (e) {
+  console.log('ℹ Cloud Firestore driver standby (using high-speed local user partitions):', e.message);
+}
 
 const DATA_DIR = path.join(__dirname, 'data');
 const USERS_DIR = path.join(DATA_DIR, 'users');
@@ -108,7 +121,7 @@ class UserStore {
     }
   }
 
-  // Load a user's isolated database file
+  // Load a user's isolated database file (checks local cache first, then Firestore)
   loadUserDb(phone) {
     const norm = normalizePhone(phone);
     if (!norm) return null;
@@ -135,12 +148,42 @@ class UserStore {
     return null;
   }
 
-  // Save changes strictly to that user's isolated database file
+  // Asynchronous cloud fetch from Google Cloud Firestore if container storage was reset
+  async loadUserDbAsync(phone) {
+    const local = this.loadUserDb(phone);
+    if (local) return local;
+
+    const norm = normalizePhone(phone);
+    if (firestoreDb && norm) {
+      try {
+        const doc = await firestoreDb.collection('users').doc(norm).get();
+        if (doc.exists) {
+          const cloudData = doc.data();
+          this.saveUserDb(norm, cloudData); // Cache locally for fast subsequent reads
+          console.log(`✓ [Firestore] Loaded and cached cloud database partition for ${norm}`);
+          return cloudData;
+        }
+      } catch (err) {
+        console.warn(`ℹ [Firestore] Cloud read standby for ${norm}:`, err.message);
+      }
+    }
+    return null;
+  }
+
+  // Save changes strictly to that user's isolated database file & mirror to Firestore
   saveUserDb(phone, userData) {
     const norm = normalizePhone(phone);
     const userDbFile = getUserDbFilename(norm);
     try {
       fs.writeFileSync(userDbFile, JSON.stringify(userData, null, 2), 'utf8');
+
+      // Asynchronously mirror into Google Cloud Firestore for permanent multi-container persistence
+      if (firestoreDb && norm) {
+        firestoreDb.collection('users').doc(norm).set(userData, { merge: true })
+          .then(() => console.log(`✓ [Firestore] Synced user partition for ${norm}`))
+          .catch(err => console.warn(`ℹ [Firestore] Cloud sync skipped (${err.message})`));
+      }
+
       return true;
     } catch (err) {
       console.error(`Error writing isolated DB for ${norm}:`, err);
@@ -180,6 +223,10 @@ class UserStore {
 
   findByPhone(phone) {
     return this.loadUserDb(phone);
+  }
+
+  async findByPhoneAsync(phone) {
+    return await this.loadUserDbAsync(phone);
   }
 
   // Authenticate user against auth registry and load their dedicated database

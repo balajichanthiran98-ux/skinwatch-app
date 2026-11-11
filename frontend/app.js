@@ -358,6 +358,18 @@ function saveCurrentUserData() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone: ph, data: payload })
   }).catch(err => console.warn('Background database sync deferred:', err.message));
+
+  // 3. Optional direct client Firestore sync
+  try {
+    if (typeof firebase !== 'undefined' && firebase.firestore && firebase.apps && firebase.apps.length) {
+      const db = firebase.firestore();
+      const safePhone = String(ph).replace(/[^0-9+]/g, '');
+      if (safePhone) {
+        db.collection('users').doc(safePhone).set(payload, { merge: true })
+          .catch(err => console.warn('Client Firestore sync standby:', err.message));
+      }
+    }
+  } catch {}
 }
 
 async function loadUserDataForPhone(phone) {

@@ -1013,7 +1013,7 @@ app.post('/api/auth/verify-otp', (req, res) => {
 
 // POST /api/auth/firebase-verify
 // body: { phone, idToken, uid, name }
-app.post('/api/auth/firebase-verify', (req, res) => {
+app.post('/api/auth/firebase-verify', async (req, res) => {
   const { phone, uid, name } = req.body || {};
   if (!phone || typeof phone !== 'string' || phone.trim().length < 6) {
     return res.status(400).json({ success: false, error: 'Valid phone number is required.' });
@@ -1021,6 +1021,9 @@ app.post('/api/auth/firebase-verify', (req, res) => {
 
   const cleanPhone = phone.trim();
   let user = userStore.findByPhone(cleanPhone);
+  if (!user && userStore.findByPhoneAsync) {
+    user = await userStore.findByPhoneAsync(cleanPhone);
+  }
   let dbFile = '';
 
   if (user) {
@@ -1229,9 +1232,12 @@ app.post(['/api/auth/sync', '/api/auth/update'], (req, res) => {
   res.json(result);
 });
 
-// Fetch User Profile from their isolated database
-app.get('/api/auth/user/:phone', (req, res) => {
-  const user = userStore.findByPhone(req.params.phone);
+// Fetch User Profile from their isolated database (local or Firestore)
+app.get('/api/auth/user/:phone', async (req, res) => {
+  let user = userStore.findByPhone(req.params.phone);
+  if (!user && userStore.findByPhoneAsync) {
+    user = await userStore.findByPhoneAsync(req.params.phone);
+  }
   if (!user) return res.status(404).json({ success: false, error: 'User database not found.' });
   res.json({ success: true, user: userStore.sanitizeUser(user) });
 });
