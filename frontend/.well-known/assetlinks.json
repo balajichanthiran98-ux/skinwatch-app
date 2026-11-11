@@ -7,6 +7,20 @@
       "namespace": "android_app",
       "package_name": "app.run.asia_south1.skinwatch_app_131780735186.twa",
       "sha256_cert_fingerprints": [
+        "6C:1B:8F:A6:32:B4:0B:22:4F:DC:1D:BA:8D:94:0D:BB:49:50:0B:5E:3A:90:73:8B:A5:E7:B3:C3:06:80:75:33",
+        "BA:AD:C5:0F:BD:04:BB:18:2B:45:F6:2F:0D:06:69:85:9B:4C:E8:5D:D8:16:A6:4E:3B:83:DE:E5:0A:96:08:1E"
+      ]
+    }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.run.asia_south1.skinwatch_app_846912843520.twa",
+      "sha256_cert_fingerprints": [
+        "6C:1B:8F:A6:32:B4:0B:22:4F:DC:1D:BA:8D:94:0D:BB:49:50:0B:5E:3A:90:73:8B:A5:E7:B3:C3:06:80:75:33",
         "BA:AD:C5:0F:BD:04:BB:18:2B:45:F6:2F:0D:06:69:85:9B:4C:E8:5D:D8:16:A6:4E:3B:83:DE:E5:0A:96:08:1E"
       ]
     }
