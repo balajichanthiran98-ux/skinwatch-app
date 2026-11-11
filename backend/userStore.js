@@ -6,15 +6,22 @@ const path = require('path');
 const crypto = require('crypto');
 
 let firestoreDb = null;
-try {
-  const { Firestore } = require('@google-cloud/firestore');
-  firestoreDb = new Firestore({
-    projectId: process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0506239728',
-    ignoreUndefinedProperties: true
-  });
-  console.log('✓ Google Cloud Firestore driver loaded for persistent per-user cloud database');
-} catch (e) {
-  console.log('ℹ Cloud Firestore driver standby (using high-speed local user partitions):', e.message);
+// Activate Google Cloud Firestore on Cloud Run (K_SERVICE is set) or when credentials are provided
+const isGoogleCloud = Boolean(process.env.K_SERVICE || process.env.GOOGLE_APPLICATION_CREDENTIALS);
+
+if (isGoogleCloud) {
+  try {
+    const { Firestore } = require('@google-cloud/firestore');
+    firestoreDb = new Firestore({
+      projectId: process.env.GOOGLE_CLOUD_PROJECT || 'gen-lang-client-0506239728',
+      ignoreUndefinedProperties: true
+    });
+    console.log('✓ Google Cloud Firestore driver active for persistent per-user cloud database');
+  } catch (e) {
+    console.log('ℹ Cloud Firestore driver standby (using high-speed local user partitions):', e.message);
+  }
+} else {
+  console.log('✓ Local environment: Using isolated local per-user database partitions (Firestore standby for Cloud Run)');
 }
 
 const DATA_DIR = path.join(__dirname, 'data');
@@ -156,8 +163,11 @@ class UserStore {
     const norm = normalizePhone(phone);
     if (firestoreDb && norm) {
       try {
-        const doc = await firestoreDb.collection('users').doc(norm).get();
-        if (doc.exists) {
+        const doc = await firestoreDb.collection('users').doc(norm).get().catch(err => {
+          console.warn(`ℹ [Firestore] Cloud read skipped (${err.message})`);
+          return null;
+        });
+        if (doc && doc.exists) {
           const cloudData = doc.data();
           this.saveUserDb(norm, cloudData); // Cache locally for fast subsequent reads
           console.log(`✓ [Firestore] Loaded and cached cloud database partition for ${norm}`);
