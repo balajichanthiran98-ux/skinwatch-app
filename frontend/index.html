@@ -51,7 +51,7 @@
       });
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=75')
+        navigator.serviceWorker.register('sw.js?v=76')
           .then((reg) => {
             reg.update();
             console.log('✓ SkinWatch PWA Service Worker Registered & Checked for Updates', reg.scope);
@@ -119,12 +119,18 @@
 
           <div class="auth-field-group" style="margin-top:10px;">
             <label class="auth-field-label">New Password</label>
-            <input id="forgot-new-pass-input" type="password" class="auth-phone-field" placeholder="Min 4 characters" required>
+            <div class="auth-pass-input-row" style="margin-top:6px;">
+              <input id="forgot-new-pass-input" type="password" class="auth-phone-field" placeholder="Min 4 characters" required>
+              <button id="toggle-forgot-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility" onclick="window.togglePasswordVisibility('forgot-new-pass-input', 'toggle-forgot-pass')"><i class="ti ti-eye"></i></button>
+            </div>
           </div>
 
           <div class="auth-field-group" style="margin-top:10px;">
             <label class="auth-field-label">Confirm New Password</label>
-            <input id="forgot-confirm-pass-input" type="password" class="auth-phone-field" placeholder="Re-enter new password" required>
+            <div class="auth-pass-input-row" style="margin-top:6px;">
+              <input id="forgot-confirm-pass-input" type="password" class="auth-phone-field" placeholder="Re-enter new password" required>
+              <button id="toggle-forgot-confirm-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility" onclick="window.togglePasswordVisibility('forgot-confirm-pass-input', 'toggle-forgot-confirm-pass')"><i class="ti ti-eye"></i></button>
+            </div>
           </div>
 
           <p id="forgot-step2-error" class="auth-error-msg" style="display:none; margin-top:8px;"></p>
@@ -268,7 +274,7 @@
             <div class="auth-pass-input-row" style="margin-top:6px;">
               <input id="login-pass-input" type="password" class="auth-phone-field" placeholder="Enter your password"
                 autocomplete="current-password" required>
-              <button id="toggle-login-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility"><i
+              <button id="toggle-login-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility" onclick="window.togglePasswordVisibility('login-pass-input', 'toggle-login-pass')"><i
                   class="ti ti-eye"></i></button>
             </div>
           </div>
@@ -313,7 +319,7 @@
               <label class="auth-field-label">Create Password</label>
               <div class="auth-pass-input-row">
                 <input id="signup-pass-input" type="password" class="auth-phone-field" placeholder="Min 4 characters" autocomplete="new-password" required>
-                <button id="toggle-signup-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility"><i class="ti ti-eye"></i></button>
+                <button id="toggle-signup-pass" type="button" class="pass-toggle-btn" title="Toggle password visibility" onclick="window.togglePasswordVisibility('signup-pass-input', 'toggle-signup-pass')"><i class="ti ti-eye"></i></button>
               </div>
             </div>
 
@@ -3636,7 +3642,7 @@
 
   </div>
 
-  <script src="app.js?v=17.0"></script>
+  <script src="app.js?v=18.0"></script>
 </body>
 
 </html>

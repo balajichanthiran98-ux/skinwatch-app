@@ -6,3 +6,4 @@ backend/.env
 npm-debug.log*
 
 scratch/
+signing-key-info.txt

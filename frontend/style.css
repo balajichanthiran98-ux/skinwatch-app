@@ -5110,14 +5110,23 @@ body {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 16px;
-  padding: 4px;
+  font-size: 18px;
+  padding: 6px 8px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  user-select: none;
+  border-radius: 8px;
+  transition: color 0.15s ease, background 0.15s ease, transform 0.1s ease;
 }
 
 .pass-toggle-btn:hover {
   color: var(--gold);
+  background: rgba(138, 106, 47, 0.08);
+}
+
+.pass-toggle-btn:active {
+  transform: scale(0.92);
 }
 
 .auth-error-msg {

@@ -1988,7 +1988,28 @@ window.switchToSignUp = function(phone, password) {
   if (signupPass && password) signupPass.value = password;
 };
 
+window.togglePasswordVisibility = function(inputId, btnId) {
+  const input = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if (!input) return;
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  if (btn) {
+    const icon = btn.querySelector('i');
+    if (icon) {
+      icon.className = isHidden ? 'ti ti-eye-off' : 'ti ti-eye';
+    }
+    const label = isHidden ? 'Hide password' : 'Show password';
+    btn.setAttribute('title', label);
+    btn.setAttribute('aria-label', label);
+  }
+};
+
+let authSystemInitialized = false;
 function initAuthSystem() {
+  if (authSystemInitialized) return;
+  authSystemInitialized = true;
+
   document.getElementById('tab-btn-otp')?.addEventListener('click', () => window.switchAuthTab('otp'));
   document.getElementById('tab-btn-signin')?.addEventListener('click', () => window.switchAuthTab('signin'));
   document.getElementById('tab-btn-signup')?.addEventListener('click', () => window.switchAuthTab('signup'));
@@ -2031,15 +2052,37 @@ function initAuthSystem() {
   }
 
   // Password visibility toggles
-  document.getElementById('toggle-login-pass')?.addEventListener('click', () => {
-    const input = document.getElementById('login-pass-input');
-    if (input) input.type = input.type === 'password' ? 'text' : 'password';
-  });
+  const loginPassBtn = document.getElementById('toggle-login-pass');
+  if (loginPassBtn) {
+    loginPassBtn.onclick = (e) => {
+      e.preventDefault();
+      window.togglePasswordVisibility('login-pass-input', 'toggle-login-pass');
+    };
+  }
 
-  document.getElementById('toggle-signup-pass')?.addEventListener('click', () => {
-    const input = document.getElementById('signup-pass-input');
-    if (input) input.type = input.type === 'password' ? 'text' : 'password';
-  });
+  const signupPassBtn = document.getElementById('toggle-signup-pass');
+  if (signupPassBtn) {
+    signupPassBtn.onclick = (e) => {
+      e.preventDefault();
+      window.togglePasswordVisibility('signup-pass-input', 'toggle-signup-pass');
+    };
+  }
+
+  const forgotPassBtn = document.getElementById('toggle-forgot-pass');
+  if (forgotPassBtn) {
+    forgotPassBtn.onclick = (e) => {
+      e.preventDefault();
+      window.togglePasswordVisibility('forgot-new-pass-input', 'toggle-forgot-pass');
+    };
+  }
+
+  const forgotConfirmPassBtn = document.getElementById('toggle-forgot-confirm-pass');
+  if (forgotConfirmPassBtn) {
+    forgotConfirmPassBtn.onclick = (e) => {
+      e.preventDefault();
+      window.togglePasswordVisibility('forgot-confirm-pass-input', 'toggle-forgot-confirm-pass');
+    };
+  }
 
   // Account Switcher modal
   document.getElementById('switch-account-btn')?.addEventListener('click', async () => {
