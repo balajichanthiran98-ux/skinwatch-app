@@ -931,6 +931,33 @@ function getFirebaseApp() {
   return null;
 }
 
+window.showSmsNotificationToast = function(code) {
+  const toast = document.getElementById('sms-toast');
+  const body = document.getElementById('sms-toast-body');
+  if (!toast) return;
+  if (body) {
+    body.innerHTML = `SkinWatch: Your verification code is <strong style="color:var(--gold,#D4AF37); font-size:15px; font-family:monospace; background:rgba(212,175,55,0.18); padding:2px 6px; border-radius:4px;">${code}</strong>. <span style="text-decoration:underline; font-weight:600; color:var(--gold,#D4AF37);">Tap to autofill</span>.`;
+  }
+  toast.style.display = 'flex';
+  toast.onclick = () => window.autofillOtpCode(code);
+  if (window._smsToastTimer) clearTimeout(window._smsToastTimer);
+  window._smsToastTimer = setTimeout(() => {
+    toast.style.display = 'none';
+  }, 12000);
+};
+
+window.autofillOtpCode = function(code) {
+  const loginOtp = document.getElementById('otp-code-input');
+  const signupOtp = document.getElementById('signup-otp-input');
+  const forgotOtp = document.getElementById('forgot-otp-input');
+  if (loginOtp) loginOtp.value = code;
+  if (signupOtp) signupOtp.value = code;
+  if (forgotOtp) forgotOtp.value = code;
+  showToast(`Code ${code} autofilled!`);
+  const toast = document.getElementById('sms-toast');
+  if (toast) toast.style.display = 'none';
+};
+
 window.handleSendLoginOtp = async function() {
   const code = document.getElementById('otp-country-code')?.value || '+91';
   const rawPhone = document.getElementById('otp-phone-input')?.value.trim() || '';
@@ -989,27 +1016,10 @@ window.handleSendLoginOtp = async function() {
       showToast(`Real SMS code dispatched to ${phone}`);
       return;
     } catch (fbErr) {
-      console.warn('Firebase SMS attempt warning:', fbErr);
+      console.warn('Firebase SMS attempt failed, proceeding to backend simulator:', fbErr);
       if (recaptchaVerifierLogin) {
         try { recaptchaVerifierLogin.clear(); recaptchaVerifierLogin = null; } catch {}
       }
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = `<span>Get Verification Code</span> <i class="ti ti-send"></i>`;
-      }
-      if (errEl) {
-        let msg = fbErr.message || fbErr.code || 'Failed to send SMS';
-        if (fbErr.code === 'auth/app-not-authorized' || fbErr.code === 'auth/unauthorized-domain') {
-          msg = 'Domain not authorized. Please make sure <code>localhost</code> is added under Firebase Authentication > Settings > Authorized domains.';
-        } else if (fbErr.code === 'auth/invalid-app-credential') {
-          msg = 'Firebase reCAPTCHA check failed. Please refresh and check your internet connection or deploy to HTTPS.';
-        } else if (fbErr.code === 'auth/too-many-requests') {
-          msg = `Google has temporarily paused SMS to this browser due to multiple rapid attempts.<br><br><b>To proceed right now:</b><br>• Add <code>${phone}</code> under <b>Firebase Console > Phone > Phone numbers for testing</b> (Code: <code>123456</code>)<br>• <a href="javascript:void(0)" onclick="window.useBackendOtpFallback()" style="color:#d97706; text-decoration:underline; font-weight:700; display:inline-block; margin-top:6px;">👉 Click here to enter code now (1234)</a>`;
-        }
-        errEl.innerHTML = `⚠️ <b>Firebase SMS Notice:</b><br>${msg}`;
-        errEl.style.display = 'block';
-      }
-      return;
     }
   }
 
@@ -1021,6 +1031,7 @@ window.useBackendOtpFallback = function() {
   if (step1) step1.style.display = 'none';
   if (step2) step2.style.display = 'block';
   showToast('Proceed with test verification code: 1234');
+  window.showSmsNotificationToast('1234');
 };
 
   // 2. Backend Fallback Dispatcher
@@ -1046,6 +1057,7 @@ window.useBackendOtpFallback = function() {
       if (step1) step1.style.display = 'none';
       if (step2) step2.style.display = 'block';
       showToast(`Verification code sent to ${phone}`);
+      window.showSmsNotificationToast(data.code || '1234');
     } else {
       if (errEl) {
         errEl.textContent = data?.error || 'Failed to send SMS. Please check your phone number.';
@@ -1358,6 +1370,7 @@ window.handleForgotSendOtp = async function() {
       if (step1) step1.style.display = 'none';
       if (step2) step2.style.display = 'block';
       showToast(`Verification code sent to ${phone}`);
+      window.showSmsNotificationToast(data.code || '1234');
     } else {
       if (errEl) {
         errEl.textContent = data?.error || 'Failed to send verification code. Please check your number.';
@@ -1622,6 +1635,7 @@ window.handleSignupSendOtp = async function() {
       if (step1) step1.style.display = 'none';
       if (step2) step2.style.display = 'block';
       showToast(`Verification code sent to ${phone}`);
+      window.showSmsNotificationToast(data.code || '1234');
     } else {
       if (errEl) {
         errEl.textContent = data?.error || 'Failed to send verification SMS.';
