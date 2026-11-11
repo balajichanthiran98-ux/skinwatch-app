@@ -51,7 +51,7 @@
       });
 
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=77')
+        navigator.serviceWorker.register('sw.js?v=78')
           .then((reg) => {
             reg.update();
             console.log('✓ SkinWatch PWA Service Worker Registered & Checked for Updates', reg.scope);
@@ -109,12 +109,12 @@
         <div id="forgot-step-2" style="display:none;">
           <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px; margin-bottom:14px; font-size:12px; color:#166534;">
             <i class="ti ti-circle-check"></i> Verification code sent to <strong id="forgot-confirmed-phone"></strong>.
-            <div style="font-size:11px; color:#15803D; margin-top:3px;">Use test code: <strong>1234</strong></div>
+            <div style="font-size:11px; color:#15803D; margin-top:3px;">Please check your SMS messages for your verification code.</div>
           </div>
 
           <div class="auth-field-group">
             <label class="auth-field-label">Verification Code (OTP)</label>
-            <input id="forgot-otp-input" type="text" class="auth-phone-field" placeholder="Enter 4-digit code (1234)" maxlength="6" required>
+            <input id="forgot-otp-input" type="text" class="auth-phone-field" placeholder="Enter verification code" maxlength="6" autocomplete="one-time-code" required>
           </div>
 
           <div class="auth-field-group" style="margin-top:10px;">
@@ -147,16 +147,6 @@
   </div>
 
   <div class="phone">
-
-    <!-- Simulated Incoming SMS Notification Toast -->
-    <div id="sms-toast" class="sms-toast-banner" style="display:none;">
-      <div class="sms-toast-icon"><i class="ti ti-message-dots"></i></div>
-      <div class="sms-toast-content">
-        <div class="sms-toast-header"><span>MESSAGES</span> <span>just now</span></div>
-        <div class="sms-toast-body" id="sms-toast-body">SkinWatch: Your login code is <strong>1234</strong>. Tap to
-          autofill.</div>
-      </div>
-    </div>
 
     <!-- AUTH / PHONE NUMBER & PASSWORD LOGIN SCREEN -->
     <section id="screen-auth" class="screen auth-screen" style="display:flex;">
@@ -217,12 +207,12 @@
           <div id="otp-auth-step-2" style="display:none;">
             <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px; margin-bottom:12px; font-size:12px; color:#166534;">
               <i class="ti ti-circle-check"></i> Code sent to <strong id="otp-confirmed-phone"></strong>.
-              <div style="font-size:11px; color:#15803D; margin-top:2px;">Enter 4-digit code (use <strong>1234</strong> for test)</div>
+              <div style="font-size:11px; color:#15803D; margin-top:2px;">Please check your SMS messages for your verification code.</div>
             </div>
 
             <div class="auth-field-group">
               <label class="auth-field-label">Verification Code (OTP)</label>
-              <input id="otp-code-input" type="text" class="auth-phone-field" placeholder="Enter 4-digit code" maxlength="6" autocomplete="one-time-code" required>
+              <input id="otp-code-input" type="text" class="auth-phone-field" placeholder="Enter verification code" maxlength="6" autocomplete="one-time-code" required>
             </div>
 
             <p id="otp-auth-error-2" class="auth-error-msg" style="display:none;"></p>
@@ -344,7 +334,7 @@
           <div id="signup-step-2" style="display:none;">
             <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px; margin-bottom:12px; font-size:12px; color:#166534;">
               <i class="ti ti-circle-check"></i> Code sent to <strong id="signup-confirmed-phone"></strong>.
-              <div style="font-size:11px; color:#15803D; margin-top:2px;">Enter 4-digit code (use <strong>1234</strong> for test)</div>
+              <div style="font-size:11px; color:#15803D; margin-top:2px;">Please check your SMS messages for your verification code.</div>
             </div>
 
             <div class="auth-field-group">
@@ -3642,7 +3632,7 @@
 
   </div>
 
-  <script src="app.js?v=19.0"></script>
+  <script src="app.js?v=20.0"></script>
 </body>
 
 </html>

@@ -931,32 +931,7 @@ function getFirebaseApp() {
   return null;
 }
 
-window.showSmsNotificationToast = function(code) {
-  const toast = document.getElementById('sms-toast');
-  const body = document.getElementById('sms-toast-body');
-  if (!toast) return;
-  if (body) {
-    body.innerHTML = `SkinWatch: Your verification code is <strong style="color:var(--gold,#D4AF37); font-size:15px; font-family:monospace; background:rgba(212,175,55,0.18); padding:2px 6px; border-radius:4px;">${code}</strong>. <span style="text-decoration:underline; font-weight:600; color:var(--gold,#D4AF37);">Tap to autofill</span>.`;
-  }
-  toast.style.display = 'flex';
-  toast.onclick = () => window.autofillOtpCode(code);
-  if (window._smsToastTimer) clearTimeout(window._smsToastTimer);
-  window._smsToastTimer = setTimeout(() => {
-    toast.style.display = 'none';
-  }, 12000);
-};
 
-window.autofillOtpCode = function(code) {
-  const loginOtp = document.getElementById('otp-code-input');
-  const signupOtp = document.getElementById('signup-otp-input');
-  const forgotOtp = document.getElementById('forgot-otp-input');
-  if (loginOtp) loginOtp.value = code;
-  if (signupOtp) signupOtp.value = code;
-  if (forgotOtp) forgotOtp.value = code;
-  showToast(`Code ${code} autofilled!`);
-  const toast = document.getElementById('sms-toast');
-  if (toast) toast.style.display = 'none';
-};
 
 window.handleSendLoginOtp = async function() {
   const code = document.getElementById('otp-country-code')?.value || '+91';
@@ -1030,8 +1005,7 @@ window.useBackendOtpFallback = function() {
   const step2 = document.getElementById('otp-auth-step-2');
   if (step1) step1.style.display = 'none';
   if (step2) step2.style.display = 'block';
-  showToast('Proceed with test verification code: 1234');
-  window.showSmsNotificationToast('1234');
+  showToast('Please enter your SMS verification code');
 };
 
   // 2. Backend Fallback Dispatcher
@@ -1057,7 +1031,6 @@ window.useBackendOtpFallback = function() {
       if (step1) step1.style.display = 'none';
       if (step2) step2.style.display = 'block';
       showToast(`Verification code sent to ${phone}`);
-      window.showSmsNotificationToast(data.code || '1234');
     } else {
       if (errEl) {
         errEl.textContent = data?.error || 'Failed to send SMS. Please check your phone number.';
@@ -1370,7 +1343,6 @@ window.handleForgotSendOtp = async function() {
       if (step1) step1.style.display = 'none';
       if (step2) step2.style.display = 'block';
       showToast(`Verification code sent to ${phone}`);
-      window.showSmsNotificationToast(data.code || '1234');
     } else {
       if (errEl) {
         errEl.textContent = data?.error || 'Failed to send verification code. Please check your number.';
@@ -1635,7 +1607,6 @@ window.handleSignupSendOtp = async function() {
       if (step1) step1.style.display = 'none';
       if (step2) step2.style.display = 'block';
       showToast(`Verification code sent to ${phone}`);
-      window.showSmsNotificationToast(data.code || '1234');
     } else {
       if (errEl) {
         errEl.textContent = data?.error || 'Failed to send verification SMS.';

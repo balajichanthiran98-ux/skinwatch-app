@@ -946,7 +946,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
   }
 
   const cleanPhone = phone.trim();
-  const code = '1234';
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
   otpStore.set(cleanPhone, {
     code,
     expiresAt: Date.now() + 10 * 60 * 1000 // 10 min TTL
@@ -957,7 +957,6 @@ app.post('/api/auth/send-otp', async (req, res) => {
   return res.json({
     success: true,
     phone: cleanPhone,
-    code,
     message: `Verification code sent to ${cleanPhone}`
   });
 });
@@ -973,8 +972,8 @@ app.post('/api/auth/verify-otp', (req, res) => {
   const cleanPhone = phone.trim();
   const entry = otpStore.get(cleanPhone);
 
-  // Allow demo code 1234 or stored code
-  if (String(otp).trim() === '1234' || (entry && entry.code === String(otp).trim())) {
+  // Validate real OTP code or stored session code
+  if (entry && entry.code === String(otp).trim()) {
     otpStore.delete(cleanPhone);
 
     // 1. Check if user already exists in isolated database
@@ -1009,7 +1008,7 @@ app.post('/api/auth/verify-otp', (req, res) => {
     });
   }
 
-  return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Use code 1234.' });
+  return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Please check your SMS and try again.' });
 });
 
 // POST /api/auth/firebase-verify
@@ -1258,17 +1257,16 @@ app.post('/api/auth/forgot-password/send-otp', (req, res) => {
     return res.status(404).json({ success: false, error: `No account found for ${cleanPhone}. Please create an account.` });
   }
 
-  const code = '1234';
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
   otpStore.set(cleanPhone, {
     code,
     expiresAt: Date.now() + 10 * 60 * 1000 // 10 min TTL
   });
 
-  console.log(`[AUTH] Password Reset OTP for ${cleanPhone} is: ${code}`);
+  console.log(`[AUTH] Password Reset OTP for ${cleanPhone} is dispatched via SMS`);
   return res.json({
     success: true,
     phone: cleanPhone,
-    code,
     message: `Verification code sent to ${cleanPhone}`
   });
 });
@@ -1283,8 +1281,8 @@ app.post('/api/auth/forgot-password/reset', (req, res) => {
   const cleanPhone = phone.trim();
   const entry = otpStore.get(cleanPhone);
 
-  // Validate OTP (allow demo code 1234, stored code, or client-side verified Firebase token)
-  if (isFirebaseVerified || String(otp).trim() === '1234' || (entry && entry.code === String(otp).trim())) {
+  // Validate OTP via Firebase client verification or stored SMS code
+  if (isFirebaseVerified || (entry && entry.code === String(otp).trim())) {
     otpStore.delete(cleanPhone);
     const result = userStore.resetPassword(cleanPhone, newPassword);
     if (!result.success) {
@@ -1293,7 +1291,7 @@ app.post('/api/auth/forgot-password/reset', (req, res) => {
     return res.json(result);
   }
 
-  return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Use code 1234.' });
+  return res.status(400).json({ success: false, error: 'Invalid or expired verification code. Please check your SMS and try again.' });
 });
 
 // ---- POST /api/acne-tracker/analyze ----
